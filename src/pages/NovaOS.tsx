@@ -72,6 +72,7 @@ const NovaOS = () => {
   const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null);
   const [showClienteModal, setShowClienteModal] = useState(false);
   const [showAllClientes, setShowAllClientes] = useState(false);
+  const [searchProdutoTerm, setSearchProdutoTerm] = useState("");
   const [novoCliente, setNovoCliente] = useState({
     nome: "",
     cpf: "",
@@ -137,6 +138,11 @@ const NovaOS = () => {
   const clientesFiltrados = clientes.filter(cliente =>
     cliente.nome.toLowerCase().includes(searchClienteTerm.toLowerCase()) ||
     cliente.cpf.includes(searchClienteTerm.replace(/\D/g, ''))
+  );
+
+  const produtosFiltrados = produtos.filter(produto =>
+    produto.nome.toLowerCase().includes(searchProdutoTerm.toLowerCase()) ||
+    produto.marca.toLowerCase().includes(searchProdutoTerm.toLowerCase())
   );
 
   const adicionarProduto = (produto: Produto) => {
@@ -476,8 +482,19 @@ const NovaOS = () => {
             {/* Produtos */}
             <div className="space-y-2">
               <Label>Produtos Disponíveis</Label>
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar produtos por nome ou marca..."
+                    value={searchProdutoTerm}
+                    onChange={(e) => setSearchProdutoTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
               <div className="border rounded-md max-h-40 overflow-y-auto">
-                {produtos.map((produto) => (
+                {(searchProdutoTerm ? produtosFiltrados : produtos).map((produto) => (
                   <div
                     key={produto.id}
                     className="p-2 hover:bg-accent cursor-pointer border-b last:border-b-0 flex justify-between items-center"
@@ -491,6 +508,11 @@ const NovaOS = () => {
                   </div>
                 ))}
               </div>
+              {searchProdutoTerm && produtosFiltrados.length === 0 && (
+                <div className="text-sm text-muted-foreground text-center py-2 border rounded-md">
+                  Nenhum produto encontrado
+                </div>
+              )}
             </div>
 
             {/* Produtos Selecionados */}

@@ -40,6 +40,10 @@ interface Produto {
   valor: number;
 }
 
+interface ProdutoSelecionado extends Produto {
+  quantidade: number;
+}
+
 interface Servico {
   id: number;
   descricao: string;
@@ -82,7 +86,7 @@ const NovaOS = () => {
   });
 
   // Produtos e Serviços
-  const [produtosSelecionados, setProdutosSelecionados] = useState<Produto[]>([]);
+  const [produtosSelecionados, setProdutosSelecionados] = useState<ProdutoSelecionado[]>([]);
   const [servicosSelecionados, setServicosSelecionados] = useState<Servico[]>([]);
   const [novoServico, setNovoServico] = useState({ descricao: "", valor: 0 });
 
@@ -146,8 +150,17 @@ const NovaOS = () => {
   );
 
   const adicionarProduto = (produto: Produto) => {
-    if (!produtosSelecionados.find(p => p.id === produto.id)) {
-      setProdutosSelecionados([...produtosSelecionados, produto]);
+    const produtoExistente = produtosSelecionados.find(p => p.id === produto.id);
+    if (produtoExistente) {
+      // Se o produto já existe, incrementa a quantidade
+      setProdutosSelecionados(produtosSelecionados.map(p => 
+        p.id === produto.id 
+          ? { ...p, quantidade: (p.quantidade || 1) + 1 }
+          : p
+      ));
+    } else {
+      // Se é um produto novo, adiciona com quantidade 1
+      setProdutosSelecionados([...produtosSelecionados, { ...produto, quantidade: 1 }]);
     }
   };
 
@@ -172,7 +185,7 @@ const NovaOS = () => {
   };
 
   const calcularTotal = () => {
-    const totalProdutos = produtosSelecionados.reduce((total, produto) => total + produto.valor, 0);
+    const totalProdutos = produtosSelecionados.reduce((total, produto) => total + (produto.valor * produto.quantidade), 0);
     const totalServicos = servicosSelecionados.reduce((total, servico) => total + servico.valor, 0);
     const total = totalProdutos + totalServicos;
     return {
@@ -525,21 +538,60 @@ const NovaOS = () => {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {produtosSelecionados.map((produto) => (
-                      <div key={produto.id} className="flex justify-between items-center bg-accent/50 p-2 rounded">
-                        <div>
-                          <div className="font-medium text-sm">{produto.nome}</div>
-                          <div className="text-xs text-muted-foreground">{produto.marca} - R$ {produto.valor.toFixed(2)}</div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removerProduto(produto.id)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
+                     {produtosSelecionados.map((produto) => (
+                       <div key={produto.id} className="flex justify-between items-center bg-accent/50 p-2 rounded">
+                         <div className="flex-1">
+                           <div className="font-medium text-sm">{produto.nome}</div>
+                           <div className="text-xs text-muted-foreground">
+                             {produto.marca} - R$ {produto.valor.toFixed(2)} cada
+                           </div>
+                         </div>
+                         <div className="flex items-center gap-2">
+                           <div className="flex items-center gap-1 bg-background border rounded px-2 py-1">
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               className="h-6 w-6 p-0"
+                               onClick={() => {
+                                 if (produto.quantidade > 1) {
+                                   setProdutosSelecionados(produtosSelecionados.map(p => 
+                                     p.id === produto.id 
+                                       ? { ...p, quantidade: p.quantidade - 1 }
+                                       : p
+                                   ));
+                                 }
+                               }}
+                               disabled={produto.quantidade <= 1}
+                             >
+                               -
+                             </Button>
+                             <span className="text-sm font-medium w-8 text-center">{produto.quantidade}</span>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               className="h-6 w-6 p-0"
+                               onClick={() => {
+                                 setProdutosSelecionados(produtosSelecionados.map(p => 
+                                   p.id === produto.id 
+                                     ? { ...p, quantidade: p.quantidade + 1 }
+                                     : p
+                                 ));
+                               }}
+                             >
+                               +
+                             </Button>
+                           </div>
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             className="h-6 w-6 p-0"
+                             onClick={() => removerProduto(produto.id)}
+                           >
+                             <X className="h-4 w-4" />
+                           </Button>
+                         </div>
+                       </div>
+                     ))}
                   </div>
                 )}
               </div>

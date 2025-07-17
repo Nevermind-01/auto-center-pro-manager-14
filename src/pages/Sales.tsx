@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useStock } from "@/hooks/useStock";
 import { 
   Plus, 
   Search, 
@@ -51,6 +52,7 @@ interface SaleFormData {
 
 const Sales = () => {
   const { toast } = useToast();
+  const { products, processStockForSale } = useStock();
   const [isNewSaleModalOpen, setIsNewSaleModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -69,19 +71,8 @@ const Sales = () => {
     observacoes: ""
   });
 
-  // Estado para produtos do estoque (mockado)
-  const [produtosEstoque] = useState([
-    "Óleo 5W30",
-    "Filtro de Ar",
-    "Filtro de Óleo",
-    "Pneu 195/65R15",
-    "Pastilha de Freio",
-    "Disco de Freio",
-    "Bateria 60Ah",
-    "Vela de Ignição",
-    "Correia Dentada",
-    "Amortecedor Dianteiro"
-  ]);
+  // Produtos do estoque vindos do hook
+  const produtosEstoque = products.map(product => product.nome);
 
   const [produtosFiltrados, setProdutosFiltrados] = useState<string[]>([]);
   const [showProdutosSuggestions, setShowProdutosSuggestions] = useState(false);
@@ -200,6 +191,20 @@ const Sales = () => {
     };
 
     setSales([newSale, ...sales]);
+
+    // Processar baixa automática no estoque
+    if (newSale.produtos.length > 0) {
+      const stockResult = processStockForSale(newSale.produtos);
+      
+      if (!stockResult.success) {
+        toast({
+          title: "Atenção",
+          description: `Venda registrada, mas alguns produtos não puderam ser baixados do estoque: ${stockResult.failedProducts.join(', ')}`,
+          variant: "destructive"
+        });
+      }
+    }
+    
     setFormData({
       cliente: "",
       mecanico: "",
@@ -216,7 +221,7 @@ const Sales = () => {
     
     toast({
       title: "OS registrada",
-      description: "Ordem de Serviço cadastrada com sucesso!",
+      description: "Ordem de Serviço cadastrada com sucesso! Estoque atualizado automaticamente.",
     });
   };
 

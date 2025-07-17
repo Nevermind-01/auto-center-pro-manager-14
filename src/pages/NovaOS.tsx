@@ -227,6 +227,43 @@ const NovaOS = () => {
     });
   };
 
+  const salvarOS = () => {
+    if (!clienteSelecionado) {
+      toast({
+        title: "Erro",
+        description: "Selecione um cliente.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const total = calcularTotal();
+    
+    const novaOS: OS = {
+      id: Date.now(),
+      numero: `OS${String(Date.now()).slice(-6)}`,
+      cliente: clienteSelecionado,
+      produtos: produtosSelecionados,
+      servicos: servicosSelecionados,
+      valorTotal: total.total,
+      desconto,
+      valorFinal: total.totalComDesconto,
+      formaPagamento: formaPagamento || "",
+      parcelas: formaPagamento === "cartao-credito" ? parcelas : undefined,
+      comprovanteCheque: comprovanteCheque?.name,
+      status: "Em Andamento",
+      data: new Date().toISOString().split('T')[0],
+      registradoPor: "Admin",
+      observacoes
+    };
+
+    console.log("OS Salva:", novaOS);
+    toast({
+      title: "OS salva",
+      description: `Ordem de Serviço ${novaOS.numero} salva com sucesso!`,
+    });
+  };
+
   const finalizarOS = () => {
     if (!clienteSelecionado) {
       toast({
@@ -774,14 +811,24 @@ const NovaOS = () => {
               </div>
             </div>
 
-            {/* Botão Finalizar */}
-            <Button 
-              onClick={finalizarOS} 
-              className="w-full"
-              disabled={!clienteSelecionado || !formaPagamento}
-            >
-              Finalizar OS
-            </Button>
+            {/* Botões de Ação */}
+            <div className="space-y-2">
+              <Button
+                onClick={salvarOS}
+                className="w-full"
+                variant="outline"
+                disabled={!clienteSelecionado}
+              >
+                Salvar OS
+              </Button>
+              <Button 
+                onClick={finalizarOS} 
+                className="w-full"
+                disabled={!clienteSelecionado || !formaPagamento}
+              >
+                Finalizar OS
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

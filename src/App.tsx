@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Sales from "./pages/Sales";
 import NovaOS from "./pages/NovaOS";
+import Inventory from "./pages/Inventory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,7 +24,7 @@ const App = () => (
           <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
           <Route path="/nova-os" element={<Layout><NovaOS /></Layout>} />
           <Route path="/sales" element={<Layout><Sales /></Layout>} />
-          <Route path="/inventory" element={<Layout><div>Estoque (em desenvolvimento)</div></Layout>} />
+          <Route path="/inventory" element={<Layout><Inventory /></Layout>} />
           <Route path="/history" element={<Layout><div>Histórico (em desenvolvimento)</div></Layout>} />
           <Route path="/settings" element={<Layout><div>Configurações (em desenvolvimento)</div></Layout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

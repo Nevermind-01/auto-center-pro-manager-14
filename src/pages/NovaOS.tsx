@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useEstoque, estoqueManager } from "@/lib/estoque";
+import { ProdutoEstoque } from "@/pages/Inventory";
 import { 
   Plus, 
   Search, 
@@ -20,7 +22,9 @@ import {
   Settings,
   Upload,
   X,
-  FileText
+  FileText,
+  Package,
+  AlertTriangle
 } from "lucide-react";
 
 // Interfaces
@@ -77,6 +81,7 @@ const NovaOS = () => {
   const [showClienteModal, setShowClienteModal] = useState(false);
   const [showAllClientes, setShowAllClientes] = useState(false);
   const [searchProdutoTerm, setSearchProdutoTerm] = useState("");
+  const [produtosEstoque, setProdutosEstoque] = useState<ProdutoEstoque[]>([]);
   const [novoCliente, setNovoCliente] = useState({
     nome: "",
     cpf: "",
@@ -84,6 +89,9 @@ const NovaOS = () => {
     telefone: "",
     email: ""
   });
+
+  // Hook do estoque
+  const estoque = useEstoque();
 
   // Produtos e Serviços
   const [produtosSelecionados, setProdutosSelecionados] = useState<ProdutoSelecionado[]>([]);
@@ -98,6 +106,141 @@ const NovaOS = () => {
   // Outros campos
   const [desconto, setDesconto] = useState(0);
   const [observacoes, setObservacoes] = useState("");
+
+  // Inicializar estoque na primeira renderização
+  useEffect(() => {
+    const produtosDoEstoque = estoque.getProdutos();
+    setProdutosEstoque(produtosDoEstoque);
+    
+    // Inicializar o gerenciador de estoque com dados padrão se vazio
+    if (produtosDoEstoque.length === 0) {
+      const produtosIniciais: ProdutoEstoque[] = [
+        {
+          id: 1,
+          nome: "Óleo Motor 5W30 Sintético",
+          marca: "Castrol",
+          categoria: "Óleos e Lubrificantes",
+          codigo: "OL001",
+          valorCompra: 25.00,
+          valorVenda: 45.90,
+          quantidadeAtual: 15,
+          quantidadeMinima: 10,
+          fornecedor: "Distribuidora XYZ",
+          localizacao: "Prateleira A1",
+          dataUltimaEntrada: "2024-07-15",
+          status: "Ativo"
+        },
+        {
+          id: 2,
+          nome: "Filtro de Ar",
+          marca: "Mann",
+          categoria: "Filtros",
+          codigo: "FL001",
+          valorCompra: 15.00,
+          valorVenda: 25.50,
+          quantidadeAtual: 8,
+          quantidadeMinima: 15,
+          fornecedor: "Auto Peças Sul",
+          localizacao: "Prateleira B2",
+          dataUltimaEntrada: "2024-07-10",
+          status: "Ativo"
+        },
+        {
+          id: 3,
+          nome: "Filtro de Óleo",
+          marca: "Bosch",
+          categoria: "Filtros",
+          codigo: "FL002",
+          valorCompra: 12.00,
+          valorVenda: 18.75,
+          quantidadeAtual: 12,
+          quantidadeMinima: 10,
+          fornecedor: "Auto Peças Sul",
+          localizacao: "Prateleira B3",
+          dataUltimaEntrada: "2024-07-12",
+          status: "Ativo"
+        },
+        {
+          id: 4,
+          nome: "Pastilha de Freio Dianteira",
+          marca: "TRW",
+          categoria: "Freios",
+          codigo: "FR001",
+          valorCompra: 55.00,
+          valorVenda: 85.00,
+          quantidadeAtual: 3,
+          quantidadeMinima: 8,
+          fornecedor: "Freios & Cia",
+          localizacao: "Prateleira C3",
+          dataUltimaEntrada: "2024-07-05",
+          status: "Ativo"
+        },
+        {
+          id: 5,
+          nome: "Disco de Freio",
+          marca: "Bendix",
+          categoria: "Freios",
+          codigo: "FR002",
+          valorCompra: 80.00,
+          valorVenda: 120.00,
+          quantidadeAtual: 6,
+          quantidadeMinima: 4,
+          fornecedor: "Freios & Cia",
+          localizacao: "Prateleira C4",
+          dataUltimaEntrada: "2024-07-08",
+          status: "Ativo"
+        },
+        {
+          id: 6,
+          nome: "Vela de Ignição",
+          marca: "NGK",
+          categoria: "Sistema Elétrico",
+          codigo: "EL001",
+          valorCompra: 22.00,
+          valorVenda: 35.90,
+          quantidadeAtual: 20,
+          quantidadeMinima: 15,
+          fornecedor: "Elétrica Central",
+          localizacao: "Prateleira D1",
+          dataUltimaEntrada: "2024-07-14",
+          status: "Ativo"
+        },
+        {
+          id: 7,
+          nome: "Correia Dentada",
+          marca: "Gates",
+          categoria: "Motor",
+          codigo: "MT001",
+          valorCompra: 65.00,
+          valorVenda: 95.75,
+          quantidadeAtual: 4,
+          quantidadeMinima: 6,
+          fornecedor: "Peças Motor",
+          localizacao: "Prateleira E1",
+          dataUltimaEntrada: "2024-07-11",
+          status: "Ativo"
+        },
+        {
+          id: 8,
+          nome: "Bateria 60Ah",
+          marca: "Moura",
+          categoria: "Sistema Elétrico",
+          codigo: "BT001",
+          valorCompra: 180.00,
+          valorVenda: 280.00,
+          quantidadeAtual: 5,
+          quantidadeMinima: 3,
+          fornecedor: "Elétrica Central",
+          localizacao: "Estoque Especial",
+          dataUltimaEntrada: "2024-07-13",
+          status: "Ativo"
+        }
+      ];
+      
+      estoqueManager.inicializarEstoque(produtosIniciais);
+      setProdutosEstoque(produtosIniciais);
+    }
+  }, []);
 
   // Dados mockados
   const [clientes] = useState<Cliente[]>([
@@ -127,16 +270,10 @@ const NovaOS = () => {
     }
   ]);
 
-  const [produtos] = useState<Produto[]>([
-    { id: 1, nome: "Óleo Motor", marca: "Mobil", valor: 45.90 },
-    { id: 2, nome: "Filtro de Ar", marca: "Mann", valor: 25.50 },
-    { id: 3, nome: "Filtro de Óleo", marca: "Bosch", valor: 18.75 },
-    { id: 4, nome: "Pastilha de Freio", marca: "TRW", valor: 85.00 },
-    { id: 5, nome: "Disco de Freio", marca: "Bendix", valor: 120.00 },
-    { id: 6, nome: "Vela de Ignição", marca: "NGK", valor: 35.90 },
-    { id: 7, nome: "Correia Dentada", marca: "Gates", valor: 95.75 },
-    { id: 8, nome: "Bateria", marca: "Moura", valor: 280.00 }
-  ]);
+  // Produtos do estoque filtrados e disponíveis
+  const produtosDisponiveis = produtosEstoque.filter(produto => 
+    produto.status === "Ativo" && produto.quantidadeAtual > 0
+  );
 
   // Funções
   const clientesFiltrados = clientes.filter(cliente =>
@@ -144,18 +281,38 @@ const NovaOS = () => {
     cliente.cpf.includes(searchClienteTerm.replace(/\D/g, ''))
   );
 
-  const produtosFiltrados = produtos.filter(produto =>
+  const produtosFiltrados = produtosDisponiveis.filter(produto =>
     produto.nome.toLowerCase().includes(searchProdutoTerm.toLowerCase()) ||
-    produto.marca.toLowerCase().includes(searchProdutoTerm.toLowerCase())
+    produto.marca.toLowerCase().includes(searchProdutoTerm.toLowerCase()) ||
+    produto.codigo.toLowerCase().includes(searchProdutoTerm.toLowerCase())
   );
 
-  const adicionarProduto = (produto: Produto) => {
-    const produtoExistente = produtosSelecionados.find(p => p.id === produto.id);
+  const adicionarProduto = (produtoEstoque: ProdutoEstoque) => {
+    // Verificar se há estoque suficiente
+    const produtoExistente = produtosSelecionados.find(p => p.id === produtoEstoque.id);
+    const quantidadeAtual = produtoExistente ? produtoExistente.quantidade : 0;
+    
+    if (quantidadeAtual >= produtoEstoque.quantidadeAtual) {
+      toast({
+        title: "Estoque insuficiente",
+        description: `${produtoEstoque.nome} possui apenas ${produtoEstoque.quantidadeAtual} unidades disponíveis.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const produto: Produto = {
+      id: produtoEstoque.id,
+      nome: produtoEstoque.nome,
+      marca: produtoEstoque.marca,
+      valor: produtoEstoque.valorVenda
+    };
+
     if (produtoExistente) {
       // Se o produto já existe, incrementa a quantidade
       setProdutosSelecionados(produtosSelecionados.map(p => 
         p.id === produto.id 
-          ? { ...p, quantidade: (p.quantidade || 1) + 1 }
+          ? { ...p, quantidade: p.quantidade + 1 }
           : p
       ));
     } else {
@@ -293,10 +450,44 @@ const NovaOS = () => {
     }
 
     const total = calcularTotal();
+    const numeroOS = `OS${String(Date.now()).slice(-6)}`;
     
+    // Verificar estoque antes de finalizar
+    for (const produto of produtosSelecionados) {
+      if (!estoque.verificarEstoque(produto.id, produto.quantidade)) {
+        const produtoEstoque = estoque.buscarProdutoPorId(produto.id);
+        toast({
+          title: "Estoque insuficiente",
+          description: `${produto.nome} possui apenas ${produtoEstoque?.quantidadeAtual || 0} unidades em estoque.`,
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
+    // Dar baixa no estoque para todos os produtos
+    const produtosVenda = produtosSelecionados.map(produto => ({
+      id: produto.id,
+      nome: produto.nome,
+      marca: produto.marca,
+      valor: produto.valor,
+      quantidade: produto.quantidade
+    }));
+
+    const sucessoBaixa = estoque.processarVenda(produtosVenda, numeroOS);
+    
+    if (!sucessoBaixa) {
+      toast({
+        title: "Erro",
+        description: "Erro ao processar baixa no estoque. Tente novamente.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const novaOS: OS = {
       id: Date.now(),
-      numero: `OS${String(Date.now()).slice(-6)}`,
+      numero: numeroOS,
       cliente: clienteSelecionado,
       produtos: produtosSelecionados,
       servicos: servicosSelecionados,
@@ -306,13 +497,16 @@ const NovaOS = () => {
       formaPagamento,
       parcelas: formaPagamento === "cartao-credito" ? parcelas : undefined,
       comprovanteCheque: comprovanteCheque?.name,
-      status: "Aberta",
+      status: "Finalizada",
       data: new Date().toISOString().split('T')[0],
-      registradoPor: "Admin", // Aqui você colocaria o usuário logado
+      registradoPor: "Admin",
       observacoes
     };
 
     console.log("Nova OS:", novaOS);
+
+    // Atualizar lista de produtos do estoque
+    setProdutosEstoque(estoque.getProdutos());
 
     // Reset form
     setClienteSelecionado(null);
@@ -326,8 +520,8 @@ const NovaOS = () => {
     setSearchClienteTerm("");
 
     toast({
-      title: "OS criada",
-      description: `Ordem de Serviço ${novaOS.numero} criada com sucesso!`,
+      title: "OS finalizada",
+      description: `Ordem de Serviço ${novaOS.numero} finalizada com sucesso! Estoque atualizado.`,
     });
   };
 
@@ -544,7 +738,7 @@ const NovaOS = () => {
                 </div>
               </div>
               <div className="border rounded-md max-h-40 overflow-y-auto">
-                {(searchProdutoTerm ? produtosFiltrados : produtos).map((produto) => (
+                {(searchProdutoTerm ? produtosFiltrados : produtosDisponiveis).map((produto) => (
                   <div
                     key={produto.id}
                     className="p-2 hover:bg-accent cursor-pointer border-b last:border-b-0 flex justify-between items-center"
@@ -554,7 +748,7 @@ const NovaOS = () => {
                       <div className="font-medium text-sm">{produto.nome}</div>
                       <div className="text-xs text-muted-foreground">{produto.marca}</div>
                     </div>
-                    <div className="text-sm font-medium">R$ {produto.valor.toFixed(2)}</div>
+                    <div className="text-sm font-medium">R$ {produto.valorVenda.toFixed(2)}</div>
                   </div>
                 ))}
               </div>

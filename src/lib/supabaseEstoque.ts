@@ -1,0 +1,377 @@
+// Sistema de estoque integrado com Supabase
+import { supabase } from '@/integrations/supabase/client';
+import { Database } from '@/integrations/supabase/types';
+
+// Types from Supabase
+type Produto = Database['public']['Tables']['produtos']['Row'];
+type Movimentacao = Database['public']['Tables']['movimentacoes']['Row'];
+
+// Interface para produtos usados nas vendas
+export interface ProdutoVenda {
+  id: string;
+  nome: string;
+  marca?: string | null;
+  valor: number;
+  quantidade: number;
+}
+
+// Extended produto type with categoria info
+export interface ProdutoComCategoria extends Produto {
+  categoria?: { nome: string } | null;
+}
+
+// Classe para gerenciar o estoque com Supabase
+class SupabaseEstoqueManager {
+  private static instance: SupabaseEstoqueManager;
+  private listeners: Array<() => void> = [];
+
+  public static getInstance(): SupabaseEstoqueManager {
+    if (!SupabaseEstoqueManager.instance) {
+      SupabaseEstoqueManager.instance = new SupabaseEstoqueManager();
+    }
+    return SupabaseEstoqueManager.instance;
+  }
+
+  // Buscar produtos por termo
+  public async buscarProduto(termo: string): Promise<ProdutoComCategoria[]> {
+    const { data, error } = await supabase
+      .from('produtos')
+      .select(`
+        *,
+        categoria:categorias(nome)
+      `)
+      .or(`nome.ilike.%${termo}%,marca.ilike.%${termo}%,codigo.ilike.%${termo}%`)
+      .eq('status', 'ativo');
+
+    if (error) {
+      console.error('Erro ao buscar produtos:', error);
+      throw error;
+    }
+
+    return data || [];
+  }
+
+  // Buscar produto por ID
+  public async buscarProdutoPorId(id: string): Promise<ProdutoComCategoria | null> {
+    const { data, error } = await supabase
+      .from('produtos')
+      .select(`
+        *,
+        categoria:categorias(nome)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null; // Produto não encontrado
+      }
+      console.error('Erro ao buscar produto por ID:', error);
+      throw error;
+    }
+
+    return data;
+  }
+
+  // Verificar se há estoque suficiente
+  public async verificarEstoque(produtoId: string, quantidade: number): Promise<boolean> {
+    const produto = await this.buscarProdutoPorId(produtoId);
+    return produto ? produto.quantidade >= quantidade : false;
+  }
+
+  // Dar baixa no estoque (usado nas vendas)
+  public async darBaixaEstoque(produtoId: string, quantidade: number, osNumero: string): Promise<boolean> {
+    try {
+      // Buscar produto atual
+      const produto = await this.buscarProdutoPorId(produtoId);
+      
+      if (!produto) {
+        console.error(`Produto com ID ${produtoId} não encontrado`);
+        return false;
+      }
+
+      if (produto.quantidade < quantidade) {
+        console.error(`Estoque insuficiente para ${produto.nome}. Disponível: ${produto.quantidade}, Solicitado: ${quantidade}`);
+        return false;
+      }
+
+      const quantidadeAnterior = produto.quantidade;
+      const novaQuantidade = quantidadeAnterior - quantidade;
+
+      // Atualizar quantidade do produto
+      const { error: updateError } = await supabase
+        .from('produtos')
+        .update({ quantidade: novaQuantidade })
+        .eq('id', produtoId);
+
+      if (updateError) {
+        console.error('Erro ao atualizar quantidade do produto:', updateError);
+        return false;
+      }
+
+      // Registrar movimentação
+      const { error: movError } = await supabase
+        .from('movimentacoes')
+        .insert({
+          produto_id: produtoId,
+          tipo: 'saida',
+          quantidade,
+          quantidade_anterior: quantidadeAnterior,
+          motivo: `Venda - OS ${osNumero}`,
+          valor_unitario: produto.preco_venda,
+          os_numero: osNumero
+        });
+
+      if (movError) {
+        console.error('Erro ao registrar movimentação:', movError);
+        // Reverter a atualização do produto
+        await supabase
+          .from('produtos')
+          .update({ quantidade: quantidadeAnterior })
+          .eq('id', produtoId);
+        return false;
+      }
+
+      this.notificarListeners();
+      console.log(`Baixa no estoque: ${quantidade} unidades de ${produto.nome} para OS ${osNumero}`);
+      return true;
+    } catch (error) {
+      console.error('Erro ao dar baixa no estoque:', error);
+      return false;
+    }
+  }
+
+  // Adicionar estoque (entrada)
+  public async adicionarEstoque(
+    produtoId: string, 
+    quantidade: number, 
+    motivo: string, 
+    valorUnitario?: number
+  ): Promise<boolean> {
+    try {
+      // Buscar produto atual
+      const produto = await this.buscarProdutoPorId(produtoId);
+      
+      if (!produto) {
+        console.error(`Produto com ID ${produtoId} não encontrado`);
+        return false;
+      }
+
+      const quantidadeAnterior = produto.quantidade;
+      const novaQuantidade = quantidadeAnterior + quantidade;
+
+      // Atualizar quantidade do produto
+      const { error: updateError } = await supabase
+        .from('produtos')
+        .update({ 
+          quantidade: novaQuantidade,
+          data_entrada: new Date().toISOString()
+        })
+        .eq('id', produtoId);
+
+      if (updateError) {
+        console.error('Erro ao atualizar quantidade do produto:', updateError);
+        return false;
+      }
+
+      // Registrar movimentação
+      const { error: movError } = await supabase
+        .from('movimentacoes')
+        .insert({
+          produto_id: produtoId,
+          tipo: 'entrada',
+          quantidade,
+          quantidade_anterior: quantidadeAnterior,
+          motivo,
+          valor_unitario: valorUnitario || produto.preco_custo
+        });
+
+      if (movError) {
+        console.error('Erro ao registrar movimentação:', movError);
+        // Reverter a atualização do produto
+        await supabase
+          .from('produtos')
+          .update({ quantidade: quantidadeAnterior })
+          .eq('id', produtoId);
+        return false;
+      }
+
+      this.notificarListeners();
+      console.log(`Entrada no estoque: ${quantidade} unidades de ${produto.nome}`);
+      return true;
+    } catch (error) {
+      console.error('Erro ao adicionar estoque:', error);
+      return false;
+    }
+  }
+
+  // Obter produtos com estoque baixo
+  public async getProdutosEstoqueBaixo(): Promise<ProdutoComCategoria[]> {
+    const { data, error } = await supabase
+      .from('produtos')
+      .select(`
+        *,
+        categoria:categorias(nome)
+      `)
+      .eq('status', 'ativo');
+
+    if (error) {
+      console.error('Erro ao buscar produtos com estoque baixo:', error);
+      throw error;
+    }
+
+    // Filter on client side since we need to compare two columns
+    const produtosEstoqueBaixo = (data || []).filter(produto => 
+      produto.quantidade <= produto.estoque_minimo
+    );
+
+    return produtosEstoqueBaixo;
+  }
+
+  // Obter todos os produtos
+  public async getProdutos(): Promise<ProdutoComCategoria[]> {
+    const { data, error } = await supabase
+      .from('produtos')
+      .select(`
+        *,
+        categoria:categorias(nome)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao buscar produtos:', error);
+      throw error;
+    }
+
+    return data || [];
+  }
+
+  // Obter movimentações
+  public async getMovimentacoes(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('movimentacoes')
+      .select(`
+        *,
+        produto:produtos(nome, marca)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao buscar movimentações:', error);
+      throw error;
+    }
+
+    return data || [];
+  }
+
+  // Adicionar listener para mudanças no estoque
+  public addListener(callback: () => void) {
+    this.listeners.push(callback);
+  }
+
+  // Remover listener
+  public removeListener(callback: () => void) {
+    this.listeners = this.listeners.filter(listener => listener !== callback);
+  }
+
+  // Notificar todos os listeners
+  private notificarListeners() {
+    this.listeners.forEach(listener => listener());
+  }
+
+  // Converter produto do estoque para produto de venda
+  public produtoParaVenda(produto: ProdutoComCategoria, quantidade: number = 1): ProdutoVenda {
+    return {
+      id: produto.id,
+      nome: produto.nome,
+      marca: produto.marca,
+      valor: Number(produto.preco_venda),
+      quantidade: quantidade
+    };
+  }
+
+  // Processar venda (dar baixa em múltiplos produtos)
+  public async processarVenda(produtos: ProdutoVenda[], osNumero: string): Promise<boolean> {
+    try {
+      // Verificar se todos os produtos têm estoque suficiente
+      for (const produto of produtos) {
+        const temEstoque = await this.verificarEstoque(produto.id, produto.quantidade);
+        if (!temEstoque) {
+          const produtoEstoque = await this.buscarProdutoPorId(produto.id);
+          console.error(`Estoque insuficiente para ${produtoEstoque?.nome}. Disponível: ${produtoEstoque?.quantidade}, Solicitado: ${produto.quantidade}`);
+          return false;
+        }
+      }
+
+      // Dar baixa em todos os produtos
+      for (const produto of produtos) {
+        const sucesso = await this.darBaixaEstoque(produto.id, produto.quantidade, osNumero);
+        if (!sucesso) {
+          console.error(`Erro ao dar baixa no produto ${produto.nome}`);
+          return false;
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao processar venda:', error);
+      return false;
+    }
+  }
+
+  // Inicializar com produtos padrão (para migração)
+  public async inicializarComProdutosPadrao(produtos: any[]): Promise<void> {
+    try {
+      for (const produto of produtos) {
+        // Buscar categoria padrão
+        const { data: categoria } = await supabase
+          .from('categorias')
+          .select('id')
+          .eq('nome', 'Peças Automotivas')
+          .single();
+
+        const produtoData = {
+          nome: produto.nome,
+          marca: produto.marca,
+          codigo: produto.codigo,
+          categoria_id: categoria?.id,
+          preco_custo: produto.valorCompra,
+          preco_venda: produto.valorVenda,
+          quantidade: produto.quantidadeAtual,
+          estoque_minimo: produto.quantidadeMinima,
+          status: produto.status === 'Ativo' ? 'ativo' as const : 'inativo' as const
+        };
+
+        const { error } = await supabase
+          .from('produtos')
+          .insert(produtoData);
+
+        if (error) {
+          console.error('Erro ao inserir produto:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao inicializar produtos padrão:', error);
+    }
+  }
+}
+
+// Exportar instância singleton
+export const supabaseEstoqueManager = SupabaseEstoqueManager.getInstance();
+
+// Hook personalizado para usar o estoque com Supabase
+export const useSupabaseEstoque = () => {
+  return {
+    buscarProduto: (termo: string) => supabaseEstoqueManager.buscarProduto(termo),
+    buscarProdutoPorId: (id: string) => supabaseEstoqueManager.buscarProdutoPorId(id),
+    verificarEstoque: (produtoId: string, quantidade: number) => supabaseEstoqueManager.verificarEstoque(produtoId, quantidade),
+    darBaixaEstoque: (produtoId: string, quantidade: number, osNumero: string) => supabaseEstoqueManager.darBaixaEstoque(produtoId, quantidade, osNumero),
+    adicionarEstoque: (produtoId: string, quantidade: number, motivo: string, valorUnitario?: number) => supabaseEstoqueManager.adicionarEstoque(produtoId, quantidade, motivo, valorUnitario),
+    getProdutosEstoqueBaixo: () => supabaseEstoqueManager.getProdutosEstoqueBaixo(),
+    getProdutos: () => supabaseEstoqueManager.getProdutos(),
+    getMovimentacoes: () => supabaseEstoqueManager.getMovimentacoes(),
+    produtoParaVenda: (produto: ProdutoComCategoria, quantidade?: number) => supabaseEstoqueManager.produtoParaVenda(produto, quantidade),
+    processarVenda: (produtos: ProdutoVenda[], osNumero: string) => supabaseEstoqueManager.processarVenda(produtos, osNumero),
+    inicializarComProdutosPadrao: (produtos: any[]) => supabaseEstoqueManager.inicializarComProdutosPadrao(produtos)
+  };
+};

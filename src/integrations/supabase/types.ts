@@ -40,29 +40,53 @@ export type Database = {
       }
       clientes: {
         Row: {
+          bairro: string | null
+          cidade: string | null
+          cnpj: string | null
+          cpf: string | null
           created_at: string
           email: string | null
           endereco: string | null
+          estado: string | null
           id: string
           nome: string
+          numero_residencia: string | null
+          rg: string | null
+          rua: string | null
           telefone: string | null
           updated_at: string
         }
         Insert: {
+          bairro?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          cpf?: string | null
           created_at?: string
           email?: string | null
           endereco?: string | null
+          estado?: string | null
           id?: string
           nome: string
+          numero_residencia?: string | null
+          rg?: string | null
+          rua?: string | null
           telefone?: string | null
           updated_at?: string
         }
         Update: {
+          bairro?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          cpf?: string | null
           created_at?: string
           email?: string | null
           endereco?: string | null
+          estado?: string | null
           id?: string
           nome?: string
+          numero_residencia?: string | null
+          rg?: string | null
+          rua?: string | null
           telefone?: string | null
           updated_at?: string
         }

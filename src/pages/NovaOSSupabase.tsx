@@ -76,7 +76,15 @@ const NovaOSSupabase = () => {
     nome: "",
     telefone: "",
     endereco: "",
-    email: ""
+    email: "",
+    cpf: "",
+    cnpj: "",
+    rg: "",
+    rua: "",
+    numero_residencia: "",
+    bairro: "",
+    cidade: "",
+    estado: ""
   });
 
   // Produtos e Serviços
@@ -156,7 +164,20 @@ const NovaOSSupabase = () => {
     try {
       const cliente = await createCliente.mutateAsync(novoCliente);
       setClienteSelecionado(cliente);
-      setNovoCliente({ nome: "", telefone: "", endereco: "", email: "" });
+      setNovoCliente({
+        nome: "",
+        telefone: "",
+        endereco: "",
+        email: "",
+        cpf: "",
+        cnpj: "",
+        rg: "",
+        rua: "",
+        numero_residencia: "",
+        bairro: "",
+        cidade: "",
+        estado: ""
+      });
       setShowClienteModal(false);
       
       toast({
@@ -490,43 +511,123 @@ const NovaOSSupabase = () => {
                         <DialogTitle>Cadastrar Novo Cliente</DialogTitle>
                         <DialogDescription>Adicione um novo cliente ao sistema</DialogDescription>
                       </DialogHeader>
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="nome">Nome *</Label>
-                          <Input
-                            id="nome"
-                            value={novoCliente.nome}
-                            onChange={(e) => setNovoCliente({ ...novoCliente, nome: e.target.value })}
-                            placeholder="Nome completo"
-                          />
+                      <div className="space-y-4 max-h-96 overflow-y-auto">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="nome">Nome *</Label>
+                            <Input
+                              id="nome"
+                              value={novoCliente.nome}
+                              onChange={(e) => setNovoCliente({ ...novoCliente, nome: e.target.value })}
+                              placeholder="Nome completo"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="telefone">Telefone</Label>
+                            <Input
+                              id="telefone"
+                              value={novoCliente.telefone}
+                              onChange={(e) => setNovoCliente({ ...novoCliente, telefone: e.target.value })}
+                              placeholder="(11) 99999-9999"
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <Label htmlFor="telefone">Telefone *</Label>
-                          <Input
-                            id="telefone"
-                            value={novoCliente.telefone}
-                            onChange={(e) => setNovoCliente({ ...novoCliente, telefone: e.target.value })}
-                            placeholder="(11) 99999-9999"
-                          />
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="email">E-mail</Label>
+                            <Input
+                              id="email"
+                              type="email"
+                              value={novoCliente.email}
+                              onChange={(e) => setNovoCliente({ ...novoCliente, email: e.target.value })}
+                              placeholder="email@exemplo.com"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="cpf">CPF</Label>
+                            <Input
+                              id="cpf"
+                              value={novoCliente.cpf || ''}
+                              onChange={(e) => setNovoCliente({ ...novoCliente, cpf: e.target.value })}
+                              placeholder="000.000.000-00"
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <Label htmlFor="email">E-mail</Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            value={novoCliente.email}
-                            onChange={(e) => setNovoCliente({ ...novoCliente, email: e.target.value })}
-                            placeholder="email@exemplo.com"
-                          />
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="cnpj">CNPJ</Label>
+                            <Input
+                              id="cnpj"
+                              value={novoCliente.cnpj || ''}
+                              onChange={(e) => setNovoCliente({ ...novoCliente, cnpj: e.target.value })}
+                              placeholder="00.000.000/0000-00"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="rg">RG</Label>
+                            <Input
+                              id="rg"
+                              value={novoCliente.rg || ''}
+                              onChange={(e) => setNovoCliente({ ...novoCliente, rg: e.target.value })}
+                              placeholder="00.000.000-0"
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <Label htmlFor="endereco">Endereço</Label>
-                          <Textarea
-                            id="endereco"
-                            value={novoCliente.endereco}
-                            onChange={(e) => setNovoCliente({ ...novoCliente, endereco: e.target.value })}
-                            placeholder="Endereço completo"
-                          />
+
+                        <div className="border-t pt-4">
+                          <h3 className="text-lg font-semibold mb-3">Endereço</h3>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="rua">Rua</Label>
+                              <Input
+                                id="rua"
+                                value={novoCliente.rua || ''}
+                                onChange={(e) => setNovoCliente({ ...novoCliente, rua: e.target.value })}
+                                placeholder="Nome da rua"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="numero_residencia">Número</Label>
+                              <Input
+                                id="numero_residencia"
+                                value={novoCliente.numero_residencia || ''}
+                                onChange={(e) => setNovoCliente({ ...novoCliente, numero_residencia: e.target.value })}
+                                placeholder="Número da casa"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-4 mt-4">
+                            <div>
+                              <Label htmlFor="bairro">Bairro</Label>
+                              <Input
+                                id="bairro"
+                                value={novoCliente.bairro || ''}
+                                onChange={(e) => setNovoCliente({ ...novoCliente, bairro: e.target.value })}
+                                placeholder="Bairro"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="cidade">Cidade</Label>
+                              <Input
+                                id="cidade"
+                                value={novoCliente.cidade || ''}
+                                onChange={(e) => setNovoCliente({ ...novoCliente, cidade: e.target.value })}
+                                placeholder="Cidade"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="estado">Estado</Label>
+                              <Input
+                                id="estado"
+                                value={novoCliente.estado || ''}
+                                onChange={(e) => setNovoCliente({ ...novoCliente, estado: e.target.value })}
+                                placeholder="UF"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                       <div className="flex justify-end gap-2">

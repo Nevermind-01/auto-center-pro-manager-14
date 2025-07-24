@@ -13,8 +13,8 @@ type CategoriaInsert = Database['public']['Tables']['categorias']['Insert'];
 type Movimentacao = Database['public']['Tables']['movimentacoes']['Row'];
 type MovimentacaoInsert = Database['public']['Tables']['movimentacoes']['Insert'];
 
-type Cliente = Database['public']['Tables']['clientes']['Row'];
-type ClienteInsert = Database['public']['Tables']['clientes']['Insert'];
+export type Cliente = Database['public']['Tables']['clientes']['Row'];
+export type ClienteInsert = Database['public']['Tables']['clientes']['Insert'];
 
 type Servico = Database['public']['Tables']['servicos']['Row'];
 type ServicoInsert = Database['public']['Tables']['servicos']['Insert'];
@@ -216,6 +216,23 @@ export const useClientes = () => {
   });
 };
 
+export const useClienteById = (id: string) => {
+  return useQuery({
+    queryKey: ['clientes', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return data as Cliente;
+    },
+    enabled: !!id,
+  });
+};
+
 export const useClienteMutations = () => {
   const queryClient = useQueryClient();
 
@@ -235,7 +252,38 @@ export const useClienteMutations = () => {
     }
   });
 
-  return { createCliente };
+  const updateCliente = useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Cliente> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('clientes')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clientes'] });
+    },
+  });
+
+  const deleteCliente = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('clientes')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clientes'] });
+    },
+  });
+
+  return { createCliente, updateCliente, deleteCliente };
 };
 
 // Services hooks

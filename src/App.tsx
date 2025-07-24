@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Sales from "./pages/Sales";
 import NovaOSSupabase from "./pages/NovaOSSupabase";
 import InventorySupabase from "./pages/InventorySupabase";
+import Clientes from "./pages/Clientes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/nova-os" element={<Layout><NovaOSSupabase /></Layout>} />
           <Route path="/sales" element={<Layout><Sales /></Layout>} />
           <Route path="/inventory" element={<Layout><InventorySupabase /></Layout>} />
+          <Route path="/clientes" element={<Layout><Clientes /></Layout>} />
           <Route path="/history" element={<Layout><div>Histórico (em desenvolvimento)</div></Layout>} />
           <Route path="/settings" element={<Layout><div>Configurações (em desenvolvimento)</div></Layout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

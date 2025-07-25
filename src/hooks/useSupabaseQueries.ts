@@ -389,7 +389,24 @@ export const useVendaMutations = () => {
     }
   });
 
-  return { createVenda, createVendaProduto, createVendaServico };
+  const updateVenda = useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Venda> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('vendas')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendas'] });
+    }
+  });
+
+  return { createVenda, createVendaProduto, createVendaServico, updateVenda };
 };
 
 // Utility functions for stock management

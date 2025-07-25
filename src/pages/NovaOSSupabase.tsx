@@ -323,12 +323,93 @@ const NovaOSSupabase = () => {
     }
   };
 
-  const salvarRascunho = () => {
-    // Implementar salvamento como rascunho
-    toast({
-      title: "Rascunho salvo",
-      description: "A OS foi salva como rascunho.",
-    });
+  const salvarOS = async () => {
+    if (!clienteSelecionado) {
+      toast({
+        title: "Erro",
+        description: "Selecione um cliente para salvar a OS.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (produtosSelecionados.length === 0 && servicosSelecionados.length === 0) {
+      toast({
+        title: "Erro",
+        description: "Adicione pelo menos um produto ou serviço.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Criar a venda com status pendente
+      const venda = await createVenda.mutateAsync({
+        numero_os: numeroOS,
+        cliente_id: clienteSelecionado.id,
+        cliente_nome: clienteSelecionado.nome,
+        valor_total: valorTotal,
+        valor_desconto: valorDesconto,
+        valor_final: valorFinal,
+        forma_pagamento: formaPagamento as any || null,
+        parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+        observacoes: observacoes || null,
+        status: 'pendente'
+      });
+
+      // Adicionar produtos da venda
+      for (const produto of produtosSelecionados) {
+        await createVendaProduto.mutateAsync({
+          venda_id: venda.id,
+          produto_id: produto.id,
+          produto_nome: produto.nome,
+          quantidade: produto.quantidade,
+          preco_unitario: produto.valor,
+          preco_total: produto.valor * produto.quantidade
+        });
+      }
+
+      // Adicionar serviços da venda
+      for (const servico of servicosSelecionados) {
+        await createVendaServico.mutateAsync({
+          venda_id: venda.id,
+          servico_id: servico.id || null,
+          servico_nome: servico.nome,
+          preco: servico.valor
+        });
+      }
+
+      toast({
+        title: "OS salva",
+        description: `OS ${numeroOS} foi salva com sucesso como pendente.`,
+      });
+
+      // Limpar formulário
+      setClienteSelecionado(null);
+      setProdutosSelecionados([]);
+      setServicosSelecionados([]);
+      setDesconto(0);
+      setFormaPagamento("");
+      setParcelas(1);
+      setObservacoes("");
+      
+      // Gerar novo número de OS
+      const agora = new Date();
+      const ano = agora.getFullYear();
+      const mes = String(agora.getMonth() + 1).padStart(2, '0');
+      const dia = String(agora.getDate()).padStart(2, '0');
+      const hora = String(agora.getHours()).padStart(2, '0');
+      const minuto = String(agora.getMinutes()).padStart(2, '0');
+      setNumeroOS(`OS${ano}${mes}${dia}${hora}${minuto}`);
+
+    } catch (error) {
+      console.error('Erro ao salvar OS:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar a OS. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const finalizarOS = async () => {
@@ -966,11 +1047,15 @@ const NovaOSSupabase = () => {
 
             {/* Botões de ação */}
             <div className="flex gap-2">
-              <Button variant="outline" onClick={salvarRascunho} className="flex-1">
+              <Button variant="outline" onClick={salvarOS} className="flex-1">
                 <FileText className="mr-2 h-4 w-4" />
-                Salvar Rascunho
+                Salvar OS
               </Button>
-              <Button onClick={finalizarOS} className="flex-1">
+              <Button 
+                onClick={finalizarOS} 
+                className="flex-1"
+                disabled={!clienteSelecionado || !formaPagamento || (produtosSelecionados.length === 0 && servicosSelecionados.length === 0)}
+              >
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 Finalizar OS
               </Button>

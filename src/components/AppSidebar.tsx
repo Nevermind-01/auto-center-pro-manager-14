@@ -32,7 +32,7 @@ const menuItems = [
   { title: "Vendas", url: "/sales", icon: ShoppingCart },
   { title: "Estoque", url: "/inventory", icon: Package },
   { title: "Clientes", url: "/clientes", icon: Users },
-  { title: "Histórico", url: "/history", icon: FileText },
+  { title: "Ordens de Serviço", url: "/history", icon: FileText },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];
 

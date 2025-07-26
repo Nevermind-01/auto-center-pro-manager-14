@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,9 @@ import {
   useServicoMutations,
   useVendaMutations,
   useVeiculosByCliente,
-  useVeiculoMutations
+  useVeiculoMutations,
+  useLogMovimentacaoMutations,
+  useVendas
 } from "@/hooks/useSupabaseQueries";
 import { useSupabaseEstoque, ProdutoComCategoria } from "@/lib/supabaseEstoque";
 import { 
@@ -62,17 +65,22 @@ const normalizeText = (text: string) => {
 
 const NovaOSSupabase = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editingId = searchParams.get('edit');
   
   // Queries
   const { data: produtosDisponiveis = [], isLoading: loadingProdutos } = useProdutos();
   const { data: clientesDisponiveis = [], isLoading: loadingClientes } = useClientes();
   const { data: servicosDisponiveis = [], isLoading: loadingServicos } = useServicos();
+  const { data: vendas = [] } = useVendas();
   
   // Mutations
   const { createCliente } = useClienteMutations();
   const { createServico } = useServicoMutations();
-  const { createVenda, createVendaProduto, createVendaServico } = useVendaMutations();
+  const { createVenda, createVendaProduto, createVendaServico, updateVenda } = useVendaMutations();
   const { createVeiculo } = useVeiculoMutations();
+  const { createLog } = useLogMovimentacaoMutations();
   
   // Estoque
   const estoqueManager = useSupabaseEstoque();
@@ -94,6 +102,11 @@ const NovaOSSupabase = () => {
     ano: "",
     observacoes: ""
   });
+
+  // Estados para edição
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingVenda, setEditingVenda] = useState<any>(null);
+  const [originalData, setOriginalData] = useState<any>(null);
   
   // Query dos veículos do cliente selecionado
   const { data: veiculosCliente = [] } = useVeiculosByCliente(clienteSelecionado?.id);
@@ -128,21 +141,75 @@ const NovaOSSupabase = () => {
   const [showServicoModal, setShowServicoModal] = useState(false);
   const [editandoServico, setEditandoServico] = useState<ServicoSelecionado | null>(null);
 
-  // Gerar número da OS automaticamente
+  // Gerar número da OS automaticamente ou carregar dados para edição
   useEffect(() => {
-    const gerarNumeroOS = () => {
-      const agora = new Date();
-      const ano = agora.getFullYear();
-      const mes = String(agora.getMonth() + 1).padStart(2, '0');
-      const dia = String(agora.getDate()).padStart(2, '0');
-      const hora = String(agora.getHours()).padStart(2, '0');
-      const minuto = String(agora.getMinutes()).padStart(2, '0');
-      
-      return `OS${ano}${mes}${dia}${hora}${minuto}`;
-    };
+    if (editingId && vendas.length > 0) {
+      const vendaParaEditar = vendas.find(v => v.id === editingId);
+      if (vendaParaEditar) {
+        setIsEditing(true);
+        setEditingVenda(vendaParaEditar);
+        setOriginalData(vendaParaEditar);
+        
+        // Preencher campos com dados existentes
+        setNumeroOS(vendaParaEditar.numero_os);
+        setDesconto(vendaParaEditar.valor_desconto ? (vendaParaEditar.valor_desconto / vendaParaEditar.valor_total * 100) : 0);
+        setFormaPagamento(vendaParaEditar.forma_pagamento || '');
+        setParcelas(vendaParaEditar.parcelas || 1);
+        setObservacoes(vendaParaEditar.observacoes || '');
+        
+        // Buscar cliente
+        const cliente = clientesDisponiveis.find(c => c.id === vendaParaEditar.cliente_id);
+        if (cliente) {
+          setClienteSelecionado(cliente);
+        }
+        
+        return;
+      }
+    }
+    
+    if (!editingId) {
+      const gerarNumeroOS = () => {
+        const agora = new Date();
+        const ano = agora.getFullYear();
+        const mes = String(agora.getMonth() + 1).padStart(2, '0');
+        const dia = String(agora.getDate()).padStart(2, '0');
+        const hora = String(agora.getHours()).padStart(2, '0');
+        const minuto = String(agora.getMinutes()).padStart(2, '0');
+        
+        return `OS${ano}${mes}${dia}${hora}${minuto}`;
+      };
 
-    setNumeroOS(gerarNumeroOS());
-  }, []);
+      setNumeroOS(gerarNumeroOS());
+    }
+  }, [editingId, vendas, clientesDisponiveis]);
+
+  // Carregar produtos e serviços da venda em edição
+  useEffect(() => {
+    if (editingVenda && editingVenda.venda_produtos && editingVenda.venda_servicos) {
+      // Carregar produtos
+      const produtosSelecionados = editingVenda.venda_produtos.map((vp: any) => ({
+        id: vp.produto_id,
+        nome: vp.produto_nome,
+        marca: '', // Não temos essa info na tabela venda_produtos
+        valor: Number(vp.preco_unitario),
+        quantidade: vp.quantidade
+      }));
+      setProdutosSelecionados(produtosSelecionados);
+      
+      // Carregar serviços
+      const servicosSelecionados = editingVenda.venda_servicos.map((vs: any) => ({
+        id: vs.servico_id,
+        nome: vs.servico_nome,
+        valor: Number(vs.preco)
+      }));
+      setServicosSelecionados(servicosSelecionados);
+      
+      // Carregar veículo se existir
+      if (editingVenda.veiculo) {
+        setVeiculoSelecionado(editingVenda.veiculo);
+      }
+    }
+  }, [editingVenda]);
 
   // Filtrar clientes baseado na busca
   const clientesFiltrados = clientesDisponiveis.filter((cliente) =>
@@ -459,67 +526,108 @@ const NovaOSSupabase = () => {
     }
 
     try {
-      // Criar a venda com status pendente
-      const venda = await createVenda.mutateAsync({
-        numero_os: numeroOS,
-        cliente_id: clienteSelecionado.id,
-        cliente_nome: clienteSelecionado.nome,
-        veiculo_id: veiculoSelecionado?.id || null,
-        valor_total: valorTotal,
-        valor_desconto: valorDesconto,
-        valor_final: valorFinal,
-        forma_pagamento: formaPagamento as any || null,
-        parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
-        observacoes: observacoes || null,
-        status: 'pendente'
-      });
-
-      // Adicionar produtos da venda
-      for (const produto of produtosSelecionados) {
-        await createVendaProduto.mutateAsync({
-          venda_id: venda.id,
-          produto_id: produto.id,
-          produto_nome: produto.nome,
-          quantidade: produto.quantidade,
-          preco_unitario: produto.valor,
-          preco_total: produto.valor * produto.quantidade
+      if (isEditing && editingVenda) {
+        // Atualizar venda existente
+        const vendaAtualizada = await updateVenda.mutateAsync({
+          id: editingVenda.id,
+          cliente_id: clienteSelecionado.id,
+          cliente_nome: clienteSelecionado.nome,
+          veiculo_id: veiculoSelecionado?.id || null,
+          valor_total: valorTotal,
+          valor_desconto: valorDesconto,
+          valor_final: valorFinal,
+          forma_pagamento: formaPagamento as any || null,
+          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+          observacoes: observacoes || null
         });
-      }
 
-      // Adicionar serviços da venda
-      for (const servico of servicosSelecionados) {
-        await createVendaServico.mutateAsync({
-          venda_id: venda.id,
-          servico_id: servico.id || null,
-          servico_nome: servico.nome,
-          preco: servico.valor
+        // Registrar log de edição
+        await createLog.mutateAsync({
+          os_id: editingVenda.id,
+          tipo: 'edicao',
+          usuario: 'Admin',
+          observacoes: `OS ${numeroOS} editada`,
+          dados_anteriores: originalData,
+          dados_novos: vendaAtualizada
         });
+
+        toast({
+          title: "OS atualizada",
+          description: `OS ${numeroOS} foi atualizada com sucesso.`,
+        });
+
+        // Voltar para histórico
+        navigate('/history');
+      } else {
+        // Criar nova venda
+        const venda = await createVenda.mutateAsync({
+          numero_os: numeroOS,
+          cliente_id: clienteSelecionado.id,
+          cliente_nome: clienteSelecionado.nome,
+          veiculo_id: veiculoSelecionado?.id || null,
+          valor_total: valorTotal,
+          valor_desconto: valorDesconto,
+          valor_final: valorFinal,
+          forma_pagamento: formaPagamento as any || null,
+          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+          observacoes: observacoes || null,
+          status: 'pendente'
+        });
+
+        // Adicionar produtos da venda
+        for (const produto of produtosSelecionados) {
+          await createVendaProduto.mutateAsync({
+            venda_id: venda.id,
+            produto_id: produto.id,
+            produto_nome: produto.nome,
+            quantidade: produto.quantidade,
+            preco_unitario: produto.valor,
+            preco_total: produto.valor * produto.quantidade
+          });
+        }
+
+        // Adicionar serviços da venda
+        for (const servico of servicosSelecionados) {
+          await createVendaServico.mutateAsync({
+            venda_id: venda.id,
+            servico_id: servico.id || null,
+            servico_nome: servico.nome,
+            preco: servico.valor
+          });
+        }
+
+        // Registrar log de criação
+        await createLog.mutateAsync({
+          os_id: venda.id,
+          tipo: 'criacao',
+          usuario: 'Admin',
+          observacoes: `OS ${numeroOS} criada como pendente`
+        });
+
+        toast({
+          title: "OS salva",
+          description: `OS ${numeroOS} foi salva com sucesso como pendente.`,
+        });
+
+        // Limpar formulário
+        setClienteSelecionado(null);
+        setVeiculoSelecionado(null);
+        setProdutosSelecionados([]);
+        setServicosSelecionados([]);
+        setDesconto(0);
+        setFormaPagamento("");
+        setParcelas(1);
+        setObservacoes("");
+        
+        // Gerar novo número de OS
+        const agora = new Date();
+        const ano = agora.getFullYear();
+        const mes = String(agora.getMonth() + 1).padStart(2, '0');
+        const dia = String(agora.getDate()).padStart(2, '0');
+        const hora = String(agora.getHours()).padStart(2, '0');
+        const minuto = String(agora.getMinutes()).padStart(2, '0');
+        setNumeroOS(`OS${ano}${mes}${dia}${hora}${minuto}`);
       }
-
-      toast({
-        title: "OS salva",
-        description: `OS ${numeroOS} foi salva com sucesso como pendente.`,
-      });
-
-      // Limpar formulário
-      setClienteSelecionado(null);
-      setVeiculoSelecionado(null);
-      setProdutosSelecionados([]);
-      setServicosSelecionados([]);
-      setDesconto(0);
-      setFormaPagamento("");
-      setParcelas(1);
-      setObservacoes("");
-      
-      // Gerar novo número de OS
-      const agora = new Date();
-      const ano = agora.getFullYear();
-      const mes = String(agora.getMonth() + 1).padStart(2, '0');
-      const dia = String(agora.getDate()).padStart(2, '0');
-      const hora = String(agora.getHours()).padStart(2, '0');
-      const minuto = String(agora.getMinutes()).padStart(2, '0');
-      setNumeroOS(`OS${ano}${mes}${dia}${hora}${minuto}`);
-
     } catch (error) {
       console.error('Erro ao salvar OS:', error);
       toast({
@@ -607,6 +715,14 @@ const NovaOSSupabase = () => {
         })),
         numeroOS
       );
+
+      // Registrar log de finalização
+      await createLog.mutateAsync({
+        os_id: venda.id,
+        tipo: 'finalizacao',
+        usuario: 'Admin',
+        observacoes: `OS ${numeroOS} finalizada - ${formaPagamento}`
+      });
 
       toast({
         title: "OS finalizada",

@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { useVendas, useVendaMutations } from "@/hooks/useSupabaseQueries";
+import { useVendas, useVendaMutations, useLogMovimentacaoMutations } from "@/hooks/useSupabaseQueries";
+import { ConfirmCancelModal } from "@/components/ConfirmCancelModal";
 import { 
   Search, 
   Edit, 
-  Copy, 
   X, 
   Eye,
   Calendar,
@@ -54,9 +54,12 @@ const Historico = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todas');
+  const [vendaParaCancelar, setVendaParaCancelar] = useState<any>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   
   const { data: vendas = [], isLoading } = useVendas();
   const { updateVenda } = useVendaMutations();
+  const { createLog } = useLogMovimentacaoMutations();
   
   // Filter vendas based on search term and status
   const vendasFiltradas = useMemo(() => {
@@ -97,12 +100,8 @@ const Historico = () => {
     navigate(`/nova-os?edit=${venda.id}`);
   };
 
-  const handleDuplicateOS = (venda: any) => {
-    // Navigate to new OS with pre-filled data - this would need to be implemented
-    navigate(`/nova-os?duplicate=${venda.id}`);
-  };
 
-  const handleCancelOS = async (venda: any) => {
+  const handleCancelOS = (venda: any) => {
     if (venda.status === 'finalizada') {
       toast({
         title: "Ação não permitida",
@@ -112,16 +111,34 @@ const Historico = () => {
       return;
     }
 
+    setVendaParaCancelar(venda);
+    setShowCancelModal(true);
+  };
+
+  const confirmCancelOS = async () => {
+    if (!vendaParaCancelar) return;
+
     try {
       await updateVenda.mutateAsync({
-        id: venda.id,
+        id: vendaParaCancelar.id,
         status: 'cancelada'
+      });
+
+      // Registrar log de cancelamento
+      await createLog.mutateAsync({
+        os_id: vendaParaCancelar.id,
+        tipo: 'cancelamento',
+        usuario: 'Admin',
+        observacoes: `OS ${vendaParaCancelar.numero_os} cancelada via botão`
       });
       
       toast({
         title: "OS cancelada",
-        description: `OS ${venda.numero_os} foi cancelada com sucesso.`,
+        description: `OS ${vendaParaCancelar.numero_os} foi cancelada com sucesso.`,
       });
+
+      setShowCancelModal(false);
+      setVendaParaCancelar(null);
     } catch (error) {
       toast({
         title: "Erro",
@@ -303,15 +320,6 @@ const Historico = () => {
                             </Button>
                           )}
                           
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDuplicateOS(venda)}
-                          >
-                            <Copy className="h-4 w-4 mr-1" />
-                            Duplicar
-                          </Button>
-                          
                           {venda.status !== 'finalizada' && venda.status !== 'cancelada' && (
                             <Button
                               variant="destructive"
@@ -332,6 +340,14 @@ const Historico = () => {
           </TabsContent>
         ))}
       </Tabs>
+      
+      {/* Modal de confirmação de cancelamento */}
+      <ConfirmCancelModal
+        open={showCancelModal}
+        onOpenChange={setShowCancelModal}
+        onConfirm={confirmCancelOS}
+        osNumero={vendaParaCancelar?.numero_os || ''}
+      />
     </div>
   );
 };

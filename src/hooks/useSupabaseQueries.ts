@@ -28,6 +28,10 @@ type VendaProdutoInsert = Database['public']['Tables']['venda_produtos']['Insert
 type VendaServico = Database['public']['Tables']['venda_servicos']['Row'];
 type VendaServicoInsert = Database['public']['Tables']['venda_servicos']['Insert'];
 
+// Log types
+type LogMovimentacao = Database['public']['Tables']['log_movimentacoes']['Row'];
+type LogMovimentacaoInsert = Database['public']['Tables']['log_movimentacoes']['Insert'];
+
 // Vehicles types
 export type Veiculo = Database['public']['Tables']['veiculos']['Row'];
 export type VeiculoInsert = Database['public']['Tables']['veiculos']['Insert'];
@@ -584,4 +588,45 @@ export const useEstoqueOperations = () => {
   });
 
   return { darBaixaEstoque, adicionarEstoque };
+};
+
+// Log movimentações hooks
+export const useLogMovimentacoes = () => {
+  return useQuery({
+    queryKey: ['log_movimentacoes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('log_movimentacoes')
+        .select(`
+          *,
+          venda:vendas!log_movimentacoes_os_id_fkey(numero_os, cliente_nome)
+        `)
+        .order('data_hora', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+};
+
+export const useLogMovimentacaoMutations = () => {
+  const queryClient = useQueryClient();
+
+  const createLog = useMutation({
+    mutationFn: async (log: LogMovimentacaoInsert) => {
+      const { data, error } = await supabase
+        .from('log_movimentacoes')
+        .insert(log)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['log_movimentacoes'] });
+    }
+  });
+
+  return { createLog };
 };

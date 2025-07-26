@@ -92,6 +92,50 @@ export type Database = {
         }
         Relationships: []
       }
+      log_movimentacoes: {
+        Row: {
+          created_at: string | null
+          dados_anteriores: Json | null
+          dados_novos: Json | null
+          data_hora: string | null
+          id: string
+          observacoes: string | null
+          os_id: string
+          tipo: string
+          usuario: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          dados_anteriores?: Json | null
+          dados_novos?: Json | null
+          data_hora?: string | null
+          id?: string
+          observacoes?: string | null
+          os_id: string
+          tipo: string
+          usuario?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          dados_anteriores?: Json | null
+          dados_novos?: Json | null
+          data_hora?: string | null
+          id?: string
+          observacoes?: string | null
+          os_id?: string
+          tipo?: string
+          usuario?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "log_movimentacoes_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       movimentacoes: {
         Row: {
           created_at: string

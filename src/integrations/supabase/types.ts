@@ -219,6 +219,50 @@ export type Database = {
         }
         Relationships: []
       }
+      veiculos: {
+        Row: {
+          ano: string | null
+          cliente_id: string
+          created_at: string
+          id: string
+          marca: string
+          modelo: string
+          observacoes: string | null
+          placa: string
+          updated_at: string
+        }
+        Insert: {
+          ano?: string | null
+          cliente_id: string
+          created_at?: string
+          id?: string
+          marca: string
+          modelo: string
+          observacoes?: string | null
+          placa: string
+          updated_at?: string
+        }
+        Update: {
+          ano?: string | null
+          cliente_id?: string
+          created_at?: string
+          id?: string
+          marca?: string
+          modelo?: string
+          observacoes?: string | null
+          placa?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "veiculos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venda_produtos: {
         Row: {
           created_at: string
@@ -324,6 +368,7 @@ export type Database = {
           valor_desconto: number | null
           valor_final: number
           valor_total: number
+          veiculo_id: string | null
         }
         Insert: {
           cliente_id?: string | null
@@ -339,6 +384,7 @@ export type Database = {
           valor_desconto?: number | null
           valor_final?: number
           valor_total?: number
+          veiculo_id?: string | null
         }
         Update: {
           cliente_id?: string | null
@@ -354,6 +400,7 @@ export type Database = {
           valor_desconto?: number | null
           valor_final?: number
           valor_total?: number
+          veiculo_id?: string | null
         }
         Relationships: [
           {
@@ -361,6 +408,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendas_veiculo_id_fkey"
+            columns: ["veiculo_id"]
+            isOneToOne: false
+            referencedRelation: "veiculos"
             referencedColumns: ["id"]
           },
         ]

@@ -15,7 +15,9 @@ import {
   useClienteMutations,
   useServicos, 
   useServicoMutations,
-  useVendaMutations
+  useVendaMutations,
+  useVeiculosByCliente,
+  useVeiculoMutations
 } from "@/hooks/useSupabaseQueries";
 import { useSupabaseEstoque, ProdutoComCategoria } from "@/lib/supabaseEstoque";
 import { 
@@ -31,7 +33,10 @@ import {
   X,
   FileText,
   Package,
-  AlertTriangle
+  AlertTriangle,
+  Car,
+  Edit,
+  Truck
 } from "lucide-react";
 
 // Interfaces
@@ -50,6 +55,11 @@ interface ServicoSelecionado {
   valor: number;
 }
 
+// Função para normalizar texto (sem acentos)
+const normalizeText = (text: string) => {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+};
+
 const NovaOSSupabase = () => {
   const { toast } = useToast();
   
@@ -62,6 +72,7 @@ const NovaOSSupabase = () => {
   const { createCliente } = useClienteMutations();
   const { createServico } = useServicoMutations();
   const { createVenda, createVendaProduto, createVendaServico } = useVendaMutations();
+  const { createVeiculo } = useVeiculoMutations();
   
   // Estoque
   const estoqueManager = useSupabaseEstoque();
@@ -72,6 +83,20 @@ const NovaOSSupabase = () => {
   const [showClienteModal, setShowClienteModal] = useState(false);
   const [showAllClientes, setShowAllClientes] = useState(false);
   const [searchProdutoTerm, setSearchProdutoTerm] = useState("");
+  
+  // Estados para veículos
+  const [veiculoSelecionado, setVeiculoSelecionado] = useState<any>(null);
+  const [showVeiculoModal, setShowVeiculoModal] = useState(false);
+  const [novoVeiculo, setNovoVeiculo] = useState({
+    marca: "",
+    modelo: "",
+    placa: "",
+    ano: "",
+    observacoes: ""
+  });
+  
+  // Query dos veículos do cliente selecionado
+  const { data: veiculosCliente = [] } = useVeiculosByCliente(clienteSelecionado?.id);
   const [novoCliente, setNovoCliente] = useState({
     nome: "",
     telefone: "",
@@ -101,6 +126,7 @@ const NovaOSSupabase = () => {
 
   // Estado da modal de serviço
   const [showServicoModal, setShowServicoModal] = useState(false);
+  const [editandoServico, setEditandoServico] = useState<ServicoSelecionado | null>(null);
 
   // Gerar número da OS automaticamente
   useEffect(() => {
@@ -125,12 +151,13 @@ const NovaOSSupabase = () => {
     cliente.email?.toLowerCase().includes(searchClienteTerm.toLowerCase())
   );
 
-  // Filtrar produtos baseado na busca
-  const produtosFiltrados = produtosDisponiveis.filter((produto) =>
-    produto.nome.toLowerCase().includes(searchProdutoTerm.toLowerCase()) ||
-    (produto.marca?.toLowerCase() || '').includes(searchProdutoTerm.toLowerCase()) ||
-    (produto.codigo?.toLowerCase() || '').includes(searchProdutoTerm.toLowerCase())
-  ).filter(produto => produto.status === 'ativo' && produto.quantidade > 0);
+  // Filtrar produtos baseado na busca (sem acento)
+  const produtosFiltrados = produtosDisponiveis.filter((produto) => {
+    const searchNormalized = normalizeText(searchProdutoTerm);
+    return normalizeText(produto.nome).includes(searchNormalized) ||
+           normalizeText(produto.marca || '').includes(searchNormalized) ||
+           normalizeText(produto.codigo || '').includes(searchNormalized);
+  }).filter(produto => produto.status === 'ativo' && produto.quantidade > 0);
 
   // Calculos de valores
   const valorProdutos = produtosSelecionados.reduce((total, produto) => 
@@ -149,6 +176,7 @@ const NovaOSSupabase = () => {
   const selecionarCliente = (cliente: any) => {
     setClienteSelecionado(cliente);
     setSearchClienteTerm("");
+    setVeiculoSelecionado(null); // Reset veículo quando trocar cliente
   };
 
   const adicionarNovoCliente = async () => {
@@ -270,27 +298,52 @@ const NovaOSSupabase = () => {
     }
 
     try {
-      const servico = await createServico.mutateAsync({
-        nome: novoServico.nome,
-        descricao: novoServico.descricao || null,
-        preco: novoServico.valor
-      });
+      if (editandoServico) {
+        // Editando serviço existente
+        const servicoAtualizado: ServicoSelecionado = {
+          ...editandoServico,
+          nome: novoServico.nome,
+          descricao: novoServico.descricao || undefined,
+          valor: novoServico.valor
+        };
 
-      const servicoSelecionado: ServicoSelecionado = {
-        id: servico.id,
-        nome: servico.nome,
-        descricao: servico.descricao || undefined,
-        valor: Number(servico.preco)
-      };
+        setServicosSelecionados(servicos => 
+          servicos.map(s => 
+            s === editandoServico ? servicoAtualizado : s
+          )
+        );
 
-      setServicosSelecionados(servicos => [...servicos, servicoSelecionado]);
+        setEditandoServico(null);
+        toast({
+          title: "Serviço atualizado",
+          description: `${servicoAtualizado.nome} foi atualizado.`,
+        });
+      } else {
+        // Adicionando novo serviço
+        const servico = await createServico.mutateAsync({
+          nome: novoServico.nome,
+          descricao: novoServico.descricao || null,
+          preco: novoServico.valor
+        });
+
+        const servicoSelecionado: ServicoSelecionado = {
+          id: servico.id,
+          nome: servico.nome,
+          descricao: servico.descricao || undefined,
+          valor: Number(servico.preco)
+        };
+
+        setServicosSelecionados(servicos => [...servicos, servicoSelecionado]);
+        
+        toast({
+          title: "Serviço adicionado",
+          description: `${servico.nome} foi adicionado à OS.`,
+        });
+      }
+
       setNovoServico({ nome: "", descricao: "", valor: 0 });
       setShowServicoModal(false);
       
-      toast({
-        title: "Serviço adicionado",
-        description: `${servico.nome} foi adicionado à OS.`,
-      });
     } catch (error) {
       toast({
         title: "Erro",
@@ -323,6 +376,69 @@ const NovaOSSupabase = () => {
     }
   };
 
+  const editarServico = (servico: ServicoSelecionado) => {
+    setEditandoServico(servico);
+    setNovoServico({
+      nome: servico.nome,
+      descricao: servico.descricao || "",
+      valor: servico.valor
+    });
+    setShowServicoModal(true);
+  };
+
+  // Handlers para veículos
+  const adicionarNovoVeiculo = async () => {
+    if (!novoVeiculo.marca || !novoVeiculo.modelo || !novoVeiculo.placa) {
+      toast({
+        title: "Erro",
+        description: "Marca, modelo e placa são obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!clienteSelecionado) {
+      toast({
+        title: "Erro",
+        description: "Selecione um cliente primeiro.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const veiculo = await createVeiculo.mutateAsync({
+        cliente_id: clienteSelecionado.id,
+        marca: novoVeiculo.marca,
+        modelo: novoVeiculo.modelo,
+        placa: novoVeiculo.placa,
+        ano: novoVeiculo.ano || null,
+        observacoes: novoVeiculo.observacoes || null
+      });
+
+      setVeiculoSelecionado(veiculo);
+      setNovoVeiculo({
+        marca: "",
+        modelo: "",
+        placa: "",
+        ano: "",
+        observacoes: ""
+      });
+      setShowVeiculoModal(false);
+      
+      toast({
+        title: "Veículo adicionado",
+        description: `${veiculo.marca} ${veiculo.modelo} foi adicionado.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao adicionar veículo.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const salvarOS = async () => {
     if (!clienteSelecionado) {
       toast({
@@ -348,6 +464,7 @@ const NovaOSSupabase = () => {
         numero_os: numeroOS,
         cliente_id: clienteSelecionado.id,
         cliente_nome: clienteSelecionado.nome,
+        veiculo_id: veiculoSelecionado?.id || null,
         valor_total: valorTotal,
         valor_desconto: valorDesconto,
         valor_final: valorFinal,
@@ -386,6 +503,7 @@ const NovaOSSupabase = () => {
 
       // Limpar formulário
       setClienteSelecionado(null);
+      setVeiculoSelecionado(null);
       setProdutosSelecionados([]);
       setServicosSelecionados([]);
       setDesconto(0);
@@ -446,6 +564,7 @@ const NovaOSSupabase = () => {
         numero_os: numeroOS,
         cliente_id: clienteSelecionado.id,
         cliente_nome: clienteSelecionado.nome,
+        veiculo_id: veiculoSelecionado?.id || null,
         valor_total: valorTotal,
         valor_desconto: valorDesconto,
         valor_final: valorFinal,
@@ -496,6 +615,7 @@ const NovaOSSupabase = () => {
 
       // Limpar formulário
       setClienteSelecionado(null);
+      setVeiculoSelecionado(null);
       setProdutosSelecionados([]);
       setServicosSelecionados([]);
       setDesconto(0);
@@ -774,6 +894,146 @@ const NovaOSSupabase = () => {
           </CardContent>
         </Card>
 
+        {/* Seção de Veículos */}
+        {clienteSelecionado && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Car className="h-5 w-5" />
+                Veículo do Cliente
+              </CardTitle>
+              <CardDescription>Selecione o veículo para esta OS</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {veiculosCliente.length > 0 ? (
+                <div className="space-y-2">
+                  <Label>Veículos Disponíveis</Label>
+                  <Select 
+                    value={veiculoSelecionado?.id || ""} 
+                    onValueChange={(value) => {
+                      const veiculo = veiculosCliente.find(v => v.id === value);
+                      setVeiculoSelecionado(veiculo || null);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um veículo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {veiculosCliente.map((veiculo) => (
+                        <SelectItem key={veiculo.id} value={veiculo.id}>
+                          {veiculo.marca} {veiculo.modelo} - {veiculo.placa} ({veiculo.ano})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {veiculoSelecionado && (
+                    <div className="p-3 border rounded-lg bg-blue-50">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{veiculoSelecionado.marca} {veiculoSelecionado.modelo}</div>
+                          <div className="text-sm text-gray-600">Placa: {veiculoSelecionado.placa}</div>
+                          <div className="text-sm text-gray-600">Ano: {veiculoSelecionado.ano}</div>
+                          {veiculoSelecionado.observacoes && (
+                            <div className="text-sm text-gray-600">Obs: {veiculoSelecionado.observacoes}</div>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setVeiculoSelecionado(null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  Nenhum veículo cadastrado para este cliente
+                </div>
+              )}
+              
+              <Dialog open={showVeiculoModal} onOpenChange={setShowVeiculoModal}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full">
+                    <Truck className="h-4 w-4 mr-2" />
+                    Adicionar Novo Veículo
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Adicionar Novo Veículo</DialogTitle>
+                    <DialogDescription>
+                      Cadastre um novo veículo para {clienteSelecionado.nome}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="marca">Marca *</Label>
+                        <Input
+                          id="marca"
+                          value={novoVeiculo.marca}
+                          onChange={(e) => setNovoVeiculo({...novoVeiculo, marca: e.target.value})}
+                          placeholder="Ex: Toyota"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="modelo">Modelo *</Label>
+                        <Input
+                          id="modelo"
+                          value={novoVeiculo.modelo}
+                          onChange={(e) => setNovoVeiculo({...novoVeiculo, modelo: e.target.value})}
+                          placeholder="Ex: Corolla"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="placa">Placa *</Label>
+                        <Input
+                          id="placa"
+                          value={novoVeiculo.placa}
+                          onChange={(e) => setNovoVeiculo({...novoVeiculo, placa: e.target.value})}
+                          placeholder="Ex: ABC-1234"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="ano">Ano</Label>
+                        <Input
+                          id="ano"
+                          value={novoVeiculo.ano}
+                          onChange={(e) => setNovoVeiculo({...novoVeiculo, ano: e.target.value})}
+                          placeholder="Ex: 2015"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="observacoes">Observações</Label>
+                      <Textarea
+                        id="observacoes"
+                        value={novoVeiculo.observacoes}
+                        onChange={(e) => setNovoVeiculo({...novoVeiculo, observacoes: e.target.value})}
+                        placeholder="Observações sobre o veículo..."
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setShowVeiculoModal(false)}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={adicionarNovoVeiculo}>
+                      Adicionar Veículo
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Coluna 2: Produtos e Serviços */}
         <Card>
           <CardHeader>
@@ -851,10 +1111,16 @@ const NovaOSSupabase = () => {
             <Separator />
 
             {/* Serviços */}
-            <div>
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>Serviços</Label>
-                <Dialog open={showServicoModal} onOpenChange={setShowServicoModal}>
+                <Label>Serviços Disponíveis</Label>
+                <Dialog open={showServicoModal} onOpenChange={(open) => {
+                  setShowServicoModal(open);
+                  if (!open) {
+                    setEditandoServico(null);
+                    setNovoServico({ nome: "", descricao: "", valor: 0 });
+                  }
+                }}>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm">
                       <Plus className="mr-2 h-4 w-4" />
@@ -863,7 +1129,9 @@ const NovaOSSupabase = () => {
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Adicionar Serviço</DialogTitle>
+                      <DialogTitle>
+                        {editandoServico ? "Editar Serviço" : "Adicionar Serviço"}
+                      </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>
@@ -897,11 +1165,15 @@ const NovaOSSupabase = () => {
                       </div>
                     </div>
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setShowServicoModal(false)}>
+                      <Button variant="outline" onClick={() => {
+                        setShowServicoModal(false);
+                        setEditandoServico(null);
+                        setNovoServico({ nome: "", descricao: "", valor: 0 });
+                      }}>
                         Cancelar
                       </Button>
                       <Button onClick={adicionarNovoServico}>
-                        Adicionar
+                        {editandoServico ? "Atualizar" : "Adicionar"}
                       </Button>
                     </div>
                   </DialogContent>
@@ -909,39 +1181,84 @@ const NovaOSSupabase = () => {
               </div>
 
               {/* Serviços existentes */}
-              <div className="space-y-2 max-h-32 overflow-y-auto">
-                {servicosDisponiveis.map((servico) => (
-                  <div
-                    key={servico.id}
-                    className="p-2 border rounded cursor-pointer hover:bg-gray-50 flex justify-between items-center"
-                    onClick={() => adicionarServicoExistente(servico)}
-                  >
-                    <div>
-                      <div className="font-medium text-sm">{servico.nome}</div>
-                      <div className="text-xs text-gray-600">R$ {Number(servico.preco).toFixed(2)}</div>
+              <div className="space-y-2 max-h-32 overflow-y-auto border rounded-lg p-2 bg-gray-50">
+                {servicosDisponiveis.length > 0 ? (
+                  servicosDisponiveis.map((servico) => (
+                    <div
+                      key={servico.id}
+                      className="p-2 border rounded cursor-pointer hover:bg-white flex justify-between items-center bg-white"
+                      onClick={() => adicionarServicoExistente(servico)}
+                    >
+                      <div>
+                        <div className="font-medium text-sm">{servico.nome}</div>
+                        <div className="text-xs text-gray-600">R$ {Number(servico.preco).toFixed(2)}</div>
+                      </div>
+                      <Plus className="h-4 w-4 text-green-600" />
                     </div>
-                    <Plus className="h-4 w-4" />
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500 text-sm">
+                    Nenhum serviço cadastrado
                   </div>
-                ))}
+                )}
               </div>
 
-              {/* Serviços selecionados */}
-              <div className="space-y-2 max-h-32 overflow-y-auto">
-                {servicosSelecionados.map((servico, index) => (
-                  <div key={servico.id || index} className="flex items-center justify-between p-2 border rounded">
-                    <div>
-                      <div className="font-medium text-sm">{servico.nome}</div>
-                      <div className="text-xs text-gray-600">R$ {servico.valor.toFixed(2)}</div>
+              {/* Separador visual */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-muted-foreground">Serviços da OS</span>
+                </div>
+              </div>
+
+              {/* Serviços Selecionados - Box destacado */}
+              <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50/50">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-blue-900">Serviços Selecionados</h3>
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                    {servicosSelecionados.length} item(s)
+                  </Badge>
+                </div>
+                
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {servicosSelecionados.length > 0 ? (
+                    servicosSelecionados.map((servico, index) => (
+                      <div key={servico.id || index} className="flex items-center justify-between p-3 border rounded-lg bg-white shadow-sm">
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{servico.nome}</div>
+                          <div className="text-xs text-gray-600">R$ {servico.valor.toFixed(2)}</div>
+                          {servico.descricao && (
+                            <div className="text-xs text-gray-500 mt-1">{servico.descricao}</div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => editarServico(servico)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit className="h-3 w-3 text-blue-600" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removerServico(servico.id, index)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <X className="h-3 w-3 text-red-600" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 text-gray-500 text-sm border-2 border-dashed border-gray-300 rounded-lg">
+                      Nenhum serviço selecionado
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removerServico(servico.id, index)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>

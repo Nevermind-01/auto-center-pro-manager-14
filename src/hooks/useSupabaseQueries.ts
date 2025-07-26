@@ -28,6 +28,10 @@ type VendaProdutoInsert = Database['public']['Tables']['venda_produtos']['Insert
 type VendaServico = Database['public']['Tables']['venda_servicos']['Row'];
 type VendaServicoInsert = Database['public']['Tables']['venda_servicos']['Insert'];
 
+// Vehicles types
+export type Veiculo = Database['public']['Tables']['veiculos']['Row'];
+export type VeiculoInsert = Database['public']['Tables']['veiculos']['Insert'];
+
 // Products hooks
 export const useProdutos = () => {
   return useQuery({
@@ -324,6 +328,63 @@ export const useServicoMutations = () => {
   return { createServico };
 };
 
+// Vehicles hooks
+export const useVeiculos = () => {
+  return useQuery({
+    queryKey: ['veiculos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('veiculos')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+};
+
+export const useVeiculosByCliente = (clienteId: string | null) => {
+  return useQuery({
+    queryKey: ['veiculos', clienteId],
+    queryFn: async () => {
+      if (!clienteId) return [];
+      
+      const { data, error } = await supabase
+        .from('veiculos')
+        .select('*')
+        .eq('cliente_id', clienteId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!clienteId
+  });
+};
+
+export const useVeiculoMutations = () => {
+  const queryClient = useQueryClient();
+
+  const createVeiculo = useMutation({
+    mutationFn: async (veiculo: VeiculoInsert) => {
+      const { data, error } = await supabase
+        .from('veiculos')
+        .insert(veiculo)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['veiculos'] });
+    }
+  });
+
+  return { createVeiculo };
+};
+
 // Sales hooks
 export const useVendas = () => {
   return useQuery({
@@ -334,7 +395,8 @@ export const useVendas = () => {
         .select(`
           *,
           venda_produtos(*),
-          venda_servicos(*)
+          venda_servicos(*),
+          veiculo:veiculos(*)
         `)
         .order('created_at', { ascending: false });
       

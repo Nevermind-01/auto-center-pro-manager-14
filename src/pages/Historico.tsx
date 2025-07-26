@@ -17,7 +17,8 @@ import {
   Calendar,
   DollarSign,
   User,
-  FileText
+  FileText,
+  Car
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -250,25 +251,34 @@ const Historico = () => {
                               <h3 className="text-lg font-semibold">{venda.numero_os}</h3>
                               {getStatusBadge(venda.status!)}
                             </div>
-                            <div className="space-y-1 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                <span>{venda.cliente_nome}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="h-4 w-4" />
-                                <span>R$ {Number(venda.valor_final).toFixed(2)}</span>
-                                {venda.forma_pagamento && (
-                                  <span className="text-xs bg-muted px-2 py-1 rounded">
-                                    {venda.forma_pagamento}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4" />
-                                <span>{formatDate(venda.created_at)}</span>
-                              </div>
-                            </div>
+                             <div className="space-y-1 text-sm text-muted-foreground">
+                               <div className="flex items-center gap-2">
+                                 <User className="h-4 w-4" />
+                                 <span>{venda.cliente_nome}</span>
+                               </div>
+                               {venda.veiculo && (
+                                 <div className="flex items-center gap-2">
+                                   <Car className="h-4 w-4" />
+                                   <span>
+                                     {venda.veiculo.marca} {venda.veiculo.modelo} - {venda.veiculo.placa}
+                                     {venda.veiculo.ano && ` (${venda.veiculo.ano})`}
+                                   </span>
+                                 </div>
+                               )}
+                               <div className="flex items-center gap-2">
+                                 <DollarSign className="h-4 w-4" />
+                                 <span>R$ {Number(venda.valor_final).toFixed(2)}</span>
+                                 {venda.forma_pagamento && (
+                                   <span className="text-xs bg-muted px-2 py-1 rounded">
+                                     {venda.forma_pagamento}
+                                   </span>
+                                 )}
+                               </div>
+                               <div className="flex items-center gap-2">
+                                 <Calendar className="h-4 w-4" />
+                                 <span>{formatDate(venda.created_at)}</span>
+                               </div>
+                             </div>
                           </div>
                         </div>
                         

@@ -9,8 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useEstoque, estoqueManager } from "@/lib/estoque";
-import { ProdutoEstoque } from "@/pages/Inventory";
+import { useEstoque, estoqueManager, ProdutoEstoque } from "@/lib/estoque";
 import { 
   Plus, 
   Search, 

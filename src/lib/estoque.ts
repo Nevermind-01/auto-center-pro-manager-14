@@ -1,5 +1,34 @@
 // Sistema global de estoque
-import { ProdutoEstoque, MovimentacaoEstoque } from "@/pages/Inventory";
+// Definindo interfaces localmente já que o arquivo original foi removido
+export interface ProdutoEstoque {
+  id: number;
+  nome: string;
+  marca: string;
+  categoria: string;
+  codigo: string;
+  valorCompra: number;
+  valorVenda: number;
+  quantidadeAtual: number;
+  quantidadeMinima: number;
+  fornecedor: string;
+  localizacao: string;
+  dataUltimaEntrada: string;
+  dataUltimaSaida?: string;
+  status: "Ativo" | "Inativo" | "Descontinuado";
+}
+
+export interface MovimentacaoEstoque {
+  id: number;
+  produtoId: number;
+  tipo: "Entrada" | "Saida" | "Ajuste";
+  quantidade: number;
+  motivo: string;
+  valorUnitario: number;
+  valorTotal: number;
+  data: string;
+  usuario: string;
+  osNumero?: string;
+}
 
 // Interface para produtos usados nas vendas
 export interface ProdutoVenda {

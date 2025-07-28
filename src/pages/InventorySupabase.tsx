@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Package, AlertCircle, TrendingUp, DollarSign, Filter, MoreHorizontal, Eye, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Package, AlertCircle, TrendingUp, DollarSign, Filter, MoreHorizontal, Eye, Edit, Trash2, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useProdutos, useProdutoMutations, useCategorias, useCategoriaMutations, useMovimentacoes, useMovimentacaoMutations } from '@/hooks/useSupabaseQueries';
 import { useEstoqueOperations } from '@/hooks/useSupabaseQueries';
 import { ProdutoComCategoria } from '@/lib/supabaseEstoque';
+import MovementHistoryModal from '@/components/MovementHistoryModal';
 
 const InventorySupabase = () => {
   const { toast } = useToast();
@@ -36,6 +37,7 @@ const InventorySupabase = () => {
   const [showNewProductModal, setShowNewProductModal] = useState(false);
   const [showNewCategoryModal, setShowNewCategoryModal] = useState(false);
   const [showMovementModal, setShowMovementModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProdutoComCategoria | null>(null);
 
   // Estados para formulários
@@ -516,6 +518,15 @@ const InventorySupabase = () => {
                             <Package className="mr-2 h-4 w-4" />
                             Movimentar Estoque
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedProduct(produto);
+                              setShowHistoryModal(true);
+                            }}
+                          >
+                            <History className="mr-2 h-4 w-4" />
+                            Histórico Movimentação
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -586,6 +597,13 @@ const InventorySupabase = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Movement History Modal */}
+      <MovementHistoryModal
+        open={showHistoryModal}
+        onOpenChange={setShowHistoryModal}
+        product={selectedProduct}
+      />
     </div>
   );
 };

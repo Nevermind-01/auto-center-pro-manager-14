@@ -469,10 +469,40 @@ export const useVendaMutations = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendas'] });
+      queryClient.invalidateQueries({ queryKey: ['produtos'] });
     }
   });
 
-  return { createVenda, createVendaProduto, createVendaServico, updateVenda };
+  const deleteVendaProdutos = useMutation({
+    mutationFn: async (vendaId: string) => {
+      const { error } = await supabase
+        .from('venda_produtos')
+        .delete()
+        .eq('venda_id', vendaId);
+      
+      if (error) throw error;
+    }
+  });
+
+  const deleteVendaServicos = useMutation({
+    mutationFn: async (vendaId: string) => {
+      const { error } = await supabase
+        .from('venda_servicos')
+        .delete()
+        .eq('venda_id', vendaId);
+      
+      if (error) throw error;
+    }
+  });
+
+  return { 
+    createVenda, 
+    createVendaProduto, 
+    createVendaServico, 
+    updateVenda,
+    deleteVendaProdutos,
+    deleteVendaServicos
+  };
 };
 
 // Utility functions for stock management

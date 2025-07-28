@@ -23,6 +23,7 @@ import {
   useVendas
 } from "@/hooks/useSupabaseQueries";
 import { useSupabaseEstoque, ProdutoComCategoria } from "@/lib/supabaseEstoque";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Plus, 
   Search, 
@@ -78,7 +79,7 @@ const NovaOSSupabase = () => {
   // Mutations
   const { createCliente } = useClienteMutations();
   const { createServico } = useServicoMutations();
-  const { createVenda, createVendaProduto, createVendaServico, updateVenda } = useVendaMutations();
+  const { createVenda, createVendaProduto, createVendaServico, updateVenda, deleteVendaProdutos, deleteVendaServicos } = useVendaMutations();
   const { createVeiculo } = useVeiculoMutations();
   const { createLog } = useLogMovimentacaoMutations();
   
@@ -107,6 +108,8 @@ const NovaOSSupabase = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingVenda, setEditingVenda] = useState<any>(null);
   const [originalData, setOriginalData] = useState<any>(null);
+  const [loadingEditData, setLoadingEditData] = useState(false);
+  const [editDataLoaded, setEditDataLoaded] = useState(false);
   
   // Query dos veículos do cliente selecionado
   const { data: veiculosCliente = [] } = useVeiculosByCliente(clienteSelecionado?.id);
@@ -143,57 +146,88 @@ const NovaOSSupabase = () => {
 
   // Gerar número da OS automaticamente ou carregar dados para edição
   useEffect(() => {
-    if (editingId && vendas.length > 0) {
-      const vendaParaEditar = vendas.find(v => v.id === editingId);
-      if (vendaParaEditar) {
-        setIsEditing(true);
-        setEditingVenda(vendaParaEditar);
-        setOriginalData(vendaParaEditar);
+    const carregarDadosEdicao = async () => {
+      if (editingId && vendas.length > 0 && !editDataLoaded) {
+        setLoadingEditData(true);
+        const vendaParaEditar = vendas.find(v => v.id === editingId);
         
-        // Preencher campos com dados existentes
-        setNumeroOS(vendaParaEditar.numero_os);
-        setDesconto(vendaParaEditar.valor_desconto ? (vendaParaEditar.valor_desconto / vendaParaEditar.valor_total * 100) : 0);
-        setFormaPagamento(vendaParaEditar.forma_pagamento || '');
-        setParcelas(vendaParaEditar.parcelas || 1);
-        setObservacoes(vendaParaEditar.observacoes || '');
-        
-        // Buscar cliente
-        const cliente = clientesDisponiveis.find(c => c.id === vendaParaEditar.cliente_id);
-        if (cliente) {
-          setClienteSelecionado(cliente);
+        if (vendaParaEditar) {
+          setIsEditing(true);
+          setEditingVenda(vendaParaEditar);
+          setOriginalData(JSON.parse(JSON.stringify(vendaParaEditar))); // Deep copy
+          
+          // Preencher campos com dados existentes
+          setNumeroOS(vendaParaEditar.numero_os);
+          
+          // Calcular desconto em porcentagem
+          const descontoPercentual = vendaParaEditar.valor_total > 0 
+            ? (vendaParaEditar.valor_desconto || 0) / vendaParaEditar.valor_total * 100
+            : 0;
+          setDesconto(descontoPercentual);
+          
+          setFormaPagamento(vendaParaEditar.forma_pagamento || '');
+          setParcelas(vendaParaEditar.parcelas || 1);
+          setObservacoes(vendaParaEditar.observacoes || '');
+          
+          // Buscar cliente
+          const cliente = clientesDisponiveis.find(c => c.id === vendaParaEditar.cliente_id);
+          if (cliente) {
+            setClienteSelecionado(cliente);
+          }
+          
+          setEditDataLoaded(true);
+          setLoadingEditData(false);
+          
+          // Feedback visual
+          toast({
+            title: "OS carregada",
+            description: `OS ${vendaParaEditar.numero_os} carregada com sucesso para edição.`,
+          });
+        } else {
+          setLoadingEditData(false);
+          toast({
+            title: "Erro",
+            description: "OS não encontrada.",
+            variant: "destructive",
+          });
         }
-        
         return;
       }
-    }
-    
-    if (!editingId) {
-      const gerarNumeroOS = () => {
-        const agora = new Date();
-        const ano = agora.getFullYear();
-        const mes = String(agora.getMonth() + 1).padStart(2, '0');
-        const dia = String(agora.getDate()).padStart(2, '0');
-        const hora = String(agora.getHours()).padStart(2, '0');
-        const minuto = String(agora.getMinutes()).padStart(2, '0');
-        
-        return `OS${ano}${mes}${dia}${hora}${minuto}`;
-      };
+      
+      if (!editingId && !isEditing) {
+        const gerarNumeroOS = () => {
+          const agora = new Date();
+          const ano = agora.getFullYear();
+          const mes = String(agora.getMonth() + 1).padStart(2, '0');
+          const dia = String(agora.getDate()).padStart(2, '0');
+          const hora = String(agora.getHours()).padStart(2, '0');
+          const minuto = String(agora.getMinutes()).padStart(2, '0');
+          
+          return `OS${ano}${mes}${dia}${hora}${minuto}`;
+        };
 
-      setNumeroOS(gerarNumeroOS());
-    }
-  }, [editingId, vendas, clientesDisponiveis]);
+        setNumeroOS(gerarNumeroOS());
+      }
+    };
+
+    carregarDadosEdicao();
+  }, [editingId, vendas, clientesDisponiveis, editDataLoaded, isEditing, toast]);
 
   // Carregar produtos e serviços da venda em edição
   useEffect(() => {
-    if (editingVenda && editingVenda.venda_produtos && editingVenda.venda_servicos) {
+    if (editingVenda && editingVenda.venda_produtos && editingVenda.venda_servicos && editDataLoaded) {
       // Carregar produtos
-      const produtosSelecionados = editingVenda.venda_produtos.map((vp: any) => ({
-        id: vp.produto_id,
-        nome: vp.produto_nome,
-        marca: '', // Não temos essa info na tabela venda_produtos
-        valor: Number(vp.preco_unitario),
-        quantidade: vp.quantidade
-      }));
+      const produtosSelecionados = editingVenda.venda_produtos.map((vp: any) => {
+        // Buscar dados completos do produto para pegar a marca
+        const produtoCompleto = produtosDisponiveis.find(p => p.id === vp.produto_id);
+        return {
+          id: vp.produto_id,
+          nome: vp.produto_nome,
+          marca: produtoCompleto?.marca || '', 
+          valor: Number(vp.preco_unitario),
+          quantidade: vp.quantidade
+        };
+      });
       setProdutosSelecionados(produtosSelecionados);
       
       // Carregar serviços
@@ -205,11 +239,13 @@ const NovaOSSupabase = () => {
       setServicosSelecionados(servicosSelecionados);
       
       // Carregar veículo se existir
-      if (editingVenda.veiculo) {
+      if (editingVenda.veiculo && Array.isArray(editingVenda.veiculo) && editingVenda.veiculo.length > 0) {
+        setVeiculoSelecionado(editingVenda.veiculo[0]);
+      } else if (editingVenda.veiculo && !Array.isArray(editingVenda.veiculo)) {
         setVeiculoSelecionado(editingVenda.veiculo);
       }
     }
-  }, [editingVenda]);
+  }, [editingVenda, editDataLoaded, produtosDisponiveis]);
 
   // Filtrar clientes baseado na busca
   const clientesFiltrados = clientesDisponiveis.filter((cliente) =>
@@ -527,6 +563,10 @@ const NovaOSSupabase = () => {
 
     try {
       if (isEditing && editingVenda) {
+        // Deletar produtos e serviços antigos
+        await deleteVendaProdutos.mutateAsync(editingVenda.id);
+        await deleteVendaServicos.mutateAsync(editingVenda.id);
+
         // Atualizar venda existente
         const vendaAtualizada = await updateVenda.mutateAsync({
           id: editingVenda.id,
@@ -540,6 +580,28 @@ const NovaOSSupabase = () => {
           parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
           observacoes: observacoes || null
         });
+
+        // Adicionar produtos atualizados da venda
+        for (const produto of produtosSelecionados) {
+          await createVendaProduto.mutateAsync({
+            venda_id: editingVenda.id,
+            produto_id: produto.id,
+            produto_nome: produto.nome,
+            quantidade: produto.quantidade,
+            preco_unitario: produto.valor,
+            preco_total: produto.valor * produto.quantidade
+          });
+        }
+
+        // Adicionar serviços atualizados da venda
+        for (const servico of servicosSelecionados) {
+          await createVendaServico.mutateAsync({
+            venda_id: editingVenda.id,
+            servico_id: servico.id || null,
+            servico_nome: servico.nome,
+            preco: servico.valor
+          });
+        }
 
         // Registrar log de edição
         await createLog.mutateAsync({
@@ -557,7 +619,7 @@ const NovaOSSupabase = () => {
         });
 
         // Voltar para histórico
-        navigate('/history');
+        navigate('/historico');
       } else {
         // Criar nova venda
         const venda = await createVenda.mutateAsync({
@@ -758,8 +820,19 @@ const NovaOSSupabase = () => {
     }
   };
 
-  if (loadingClientes || loadingProdutos || loadingServicos) {
-    return <div className="flex items-center justify-center h-64">Carregando...</div>;
+  if (loadingClientes || loadingProdutos || loadingServicos || loadingEditData) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="text-lg font-medium">
+            {loadingEditData ? "Carregando dados da OS..." : "Carregando..."}
+          </div>
+          <div className="text-sm text-muted-foreground mt-2">
+            {loadingEditData ? "Buscando informações para edição" : "Preparando sistema"}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -767,10 +840,20 @@ const NovaOSSupabase = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Nova Ordem de Serviço</h1>
-          <p className="text-muted-foreground">Crie uma nova OS para seus clientes</p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isEditing ? "Editar Ordem de Serviço" : "Nova Ordem de Serviço"}
+          </h1>
+          <p className="text-muted-foreground">
+            {isEditing ? "Edite uma OS existente" : "Crie uma nova OS para seus clientes"}
+          </p>
         </div>
         <div className="flex items-center gap-2">
+          {isEditing && (
+            <Badge variant="secondary" className="px-3 py-1">
+              <Edit className="mr-1 h-3 w-3" />
+              Editando
+            </Badge>
+          )}
           <Badge variant="outline" className="text-lg px-3 py-1">
             {numeroOS}
           </Badge>

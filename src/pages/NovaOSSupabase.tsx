@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
 import { 
   useProdutos, 
   useClientes, 
@@ -145,46 +146,70 @@ const NovaOSSupabase = () => {
   const [editandoServico, setEditandoServico] = useState<ServicoSelecionado | null>(null);
 
   // Gerar número da OS automaticamente ou carregar dados para edição
-  useEffect(() => {
-    if (editingId && vendas.length > 0) {
-      const vendaParaEditar = vendas.find(v => v.id === editingId);
-      if (vendaParaEditar) {
-        setIsEditing(true);
-        setEditingVenda(vendaParaEditar);
-        setOriginalData(vendaParaEditar);
-        
-        // Preencher campos com dados existentes
-        setNumeroOS(vendaParaEditar.numero_os);
-        setDesconto(vendaParaEditar.valor_desconto ? (vendaParaEditar.valor_desconto / vendaParaEditar.valor_total * 100) : 0);
-        setFormaPagamento(vendaParaEditar.forma_pagamento || '');
-        setParcelas(vendaParaEditar.parcelas || 1);
-        setObservacoes(vendaParaEditar.observacoes || '');
-        
-        // Buscar cliente
-        const cliente = clientesDisponiveis.find(c => c.id === vendaParaEditar.cliente_id);
-        if (cliente) {
-          setClienteSelecionado(cliente);
-        }
-        
-        return;
-      }
-    }
-    
-    if (!editingId) {
-      const gerarNumeroOS = () => {
-        const agora = new Date();
-        const ano = agora.getFullYear();
-        const mes = String(agora.getMonth() + 1).padStart(2, '0');
-        const dia = String(agora.getDate()).padStart(2, '0');
-        const hora = String(agora.getHours()).padStart(2, '0');
-        const minuto = String(agora.getMinutes()).padStart(2, '0');
-        
-        return `OS${ano}${mes}${dia}${hora}${minuto}`;
-      };
-
-      setNumeroOS(gerarNumeroOS());
-    }
-  }, [editingId, vendas, clientesDisponiveis]);
+ useEffect(() => {
+   if (!editingId) {
+     // gera número caso seja criação
+     const agora = new Date();
+     const ano = agora.getFullYear();
+     const mes = String(agora.getMonth() + 1).padStart(2, "0");
+     const dia = String(agora.getDate()).padStart(2, "0");
+     const hora = String(agora.getHours()).padStart(2, "0");
+     const minuto = String(agora.getMinutes()).padStart(2, "0");
+     setNumeroOS(`OS${ano}${mes}${dia}${hora}${minuto}`);
+     return;
+   }
+ 
+   setLoadingEdicao(true);
+   (async () => {
+     const { data: venda, error } = await supabase
+       .from("vendas")
+       .select(`
+         *,
+         venda_produtos(*),
+         venda_servicos(*),
+         cliente:clientes(*),
+         veiculo:veiculos(*)
+       `)
+       .eq("id", editingId)
+       .single();
+ 
+     if (error || !venda) {
+       console.error("Erro ao carregar OS:", error);
+       toast({ title: "Erro ao carregar OS", variant: "destructive" });
+       setLoadingEdicao(false);
+       return;
+     }
+ 
+     // preenche estados
+     setEditingVenda(venda);
+     setOriginalData(venda);
+     setNumeroOS(venda.numero_os);
+     setDesconto(venda.valor_desconto ? (venda.valor_desconto / venda.valor_total) * 100 : 0);
+     setFormaPagamento(venda.forma_pagamento || "");
+     setParcelas(venda.parcelas || 1);
+     setObservacoes(venda.observacoes || "");
+     setClienteSelecionado(venda.cliente);
+     setVeiculoSelecionado(venda.veiculo);
+     setProdutosSelecionados(
+       venda.venda_produtos.map(vp => ({
+         id: vp.produto_id,
+         nome: vp.produto_nome,
+         valor: Number(vp.preco_unitario),
+         quantidade: vp.quantidade
+       }))
+     );
+     setServicosSelecionados(
+       venda.venda_servicos.map(vs => ({
+         id: vs.servico_id,
+         nome: vs.servico_nome,
+         valor: Number(vs.preco)
+       }))
+     );
+ 
+     toast({ title: "OS carregada com sucesso", variant: "success" });
+     setLoadingEdicao(false);
+   })();
+ }, [editingId, toast]);
 
   // Carregar produtos e serviços da venda em edição
   useEffect(() => {
@@ -761,13 +786,15 @@ const NovaOSSupabase = () => {
     }
   };
 
+  if (loadingEdicao) {
+  return (
+    <div className="p-4 text-sm text-gray-500">
+      🔄 Carregando OS para edição…
+    </div>
+   );
+  }
   if (loadingClientes || loadingProdutos || loadingServicos) {
     return <div className="flex items-center justify-center h-64">Carregando...</div>;
-  }
-
-  
-  if (loadingEdicao) {
-    return <div className="p-4 text-sm text-gray-500">🔄 Carregando OS para edição...</div>;
   }
 
   return (

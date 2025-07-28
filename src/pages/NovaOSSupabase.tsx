@@ -68,7 +68,7 @@ const NovaOSSupabase = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const editingId = searchParams.get('edit');
+  const editingId = searchParams?.get('edit') || null;
   
   // Queries
   const { data: produtosDisponiveis = [], isLoading: loadingProdutos } = useProdutos();

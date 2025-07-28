@@ -144,10 +144,33 @@ const NovaOSSupabase = () => {
   const [showServicoModal, setShowServicoModal] = useState(false);
   const [editandoServico, setEditandoServico] = useState<ServicoSelecionado | null>(null);
 
-  // Gerar número da OS automaticamente ou carregar dados para edição
+  // Gerar número da OS automaticamente
+  useEffect(() => {
+    if (!editingId && !isEditing) {
+      const gerarNumeroOS = () => {
+        const agora = new Date();
+        const ano = agora.getFullYear();
+        const mes = String(agora.getMonth() + 1).padStart(2, '0');
+        const dia = String(agora.getDate()).padStart(2, '0');
+        const hora = String(agora.getHours()).padStart(2, '0');
+        const minuto = String(agora.getMinutes()).padStart(2, '0');
+        
+        return `OS${ano}${mes}${dia}${hora}${minuto}`;
+      };
+
+      setNumeroOS(gerarNumeroOS());
+    }
+  }, [editingId, isEditing]);
+
+  // Carregar dados para edição - aguarda clientes carregarem primeiro
   useEffect(() => {
     const carregarDadosEdicao = async () => {
-      if (editingId && vendas.length > 0 && !editDataLoaded) {
+      // Só processa edição se:
+      // 1. Tem editingId
+      // 2. Dados ainda não foram carregados
+      // 3. Clientes já foram carregados (evita condição de corrida)
+      // 4. Vendas já foram carregadas
+      if (editingId && !editDataLoaded && !loadingClientes && clientesDisponiveis.length > 0 && vendas.length > 0) {
         setLoadingEditData(true);
         const vendaParaEditar = vendas.find(v => v.id === editingId);
         
@@ -169,49 +192,33 @@ const NovaOSSupabase = () => {
           setParcelas(vendaParaEditar.parcelas || 1);
           setObservacoes(vendaParaEditar.observacoes || '');
           
-          // Buscar cliente
+          // Buscar cliente - agora garantimos que a lista já está carregada
           const cliente = clientesDisponiveis.find(c => c.id === vendaParaEditar.cliente_id);
           if (cliente) {
             setClienteSelecionado(cliente);
           }
           
           setEditDataLoaded(true);
-          setLoadingEditData(false);
           
-          // Feedback visual
+          // Feedback visual apenas quando tudo estiver pronto
           toast({
             title: "OS carregada",
             description: `OS ${vendaParaEditar.numero_os} carregada com sucesso para edição.`,
           });
-        } else {
-          setLoadingEditData(false);
+        } else if (!loadingEditData) {
           toast({
             title: "Erro",
             description: "OS não encontrada.",
             variant: "destructive",
           });
         }
-        return;
-      }
-      
-      if (!editingId && !isEditing) {
-        const gerarNumeroOS = () => {
-          const agora = new Date();
-          const ano = agora.getFullYear();
-          const mes = String(agora.getMonth() + 1).padStart(2, '0');
-          const dia = String(agora.getDate()).padStart(2, '0');
-          const hora = String(agora.getHours()).padStart(2, '0');
-          const minuto = String(agora.getMinutes()).padStart(2, '0');
-          
-          return `OS${ano}${mes}${dia}${hora}${minuto}`;
-        };
-
-        setNumeroOS(gerarNumeroOS());
+        
+        setLoadingEditData(false);
       }
     };
 
     carregarDadosEdicao();
-  }, [editingId, vendas, clientesDisponiveis, editDataLoaded, isEditing, toast]);
+  }, [editingId, editDataLoaded, loadingClientes, clientesDisponiveis, vendas, loadingEditData, toast]);
 
   // Carregar produtos e serviços da venda em edição
   useEffect(() => {
@@ -274,6 +281,32 @@ const NovaOSSupabase = () => {
   const valorTotal = valorProdutos + valorServicos;
   const valorDesconto = (valorTotal * desconto) / 100;
   const valorFinal = valorTotal - valorDesconto;
+
+  // Função para resetar formulário
+  const resetarFormulario = () => {
+    setClienteSelecionado(null);
+    setVeiculoSelecionado(null);
+    setProdutosSelecionados([]);
+    setServicosSelecionados([]);
+    setDesconto(0);
+    setFormaPagamento("");
+    setParcelas(1);
+    setObservacoes("");
+    setSearchClienteTerm("");
+    setSearchProdutoTerm("");
+    setIsEditing(false);
+    setEditingVenda(null);
+    setOriginalData(null);
+    setEditDataLoaded(false);
+    setLoadingEditData(false);
+  };
+
+  // Reset quando sair do modo de edição
+  useEffect(() => {
+    if (!editingId && (isEditing || editDataLoaded)) {
+      resetarFormulario();
+    }
+  }, [editingId, isEditing, editDataLoaded]);
 
   // Handlers
   const selecionarCliente = (cliente: any) => {
@@ -820,15 +853,28 @@ const NovaOSSupabase = () => {
     }
   };
 
-  if (loadingClientes || loadingProdutos || loadingServicos || loadingEditData) {
+  // Determinar estado de carregamento
+  const isLoadingInitialData = loadingClientes || loadingProdutos || loadingServicos;
+  const isWaitingForClientesToLoad = editingId && !editDataLoaded && loadingClientes;
+  const isLoadingOSData = editingId && !editDataLoaded && !loadingClientes && loadingEditData;
+
+  if (isLoadingInitialData || isWaitingForClientesToLoad || isLoadingOSData) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="text-lg font-medium">
-            {loadingEditData ? "Carregando dados da OS..." : "Carregando..."}
+            {isWaitingForClientesToLoad 
+              ? "Carregando clientes..." 
+              : isLoadingOSData 
+                ? "OS carregada..." 
+                : "Carregando..."}
           </div>
           <div className="text-sm text-muted-foreground mt-2">
-            {loadingEditData ? "Buscando informações para edição" : "Preparando sistema"}
+            {isWaitingForClientesToLoad 
+              ? "Aguardando lista de clientes para carregar OS" 
+              : isLoadingOSData 
+                ? "Finalizando carregamento dos dados da OS" 
+                : "Preparando sistema"}
           </div>
         </div>
       </div>

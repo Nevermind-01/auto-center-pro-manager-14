@@ -619,7 +619,7 @@ const NovaOSSupabase = () => {
         });
 
         // Voltar para histórico
-        navigate('/historico');
+        navigate('/history');
       } else {
         // Criar nova venda
         const venda = await createVenda.mutateAsync({

@@ -8,7 +8,8 @@ import {
   Car,
   LogOut,
   Plus,
-  History
+  History,
+  CreditCard
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -33,6 +34,7 @@ const menuItems = [
   { title: "Vendas", url: "/sales", icon: ShoppingCart },
   { title: "Estoque", url: "/inventory", icon: Package },
   { title: "Clientes", url: "/clientes", icon: Users },
+  { title: "Contas a Pagar", url: "/contas-pagar", icon: CreditCard },
   { title: "Ordens de Serviço", url: "/history", icon: FileText },
   { title: "Histórico de Movimentações", url: "/log-movimentacoes", icon: History },
   { title: "Configurações", url: "/settings", icon: Settings },

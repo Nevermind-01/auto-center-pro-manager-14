@@ -10,6 +10,7 @@ import Sales from "./pages/Sales";
 import NovaOSSupabase from "./pages/NovaOSSupabase";
 import InventorySupabase from "./pages/InventorySupabase";
 import Clientes from "./pages/Clientes";
+import ContasPagar from "./pages/ContasPagar";
 import Historico from "./pages/Historico";
 import HistoricoMovimentacoes from "./pages/HistoricoMovimentacoes";
 import NotFound from "./pages/NotFound";
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/sales" element={<Layout><Sales /></Layout>} />
           <Route path="/inventory" element={<Layout><InventorySupabase /></Layout>} />
           <Route path="/clientes" element={<Layout><Clientes /></Layout>} />
+          <Route path="/contas-pagar" element={<Layout><ContasPagar /></Layout>} />
           <Route path="/history" element={<Layout><Historico /></Layout>} />
           <Route path="/log-movimentacoes" element={<Layout><HistoricoMovimentacoes /></Layout>} />
           <Route path="/settings" element={<Layout><div>Configurações (em desenvolvimento)</div></Layout>} />

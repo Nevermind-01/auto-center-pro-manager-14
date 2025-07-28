@@ -92,6 +92,51 @@ export type Database = {
         }
         Relationships: []
       }
+      contas_a_pagar: {
+        Row: {
+          comprovante_url: string | null
+          created_at: string | null
+          data_pagamento: string | null
+          descricao: string | null
+          empresa: string
+          fixa: boolean | null
+          forma_pagamento: string | null
+          id: string
+          status: string | null
+          updated_at: string | null
+          valor: number
+          vencimento: string
+        }
+        Insert: {
+          comprovante_url?: string | null
+          created_at?: string | null
+          data_pagamento?: string | null
+          descricao?: string | null
+          empresa: string
+          fixa?: boolean | null
+          forma_pagamento?: string | null
+          id?: string
+          status?: string | null
+          updated_at?: string | null
+          valor: number
+          vencimento: string
+        }
+        Update: {
+          comprovante_url?: string | null
+          created_at?: string | null
+          data_pagamento?: string | null
+          descricao?: string | null
+          empresa?: string
+          fixa?: boolean | null
+          forma_pagamento?: string | null
+          id?: string
+          status?: string | null
+          updated_at?: string | null
+          valor?: number
+          vencimento?: string
+        }
+        Relationships: []
+      }
       log_movimentacoes: {
         Row: {
           created_at: string | null

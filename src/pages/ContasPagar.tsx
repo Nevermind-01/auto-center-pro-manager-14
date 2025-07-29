@@ -283,7 +283,7 @@ export default function ContasPagar() {
       {/* Contas Fixas */}
       {contasFixas.length > 0 && (
         <div>
-          <h2 className="text-2xl font-semibold mb-4">Contas Fixas</h2>
+          <h2 className="text-2xl font-semibold mb-4">Contas Mensais</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {contasFixas.map((conta) => (
               <Card key={conta.id} className="hover:shadow-md transition-shadow">

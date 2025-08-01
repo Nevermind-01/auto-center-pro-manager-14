@@ -606,6 +606,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      validate_user_exists: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user"

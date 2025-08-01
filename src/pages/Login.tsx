@@ -19,9 +19,18 @@ const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  // All hooks must be called before any conditional logic
   const { signIn, signUp, user, loading } = useAuth();
 
-  // Show loading state while auth initializes
+  // Redirect authenticated users
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
+
+  // Show loading state while auth initializes - CONDITIONAL RENDERING, NOT EARLY RETURN
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
@@ -32,13 +41,6 @@ const Login = () => {
       </div>
     );
   }
-
-  // Redirect authenticated users
-  useEffect(() => {
-    if (user) {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -21,6 +21,7 @@ export type Database = {
           id: string
           nome: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -28,6 +29,7 @@ export type Database = {
           id?: string
           nome: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -35,6 +37,7 @@ export type Database = {
           id?: string
           nome?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -55,6 +58,7 @@ export type Database = {
           rua: string | null
           telefone: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           bairro?: string | null
@@ -72,6 +76,7 @@ export type Database = {
           rua?: string | null
           telefone?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           bairro?: string | null
@@ -89,6 +94,7 @@ export type Database = {
           rua?: string | null
           telefone?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -104,6 +110,7 @@ export type Database = {
           id: string
           status: string | null
           updated_at: string | null
+          user_id: string | null
           valor: number
           vencimento: string
         }
@@ -118,6 +125,7 @@ export type Database = {
           id?: string
           status?: string | null
           updated_at?: string | null
+          user_id?: string | null
           valor: number
           vencimento: string
         }
@@ -132,6 +140,7 @@ export type Database = {
           id?: string
           status?: string | null
           updated_at?: string | null
+          user_id?: string | null
           valor?: number
           vencimento?: string
         }
@@ -147,6 +156,7 @@ export type Database = {
           observacoes: string | null
           os_id: string
           tipo: string
+          user_id: string | null
           usuario: string | null
         }
         Insert: {
@@ -158,6 +168,7 @@ export type Database = {
           observacoes?: string | null
           os_id: string
           tipo: string
+          user_id?: string | null
           usuario?: string | null
         }
         Update: {
@@ -169,6 +180,7 @@ export type Database = {
           observacoes?: string | null
           os_id?: string
           tipo?: string
+          user_id?: string | null
           usuario?: string | null
         }
         Relationships: [
@@ -191,6 +203,7 @@ export type Database = {
           quantidade: number
           quantidade_anterior: number
           tipo: Database["public"]["Enums"]["movimentacao_tipo"]
+          user_id: string | null
           valor_unitario: number | null
         }
         Insert: {
@@ -202,6 +215,7 @@ export type Database = {
           quantidade: number
           quantidade_anterior: number
           tipo: Database["public"]["Enums"]["movimentacao_tipo"]
+          user_id?: string | null
           valor_unitario?: number | null
         }
         Update: {
@@ -213,6 +227,7 @@ export type Database = {
           quantidade?: number
           quantidade_anterior?: number
           tipo?: Database["public"]["Enums"]["movimentacao_tipo"]
+          user_id?: string | null
           valor_unitario?: number | null
         }
         Relationships: [
@@ -240,6 +255,7 @@ export type Database = {
           quantidade: number
           status: Database["public"]["Enums"]["produto_status"] | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           categoria_id?: string | null
@@ -255,6 +271,7 @@ export type Database = {
           quantidade?: number
           status?: Database["public"]["Enums"]["produto_status"] | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           categoria_id?: string | null
@@ -270,6 +287,7 @@ export type Database = {
           quantidade?: number
           status?: Database["public"]["Enums"]["produto_status"] | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -319,6 +337,7 @@ export type Database = {
           nome: string
           preco: number
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -327,6 +346,7 @@ export type Database = {
           nome: string
           preco: number
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -335,6 +355,28 @@ export type Database = {
           nome?: string
           preco?: number
           updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -349,6 +391,7 @@ export type Database = {
           observacoes: string | null
           placa: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           ano?: string | null
@@ -360,6 +403,7 @@ export type Database = {
           observacoes?: string | null
           placa: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           ano?: string | null
@@ -371,6 +415,7 @@ export type Database = {
           observacoes?: string | null
           placa?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -484,6 +529,7 @@ export type Database = {
           parcelas: number | null
           status: Database["public"]["Enums"]["venda_status"] | null
           updated_at: string
+          user_id: string | null
           valor_desconto: number | null
           valor_final: number
           valor_total: number
@@ -500,6 +546,7 @@ export type Database = {
           parcelas?: number | null
           status?: Database["public"]["Enums"]["venda_status"] | null
           updated_at?: string
+          user_id?: string | null
           valor_desconto?: number | null
           valor_final?: number
           valor_total?: number
@@ -516,6 +563,7 @@ export type Database = {
           parcelas?: number | null
           status?: Database["public"]["Enums"]["venda_status"] | null
           updated_at?: string
+          user_id?: string | null
           valor_desconto?: number | null
           valor_final?: number
           valor_total?: number
@@ -547,8 +595,20 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_user_role: {
+        Args: { check_user_id?: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          check_user_id: string
+          required_role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "admin" | "user"
       forma_pagamento: "dinheiro" | "cartao" | "pix" | "cheque" | "parcelado"
       movimentacao_tipo: "entrada" | "saida" | "ajuste"
       produto_status: "ativo" | "inativo"
@@ -680,6 +740,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "user"],
       forma_pagamento: ["dinheiro", "cartao", "pix", "cheque", "parcelado"],
       movimentacao_tipo: ["entrada", "saida", "ajuste"],
       produto_status: ["ativo", "inativo"],

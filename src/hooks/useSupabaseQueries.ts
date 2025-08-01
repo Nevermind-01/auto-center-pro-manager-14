@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Database } from '@/integrations/supabase/types';
 
 // Types
@@ -77,12 +78,15 @@ export const useProdutoById = (id: string) => {
 
 export const useProdutoMutations = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const createProduto = useMutation({
-    mutationFn: async (produto: ProdutoInsert) => {
+    mutationFn: async (produto: Omit<ProdutoInsert, 'user_id'>) => {
+      if (!user) throw new Error('User not authenticated');
+      
       const { data, error } = await supabase
         .from('produtos')
-        .insert(produto)
+        .insert({ ...produto, user_id: user.id })
         .select()
         .single();
       
@@ -146,12 +150,15 @@ export const useCategorias = () => {
 
 export const useCategoriaMutations = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const createCategoria = useMutation({
-    mutationFn: async (categoria: CategoriaInsert) => {
+    mutationFn: async (categoria: Omit<CategoriaInsert, 'user_id'>) => {
+      if (!user) throw new Error('User not authenticated');
+      
       const { data, error } = await supabase
         .from('categorias')
-        .insert(categoria)
+        .insert({ ...categoria, user_id: user.id })
         .select()
         .single();
       
@@ -187,12 +194,15 @@ export const useMovimentacoes = () => {
 
 export const useMovimentacaoMutations = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const createMovimentacao = useMutation({
-    mutationFn: async (movimentacao: MovimentacaoInsert) => {
+    mutationFn: async (movimentacao: Omit<MovimentacaoInsert, 'user_id'>) => {
+      if (!user) throw new Error('User not authenticated');
+      
       const { data, error } = await supabase
         .from('movimentacoes')
-        .insert(movimentacao)
+        .insert({ ...movimentacao, user_id: user.id })
         .select()
         .single();
       
@@ -243,12 +253,15 @@ export const useClienteById = (id: string) => {
 
 export const useClienteMutations = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const createCliente = useMutation({
-    mutationFn: async (cliente: ClienteInsert) => {
+    mutationFn: async (cliente: Omit<ClienteInsert, 'user_id'>) => {
+      if (!user) throw new Error('User not authenticated');
+      
       const { data, error } = await supabase
         .from('clientes')
-        .insert(cliente)
+        .insert({ ...cliente, user_id: user.id })
         .select()
         .single();
       
@@ -312,12 +325,15 @@ export const useServicos = () => {
 
 export const useServicoMutations = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const createServico = useMutation({
-    mutationFn: async (servico: ServicoInsert) => {
+    mutationFn: async (servico: Omit<ServicoInsert, 'user_id'>) => {
+      if (!user) throw new Error('User not authenticated');
+      
       const { data, error } = await supabase
         .from('servicos')
-        .insert(servico)
+        .insert({ ...servico, user_id: user.id })
         .select()
         .single();
       
@@ -369,12 +385,15 @@ export const useVeiculosByCliente = (clienteId: string | null) => {
 
 export const useVeiculoMutations = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const createVeiculo = useMutation({
-    mutationFn: async (veiculo: VeiculoInsert) => {
+    mutationFn: async (veiculo: Omit<VeiculoInsert, 'user_id'>) => {
+      if (!user) throw new Error('User not authenticated');
+      
       const { data, error } = await supabase
         .from('veiculos')
-        .insert(veiculo)
+        .insert({ ...veiculo, user_id: user.id })
         .select()
         .single();
       
@@ -412,12 +431,15 @@ export const useVendas = () => {
 
 export const useVendaMutations = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const createVenda = useMutation({
-    mutationFn: async (venda: VendaInsert) => {
+    mutationFn: async (venda: Omit<VendaInsert, 'user_id'>) => {
+      if (!user) throw new Error('User not authenticated');
+      
       const { data, error } = await supabase
         .from('vendas')
-        .insert(venda)
+        .insert({ ...venda, user_id: user.id })
         .select()
         .single();
       
@@ -508,6 +530,7 @@ export const useVendaMutations = () => {
 // Utility functions for stock management
 export const useEstoqueOperations = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const darBaixaEstoque = useMutation({
     mutationFn: async ({ 
@@ -519,6 +542,7 @@ export const useEstoqueOperations = () => {
       quantidade: number; 
       osNumero: string; 
     }) => {
+      if (!user) throw new Error('User not authenticated');
       // Get current product
       const { data: produto, error: produtoError } = await supabase
         .from('produtos')
@@ -553,7 +577,8 @@ export const useEstoqueOperations = () => {
           quantidade,
           quantidade_anterior: quantidadeAnterior,
           motivo: `Baixa por venda - OS: ${osNumero}`,
-          os_numero: osNumero
+          os_numero: osNumero,
+          user_id: user.id
         });
 
       if (movError) throw movError;
@@ -576,6 +601,7 @@ export const useEstoqueOperations = () => {
       motivo: string;
       valorUnitario?: number;
     }) => {
+      if (!user) throw new Error('User not authenticated');
       // Get current product
       const { data: produto, error: produtoError } = await supabase
         .from('produtos')
@@ -606,7 +632,8 @@ export const useEstoqueOperations = () => {
           quantidade,
           quantidade_anterior: quantidadeAnterior,
           motivo,
-          valor_unitario: valorUnitario
+          valor_unitario: valorUnitario,
+          user_id: user.id
         });
 
       if (movError) throw movError;
@@ -641,12 +668,15 @@ export const useLogMovimentacoes = () => {
 
 export const useLogMovimentacaoMutations = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const createLog = useMutation({
-    mutationFn: async (log: LogMovimentacaoInsert) => {
+    mutationFn: async (log: Omit<LogMovimentacaoInsert, 'user_id'>) => {
+      if (!user) throw new Error('User not authenticated');
+      
       const { data, error } = await supabase
         .from('log_movimentacoes')
-        .insert(log)
+        .insert({ ...log, user_id: user.id })
         .select()
         .single();
       

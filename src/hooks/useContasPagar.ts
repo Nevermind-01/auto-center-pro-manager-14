@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
 export interface ContaPagar {
@@ -28,6 +29,7 @@ export function useContasPagar() {
   const [contas, setContas] = useState<ContaPagar[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<ContaPagarFilters>({});
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const fetchContas = async () => {
@@ -71,10 +73,12 @@ export function useContasPagar() {
   };
 
   const createConta = async (contaData: Omit<ContaPagar, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!user) throw new Error('User not authenticated');
+    
     try {
       const { data, error } = await supabase
         .from('contas_a_pagar')
-        .insert(contaData)
+        .insert({ ...contaData, user_id: user.id })
         .select()
         .single();
 
@@ -143,12 +147,15 @@ export function useContasPagar() {
   };
 
   const registrarLogPagamento = async (conta: ContaPagar) => {
+    if (!user) return;
+    
     try {
       await supabase
         .from('log_movimentacoes')
         .insert({
           tipo: 'conta_a_pagar',
           os_id: conta.id,
+          user_id: user.id,
           dados_novos: {
             empresa: conta.empresa,
             valor: conta.valor,

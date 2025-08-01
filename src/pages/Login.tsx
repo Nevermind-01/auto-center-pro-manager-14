@@ -19,7 +19,19 @@ const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, user, loading } = useAuth();
+
+  // Show loading state while auth initializes
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Redirect authenticated users
   useEffect(() => {

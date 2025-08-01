@@ -37,34 +37,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('Auth state changed:', event, session);
         
         if (mounted) {
-          // Only synchronous state updates here
           setSession(session);
           setUser(session?.user ?? null);
           setLoading(false);
-          
-          // Defer user validation with setTimeout to prevent deadlock
-          if (event === 'SIGNED_IN' && session?.user) {
-            setTimeout(async () => {
-              try {
-                const { data: isValid, error } = await supabase.rpc('validate_user_exists');
-                
-                if (error || !isValid) {
-                  console.warn('User validation failed, signing out');
-                  await supabase.auth.signOut();
-                  localStorage.clear();
-                  toast({
-                    title: "Sessão inválida",
-                    description: "Sua conta foi removida. Faça login novamente.",
-                    variant: "destructive",
-                  });
-                }
-              } catch (err) {
-                console.error('Error validating user:', err);
-                await supabase.auth.signOut();
-                localStorage.clear();
-              }
-            }, 0);
-          }
         }
       }
     );
@@ -76,31 +51,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('Initial session:', session, error);
         
         if (mounted) {
-          // If there's a cached session, validate the user still exists
-          if (session?.user) {
-            try {
-              const { data: isValid, error: validationError } = await supabase.rpc('validate_user_exists');
-              
-              if (validationError || !isValid) {
-                console.warn('Cached user validation failed, clearing session');
-                await supabase.auth.signOut();
-                localStorage.clear(); // Clear all localStorage data
-                setSession(null);
-                setUser(null);
-                setLoading(false);
-                return;
-              }
-            } catch (err) {
-              console.error('Error validating cached user:', err);
-              await supabase.auth.signOut();
-              localStorage.clear();
-              setSession(null);
-              setUser(null);
-              setLoading(false);
-              return;
-            }
-          }
-          
           setSession(session);
           setUser(session?.user ?? null);
           setLoading(false);

@@ -33,43 +33,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('Auth state changed:', event, session);
         
         if (mounted) {
-          // If user signs in, verify the user still exists
-          if (event === 'SIGNED_IN' && session?.user) {
-            try {
-              const { data: isValid, error } = await supabase.rpc('validate_user_exists');
-              
-              if (error || !isValid) {
-                console.warn('User validation failed, signing out');
-                await supabase.auth.signOut();
-                localStorage.clear(); // Clear all localStorage data
-                setSession(null);
-                setUser(null);
-                setLoading(false);
-                toast({
-                  title: "Sessão inválida",
-                  description: "Sua conta foi removida. Faça login novamente.",
-                  variant: "destructive",
-                });
-                return;
-              }
-            } catch (err) {
-              console.error('Error validating user:', err);
-              await supabase.auth.signOut();
-              localStorage.clear();
-              setSession(null);
-              setUser(null);
-              setLoading(false);
-              return;
-            }
-          }
-          
+          // Only synchronous state updates here
           setSession(session);
           setUser(session?.user ?? null);
           setLoading(false);
+          
+          // Defer user validation with setTimeout to prevent deadlock
+          if (event === 'SIGNED_IN' && session?.user) {
+            setTimeout(async () => {
+              try {
+                const { data: isValid, error } = await supabase.rpc('validate_user_exists');
+                
+                if (error || !isValid) {
+                  console.warn('User validation failed, signing out');
+                  await supabase.auth.signOut();
+                  localStorage.clear();
+                  toast({
+                    title: "Sessão inválida",
+                    description: "Sua conta foi removida. Faça login novamente.",
+                    variant: "destructive",
+                  });
+                }
+              } catch (err) {
+                console.error('Error validating user:', err);
+                await supabase.auth.signOut();
+                localStorage.clear();
+              }
+            }, 0);
+          }
         }
       }
     );

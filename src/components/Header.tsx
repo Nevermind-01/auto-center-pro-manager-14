@@ -1,10 +1,23 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function Header() {
+  const { user, signOut } = useAuth();
+
+  const getInitials = (email: string) => {
+    return email.split('@')[0].substring(0, 2).toUpperCase();
+  };
+
   return (
     <header className="h-14 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="flex h-full items-center justify-between px-4">
@@ -24,17 +37,37 @@ export function Header() {
             <Bell className="h-4 w-4" />
           </Button>
           
-          <div className="flex items-center space-x-2">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                AD
-              </AvatarFallback>
-            </Avatar>
-            <div className="hidden md:block">
-              <p className="text-sm font-medium">Administrador</p>
-              <p className="text-xs text-muted-foreground">admin@autocenter.com</p>
-            </div>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center space-x-2 h-auto p-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                    {user ? getInitials(user.email || '') : 'AD'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="hidden md:block text-left">
+                  <p className="text-sm font-medium">
+                    {user?.user_metadata?.full_name || 'Usuário'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {user?.email || 'admin@autocenter.com'}
+                  </p>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem className="text-sm text-muted-foreground cursor-default">
+                {user?.email || 'admin@autocenter.com'}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={signOut}
+                className="text-destructive cursor-pointer"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

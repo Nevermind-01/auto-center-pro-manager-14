@@ -1,44 +1,71 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, Car, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Car, AlertCircle, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { signIn, signUp, user } = useAuth();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  // Redirect authenticated users
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
 
-    // Simulação de login (substituir por lógica real de autenticação)
     try {
-      if (email === "admin@autocenter.com" && password === "admin123") {
-        toast({
-          title: "Login realizado com sucesso!",
-          description: "Bem-vindo ao Auto Center Pro Manager",
-        });
-        
-        // Redirecionar para a NOVA OS após um breve delay
-        setTimeout(() => {
-          navigate("/nova-os");
-        }, 1000);
+      let result;
+      if (isSignUp) {
+        result = await signUp(email, password, fullName);
+        if (!result.error) {
+          toast({
+            title: "Conta criada com sucesso!",
+            description: "Verifique seu email para confirmar a conta",
+          });
+          setIsSignUp(false);
+        }
       } else {
-        setError("Email ou senha incorretos");
+        result = await signIn(email, password);
+        if (!result.error) {
+          toast({
+            title: "Login realizado com sucesso!",
+            description: "Bem-vindo ao Auto Center Pro Manager",
+          });
+          navigate("/dashboard");
+        }
+      }
+
+      if (result.error) {
+        if (result.error.message.includes("Invalid login credentials")) {
+          setError("Email ou senha incorretos");
+        } else if (result.error.message.includes("User already registered")) {
+          setError("Este email já está cadastrado. Faça login.");
+        } else {
+          setError(result.error.message || "Erro ao processar solicitação");
+        }
       }
     } catch (error) {
-      setError("Erro ao realizar login. Tente novamente.");
+      setError("Erro interno. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
@@ -59,13 +86,18 @@ const Login = () => {
 
         <Card className="shadow-lg border-0 bg-gradient-card">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Login</CardTitle>
+            <CardTitle className="text-2xl text-center">
+              {isSignUp ? "Criar Conta" : "Login"}
+            </CardTitle>
             <CardDescription className="text-center">
-              Digite suas credenciais para acessar o sistema
+              {isSignUp 
+                ? "Digite suas informações para criar uma conta" 
+                : "Digite suas credenciais para acessar o sistema"
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
@@ -73,12 +105,27 @@ const Login = () => {
                 </Alert>
               )}
 
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Nome Completo</Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="Digite seu nome completo"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                    className="h-11"
+                  />
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@autocenter.com"
+                  placeholder={isSignUp ? "Digite seu email" : "admin@autocenter.com"}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -96,6 +143,7 @@ const Login = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    minLength={6}
                     className="h-11 pr-10"
                   />
                   <Button
@@ -120,16 +168,48 @@ const Login = () => {
                 disabled={isLoading}
                 variant="gradient"
               >
-                {isLoading ? "Entrando..." : "Entrar"}
+                {isLoading 
+                  ? (isSignUp ? "Criando conta..." : "Entrando...") 
+                  : (isSignUp ? "Criar Conta" : "Entrar")
+                }
               </Button>
             </form>
 
-            <div className="mt-6 text-center text-sm text-muted-foreground">
-              <p>Credenciais de teste:</p>
-              <p className="font-mono text-xs mt-1">
-                admin@autocenter.com / admin123
-              </p>
+            <div className="mt-6 text-center">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setError("");
+                  setEmail("");
+                  setPassword("");
+                  setFullName("");
+                }}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                {isSignUp ? (
+                  <>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Já tem uma conta? Faça login
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Não tem conta? Criar uma
+                  </>
+                )}
+              </Button>
             </div>
+
+            {!isSignUp && (
+              <div className="mt-4 text-center text-sm text-muted-foreground">
+                <p>Credenciais de teste:</p>
+                <p className="font-mono text-xs mt-1">
+                  admin@autocenter.com / admin123
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

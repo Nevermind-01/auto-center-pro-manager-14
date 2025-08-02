@@ -761,26 +761,85 @@ const NovaOSSupabase = () => {
       return;
     }
 
+    // Validar estoque antes de finalizar
+    for (const produto of produtosSelecionados) {
+      const estoqueDisponivel = await estoqueManager.verificarEstoque(produto.id, produto.quantidade);
+      if (!estoqueDisponivel) {
+        toast({
+          title: "Estoque insuficiente",
+          description: `Não há estoque suficiente para o produto ${produto.nome}.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     try {
-      // Criar a venda
-      const venda = await createVenda.mutateAsync({
-        numero_os: numeroOS,
-        cliente_id: clienteSelecionado.id,
-        cliente_nome: clienteSelecionado.nome,
-        veiculo_id: veiculoSelecionado?.id || null,
-        valor_total: valorTotal,
-        valor_desconto: valorDesconto,
-        valor_final: valorFinal,
-        forma_pagamento: formaPagamento as any,
-        parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
-        observacoes: observacoes || null,
-        status: 'finalizada'
-      });
+      let vendaId: string;
+
+      if (isEditing && editingVenda) {
+        // Modo edição - atualizar venda existente
+        // Deletar produtos e serviços antigos
+        await deleteVendaProdutos.mutateAsync(editingVenda.id);
+        await deleteVendaServicos.mutateAsync(editingVenda.id);
+
+        // Atualizar venda existente para finalizada
+        const vendaAtualizada = await updateVenda.mutateAsync({
+          id: editingVenda.id,
+          cliente_id: clienteSelecionado.id,
+          cliente_nome: clienteSelecionado.nome,
+          veiculo_id: veiculoSelecionado?.id || null,
+          valor_total: valorTotal,
+          valor_desconto: valorDesconto,
+          valor_final: valorFinal,
+          forma_pagamento: formaPagamento as any,
+          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+          observacoes: observacoes || null,
+          status: 'finalizada'
+        });
+
+        vendaId = editingVenda.id;
+
+        // Registrar log de edição e finalização
+        await createLog.mutateAsync({
+          os_id: editingVenda.id,
+          tipo: 'edicao_finalizacao',
+          usuario: 'Admin',
+          observacoes: `OS ${numeroOS} editada e finalizada - ${formaPagamento}`,
+          dados_anteriores: originalData,
+          dados_novos: vendaAtualizada
+        });
+      } else {
+        // Modo criação - criar nova venda
+        const venda = await createVenda.mutateAsync({
+          numero_os: numeroOS,
+          cliente_id: clienteSelecionado.id,
+          cliente_nome: clienteSelecionado.nome,
+          veiculo_id: veiculoSelecionado?.id || null,
+          valor_total: valorTotal,
+          valor_desconto: valorDesconto,
+          valor_final: valorFinal,
+          forma_pagamento: formaPagamento as any,
+          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+          observacoes: observacoes || null,
+          status: 'finalizada'
+        });
+
+        vendaId = venda.id;
+
+        // Registrar log de criação e finalização
+        await createLog.mutateAsync({
+          os_id: venda.id,
+          tipo: 'criacao_finalizacao',
+          usuario: 'Admin',
+          observacoes: `OS ${numeroOS} criada e finalizada - ${formaPagamento}`
+        });
+      }
 
       // Adicionar produtos da venda
       for (const produto of produtosSelecionados) {
         await createVendaProduto.mutateAsync({
-          venda_id: venda.id,
+          venda_id: vendaId,
           produto_id: produto.id,
           produto_nome: produto.nome,
           quantidade: produto.quantidade,
@@ -792,7 +851,7 @@ const NovaOSSupabase = () => {
       // Adicionar serviços da venda
       for (const servico of servicosSelecionados) {
         await createVendaServico.mutateAsync({
-          venda_id: venda.id,
+          venda_id: vendaId,
           servico_id: servico.id || null,
           servico_nome: servico.nome,
           preco: servico.valor
@@ -811,37 +870,18 @@ const NovaOSSupabase = () => {
         numeroOS
       );
 
-      // Registrar log de finalização
-      await createLog.mutateAsync({
-        os_id: venda.id,
-        tipo: 'finalizacao',
-        usuario: 'Admin',
-        observacoes: `OS ${numeroOS} finalizada - ${formaPagamento}`
-      });
-
       toast({
         title: "OS finalizada",
         description: `OS ${numeroOS} foi finalizada com sucesso.`,
       });
 
-      // Limpar formulário
-      setClienteSelecionado(null);
-      setVeiculoSelecionado(null);
-      setProdutosSelecionados([]);
-      setServicosSelecionados([]);
-      setDesconto(0);
-      setFormaPagamento("");
-      setParcelas(1);
-      setObservacoes("");
-      
-      // Gerar novo número de OS
-      const agora = new Date();
-      const ano = agora.getFullYear();
-      const mes = String(agora.getMonth() + 1).padStart(2, '0');
-      const dia = String(agora.getDate()).padStart(2, '0');
-      const hora = String(agora.getHours()).padStart(2, '0');
-      const minuto = String(agora.getMinutes()).padStart(2, '0');
-      setNumeroOS(`OS${ano}${mes}${dia}${hora}${minuto}`);
+      if (isEditing) {
+        // Se estava editando, voltar para o histórico
+        navigate('/history');
+      } else {
+        // Se era nova OS, limpar formulário para criar outra
+        resetarFormulario();
+      }
 
     } catch (error) {
       console.error('Erro ao finalizar OS:', error);

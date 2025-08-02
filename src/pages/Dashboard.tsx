@@ -11,52 +11,73 @@ import {
   TrendingDown
 } from "lucide-react";
 import { useVendas, useProdutos, useClientes } from "@/hooks/useSupabaseQueries";
-import { useMemo } from "react";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { DateRange } from "react-day-picker";
+import { startOfDay, endOfDay, subDays } from "date-fns";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { data: vendas, isLoading: vendasLoading } = useVendas();
+  
+  // Default to last 30 days
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfDay(subDays(new Date(), 30)),
+    to: endOfDay(new Date())
+  });
+
+  // Calculate filters for the hook
+  const filters = useMemo(() => {
+    if (!dateRange?.from) return undefined;
+    return {
+      startDate: dateRange.from,
+      endDate: dateRange.to || dateRange.from
+    };
+  }, [dateRange]);
+
+  const { data: vendas, isLoading: vendasLoading } = useVendas(filters);
   const { data: produtos, isLoading: produtosLoading } = useProdutos();
   const { data: clientes, isLoading: clientesLoading } = useClientes();
 
-  // Calcular estatísticas das vendas
-  const vendasStats = useMemo(() => {
-    if (!vendas) return { totalVendas: 0, crescimento: 0 };
+  // Get all sales for growth calculation
+  const { data: allVendas } = useVendas();
 
-    const agora = new Date();
-    const mesAtual = agora.getMonth();
-    const anoAtual = agora.getFullYear();
-    
-    const mesAnterior = mesAtual === 0 ? 11 : mesAtual - 1;
-    const anoMesAnterior = mesAtual === 0 ? anoAtual - 1 : anoAtual;
+  // Calculate sales statistics for the selected period
+  const vendasStats = useMemo(() => {
+    if (!vendas || !dateRange?.from) return { totalVendas: 0, crescimento: 0 };
 
     const vendasPagas = vendas.filter(v => v.status === 'finalizada');
-    
-    const vendasMesAtual = vendasPagas.filter(v => {
-      const dataVenda = new Date(v.created_at);
-      return dataVenda.getMonth() === mesAtual && dataVenda.getFullYear() === anoAtual;
-    });
+    const totalVendas = vendasPagas.reduce((acc, v) => acc + Number(v.valor_total), 0);
 
-    const vendasMesAnterior = vendasPagas.filter(v => {
-      const dataVenda = new Date(v.created_at);
-      return dataVenda.getMonth() === mesAnterior && dataVenda.getFullYear() === anoMesAnterior;
-    });
-
-    const totalMesAtual = vendasMesAtual.reduce((acc, v) => acc + Number(v.valor_total), 0);
-    const totalMesAnterior = vendasMesAnterior.reduce((acc, v) => acc + Number(v.valor_total), 0);
+    // Calculate growth compared to previous period of same length
+    const periodDays = dateRange.to 
+      ? Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 1000)) + 1
+      : 1;
     
-    const crescimento = totalMesAnterior > 0 
-      ? ((totalMesAtual - totalMesAnterior) / totalMesAnterior) * 100 
-      : totalMesAtual > 0 ? 100 : 0;
+    const previousStart = new Date(dateRange.from.getTime() - (periodDays * 24 * 60 * 60 * 1000));
+    const previousEnd = new Date(dateRange.from.getTime() - (24 * 60 * 60 * 1000));
+
+    // For growth calculation, we need all sales (not filtered by date range)
+    const vendasPreviousPeriod = allVendas?.filter(v => {
+      const dataVenda = new Date(v.created_at);
+      return v.status === 'finalizada' && 
+             dataVenda >= previousStart && 
+             dataVenda <= previousEnd;
+    }) || [];
+
+    const totalVendasAnterior = vendasPreviousPeriod.reduce((acc, v) => acc + Number(v.valor_total), 0);
+    
+    const crescimento = totalVendasAnterior > 0 
+      ? ((totalVendas - totalVendasAnterior) / totalVendasAnterior) * 100 
+      : totalVendas > 0 ? 100 : 0;
 
     return {
-      totalVendas: totalMesAtual,
+      totalVendas,
       crescimento: Math.round(crescimento * 10) / 10
     };
-  }, [vendas]);
+  }, [vendas, allVendas, dateRange]);
 
-  // Calcular estatísticas dos produtos
+  // Calculate product statistics
   const produtosStats = useMemo(() => {
     if (!produtos) return { total: 0, estoqueBaixo: 0 };
 
@@ -71,38 +92,40 @@ const Dashboard = () => {
     };
   }, [produtos]);
 
-  // Calcular crescimento de clientes
+  // Calculate client growth for the selected period
   const clientesStats = useMemo(() => {
-    if (!clientes) return { total: 0, crescimento: 0 };
+    if (!clientes || !dateRange?.from) return { total: 0, crescimento: 0 };
 
-    const agora = new Date();
-    const mesAtual = agora.getMonth();
-    const anoAtual = agora.getFullYear();
+    const clientesPeriodo = clientes.filter(c => {
+      const dataCliente = new Date(c.created_at);
+      return dataCliente >= dateRange.from! && 
+             dataCliente <= (dateRange.to || dateRange.from!);
+    });
+
+    // Calculate growth compared to previous period
+    const periodDays = dateRange.to 
+      ? Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24))
+      : 1;
     
-    const mesAnterior = mesAtual === 0 ? 11 : mesAtual - 1;
-    const anoMesAnterior = mesAtual === 0 ? anoAtual - 1 : anoAtual;
+    const previousStart = new Date(dateRange.from.getTime() - (periodDays * 24 * 60 * 60 * 1000));
+    const previousEnd = new Date(dateRange.from.getTime() - 1);
 
-    const clientesMesAtual = clientes.filter(c => {
+    const clientesPeriodoAnterior = clientes.filter(c => {
       const dataCliente = new Date(c.created_at);
-      return dataCliente.getMonth() === mesAtual && dataCliente.getFullYear() === anoAtual;
+      return dataCliente >= previousStart && dataCliente <= previousEnd;
     });
 
-    const clientesMesAnterior = clientes.filter(c => {
-      const dataCliente = new Date(c.created_at);
-      return dataCliente.getMonth() === mesAnterior && dataCliente.getFullYear() === anoMesAnterior;
-    });
-
-    const crescimento = clientesMesAnterior.length > 0 
-      ? ((clientesMesAtual.length - clientesMesAnterior.length) / clientesMesAnterior.length) * 100 
-      : clientesMesAtual.length > 0 ? 100 : 0;
+    const crescimento = clientesPeriodoAnterior.length > 0 
+      ? ((clientesPeriodo.length - clientesPeriodoAnterior.length) / clientesPeriodoAnterior.length) * 100 
+      : clientesPeriodo.length > 0 ? 100 : 0;
 
     return {
       total: clientes.length,
       crescimento: Math.round(crescimento * 10) / 10
     };
-  }, [clientes]);
+  }, [clientes, dateRange]);
 
-  // Vendas recentes (3 mais recentes)
+  // Recent sales (3 most recent from filtered data)
   const vendasRecentes = useMemo(() => {
     if (!vendas) return [];
     
@@ -119,7 +142,7 @@ const Dashboard = () => {
       }));
   }, [vendas]);
 
-  // Produtos com estoque baixo
+  // Products with low stock
   const produtosBaixoEstoque = useMemo(() => {
     if (!produtos) return [];
     
@@ -135,9 +158,16 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">Visão geral do seu auto center</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground">Visão geral do seu auto center</p>
+        </div>
+        <DateRangePicker 
+          value={dateRange} 
+          onChange={setDateRange}
+          className="w-full sm:w-auto"
+        />
       </div>
 
       {/* Cards de Estatísticas */}

@@ -409,19 +409,33 @@ export const useVeiculoMutations = () => {
 };
 
 // Sales hooks
-export const useVendas = () => {
+interface VendasFilters {
+  startDate?: Date;
+  endDate?: Date;
+}
+
+export const useVendas = (filters?: VendasFilters) => {
   return useQuery({
-    queryKey: ['vendas'],
+    queryKey: ['vendas', filters],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('vendas')
         .select(`
           *,
           venda_produtos(*),
           venda_servicos(*),
           veiculo:veiculos(*)
-        `)
-        .order('created_at', { ascending: false });
+        `);
+
+      if (filters?.startDate) {
+        query = query.gte('created_at', filters.startDate.toISOString());
+      }
+
+      if (filters?.endDate) {
+        query = query.lte('created_at', filters.endDate.toISOString());
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
       
       if (error) throw error;
       return data;

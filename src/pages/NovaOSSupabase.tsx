@@ -663,7 +663,7 @@ const NovaOSSupabase = () => {
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: formaPagamento as any || null,
+          forma_pagamento: (formaPagamento || 'cartao') as any,
           parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
           observacoes: observacoes || null,
           status: 'pendente'

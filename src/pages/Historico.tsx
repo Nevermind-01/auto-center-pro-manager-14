@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useVendas, useVendaMutations, useLogMovimentacaoMutations } from "@/hooks/useSupabaseQueries";
 import { useSupabaseEstoque } from "@/lib/supabaseEstoque";
 import { ConfirmCancelModal } from "@/components/ConfirmCancelModal";
+import { FinalizarOSModal } from "@/components/FinalizarOSModal";
 import { 
   Search, 
   Edit, 
@@ -58,6 +59,8 @@ const Historico = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todas');
   const [vendaParaCancelar, setVendaParaCancelar] = useState<any>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [vendaParaFinalizar, setVendaParaFinalizar] = useState<any>(null);
+  const [showFinalizarModal, setShowFinalizarModal] = useState(false);
   
   const { data: vendas = [], isLoading } = useVendas();
   const { updateVenda } = useVendaMutations();
@@ -151,7 +154,7 @@ const Historico = () => {
     }
   };
 
-  const handleFinalizarOS = async (venda: any) => {
+  const handleFinalizarOS = (venda: any) => {
     if (venda.status !== 'pendente') {
       toast({
         title: "Ação não permitida",
@@ -161,78 +164,8 @@ const Historico = () => {
       return;
     }
 
-    if (!venda.forma_pagamento) {
-      toast({
-        title: "Erro",
-        description: "Esta OS não possui forma de pagamento definida. Edite a OS primeiro.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // Validar estoque dos produtos
-      if (venda.venda_produtos && venda.venda_produtos.length > 0) {
-        for (const item of venda.venda_produtos) {
-          const temEstoque = await estoqueManager.verificarEstoque(item.produto_id, item.quantidade);
-          if (!temEstoque) {
-            const produto = await estoqueManager.buscarProdutoPorId(item.produto_id);
-            toast({
-              title: "Estoque insuficiente",
-              description: `Não há estoque suficiente para o produto ${produto?.nome || item.produto_nome}. Disponível: ${produto?.quantidade || 0}, Necessário: ${item.quantidade}`,
-              variant: "destructive",
-            });
-            return;
-          }
-        }
-
-        // Dar baixa no estoque
-        const produtosParaBaixa = venda.venda_produtos.map((item: any) => ({
-          id: item.produto_id,
-          nome: item.produto_nome,
-          marca: null,
-          valor: item.preco_unitario,
-          quantidade: item.quantidade
-        }));
-
-        const sucessoEstoque = await estoqueManager.processarVenda(produtosParaBaixa, venda.numero_os);
-        if (!sucessoEstoque) {
-          toast({
-            title: "Erro no estoque",
-            description: "Erro ao dar baixa no estoque. Tente novamente.",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-
-      // Atualizar status da venda para finalizada
-      await updateVenda.mutateAsync({
-        id: venda.id,
-        status: 'finalizada'
-      });
-
-      // Registrar log de finalização
-      await createLog.mutateAsync({
-        os_id: venda.id,
-        tipo: 'finalizacao',
-        usuario: 'Admin',
-        observacoes: `OS ${venda.numero_os} finalizada via histórico - ${venda.forma_pagamento}`
-      });
-
-      toast({
-        title: "OS finalizada",
-        description: `OS ${venda.numero_os} foi finalizada com sucesso.`,
-      });
-
-    } catch (error) {
-      console.error('Erro ao finalizar OS:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao finalizar a OS. Tente novamente.",
-        variant: "destructive",
-      });
-    }
+    setVendaParaFinalizar(venda);
+    setShowFinalizarModal(true);
   };
 
   const handleViewDetails = (venda: any) => {
@@ -445,6 +378,18 @@ const Historico = () => {
         onOpenChange={setShowCancelModal}
         onConfirm={confirmCancelOS}
         osNumero={vendaParaCancelar?.numero_os || ''}
+      />
+      
+      {/* Modal de finalização */}
+      <FinalizarOSModal
+        open={showFinalizarModal}
+        onOpenChange={(open) => {
+          setShowFinalizarModal(open);
+          if (!open) {
+            setVendaParaFinalizar(null);
+          }
+        }}
+        venda={vendaParaFinalizar}
       />
     </div>
   );

@@ -609,7 +609,7 @@ const NovaOSSupabase = () => {
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: formaPagamento as any || null,
+          forma_pagamento: (formaPagamento || 'dinheiro') as any,
           parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
           observacoes: observacoes || null
         });
@@ -663,7 +663,7 @@ const NovaOSSupabase = () => {
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: (formaPagamento || 'cartao') as any,
+          forma_pagamento: (formaPagamento || 'dinheiro') as any,
           parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
           observacoes: observacoes || null,
           status: 'pendente'
@@ -1664,7 +1664,12 @@ const NovaOSSupabase = () => {
                 </Button>
               ) : (
                 <>
-                  <Button variant="outline" onClick={salvarOS} className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    onClick={salvarOS} 
+                    className="flex-1"
+                    disabled={!clienteSelecionado || (produtosSelecionados.length === 0 && servicosSelecionados.length === 0)}
+                  >
                     <FileText className="mr-2 h-4 w-4" />
                     Salvar OS
                   </Button>

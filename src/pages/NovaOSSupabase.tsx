@@ -834,6 +834,14 @@ const NovaOSSupabase = () => {
           usuario: 'Admin',
           observacoes: `OS ${numeroOS} criada`
         });
+
+        // Registrar log de finalização separadamente
+        await createLog.mutateAsync({
+          os_id: venda.id,
+          tipo: 'finalizacao',
+          usuario: 'Admin',
+          observacoes: `OS ${numeroOS} finalizada`
+        });
       }
 
       // Adicionar produtos da venda

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useVendas, useVendaMutations, useLogMovimentacaoMutations } from "@/hooks/useSupabaseQueries";
+import { useSupabaseEstoque } from "@/lib/supabaseEstoque";
 import { ConfirmCancelModal } from "@/components/ConfirmCancelModal";
 import { 
   Search, 
@@ -18,7 +19,8 @@ import {
   DollarSign,
   User,
   FileText,
-  Car
+  Car,
+  CheckCircle
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -60,6 +62,7 @@ const Historico = () => {
   const { data: vendas = [], isLoading } = useVendas();
   const { updateVenda } = useVendaMutations();
   const { createLog } = useLogMovimentacaoMutations();
+  const estoqueManager = useSupabaseEstoque();
   
   // Filter vendas based on search term and status
   const vendasFiltradas = useMemo(() => {
@@ -143,6 +146,90 @@ const Historico = () => {
       toast({
         title: "Erro",
         description: "Erro ao cancelar a OS. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFinalizarOS = async (venda: any) => {
+    if (venda.status !== 'pendente') {
+      toast({
+        title: "Ação não permitida",
+        description: "Apenas OS pendentes podem ser finalizadas.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!venda.forma_pagamento) {
+      toast({
+        title: "Erro",
+        description: "Esta OS não possui forma de pagamento definida. Edite a OS primeiro.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Validar estoque dos produtos
+      if (venda.venda_produtos && venda.venda_produtos.length > 0) {
+        for (const item of venda.venda_produtos) {
+          const temEstoque = await estoqueManager.verificarEstoque(item.produto_id, item.quantidade);
+          if (!temEstoque) {
+            const produto = await estoqueManager.buscarProdutoPorId(item.produto_id);
+            toast({
+              title: "Estoque insuficiente",
+              description: `Não há estoque suficiente para o produto ${produto?.nome || item.produto_nome}. Disponível: ${produto?.quantidade || 0}, Necessário: ${item.quantidade}`,
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+
+        // Dar baixa no estoque
+        const produtosParaBaixa = venda.venda_produtos.map((item: any) => ({
+          id: item.produto_id,
+          nome: item.produto_nome,
+          marca: null,
+          valor: item.preco_unitario,
+          quantidade: item.quantidade
+        }));
+
+        const sucessoEstoque = await estoqueManager.processarVenda(produtosParaBaixa, venda.numero_os);
+        if (!sucessoEstoque) {
+          toast({
+            title: "Erro no estoque",
+            description: "Erro ao dar baixa no estoque. Tente novamente.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Atualizar status da venda para finalizada
+      await updateVenda.mutateAsync({
+        id: venda.id,
+        status: 'finalizada'
+      });
+
+      // Registrar log de finalização
+      await createLog.mutateAsync({
+        os_id: venda.id,
+        tipo: 'finalizacao',
+        usuario: 'Admin',
+        observacoes: `OS ${venda.numero_os} finalizada via histórico - ${venda.forma_pagamento}`
+      });
+
+      toast({
+        title: "OS finalizada",
+        description: `OS ${venda.numero_os} foi finalizada com sucesso.`,
+      });
+
+    } catch (error) {
+      console.error('Erro ao finalizar OS:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao finalizar a OS. Tente novamente.",
         variant: "destructive",
       });
     }
@@ -317,6 +404,17 @@ const Historico = () => {
                             >
                               <Edit className="h-4 w-4 mr-1" />
                               Editar
+                            </Button>
+                          )}
+                          
+                          {venda.status === 'pendente' && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => handleFinalizarOS(venda)}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Finalizar OS
                             </Button>
                           )}
                           

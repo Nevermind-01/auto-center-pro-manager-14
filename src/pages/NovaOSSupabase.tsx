@@ -800,12 +800,12 @@ const NovaOSSupabase = () => {
 
         vendaId = editingVenda.id;
 
-        // Registrar log de edição e finalização
+        // Registrar log de edição
         await createLog.mutateAsync({
           os_id: editingVenda.id,
-          tipo: 'edicao_finalizacao',
+          tipo: 'edicao',
           usuario: 'Admin',
-          observacoes: `OS ${numeroOS} editada e finalizada - ${formaPagamento}`,
+          observacoes: `OS ${numeroOS} editada`,
           dados_anteriores: originalData,
           dados_novos: vendaAtualizada
         });
@@ -827,12 +827,12 @@ const NovaOSSupabase = () => {
 
         vendaId = venda.id;
 
-        // Registrar log de criação e finalização
+        // Registrar log de criação
         await createLog.mutateAsync({
           os_id: venda.id,
-          tipo: 'criacao_finalizacao',
+          tipo: 'criacao',
           usuario: 'Admin',
-          observacoes: `OS ${numeroOS} criada e finalizada - ${formaPagamento}`
+          observacoes: `OS ${numeroOS} criada`
         });
       }
 
@@ -1649,18 +1649,27 @@ const NovaOSSupabase = () => {
 
             {/* Botões de ação */}
             <div className="flex gap-2">
-              <Button variant="outline" onClick={salvarOS} className="flex-1">
-                <FileText className="mr-2 h-4 w-4" />
-                Salvar OS
-              </Button>
-              <Button 
-                onClick={finalizarOS} 
-                className="flex-1"
-                disabled={!clienteSelecionado || !formaPagamento || (produtosSelecionados.length === 0 && servicosSelecionados.length === 0)}
-              >
-                <ShoppingCart className="mr-2 h-4 w-4" />
-                Finalizar OS
-              </Button>
+              {isEditing ? (
+                <Button onClick={salvarOS} className="flex-1">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Salvar OS
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={salvarOS} className="flex-1">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Salvar OS
+                  </Button>
+                  <Button 
+                    onClick={finalizarOS} 
+                    className="flex-1"
+                    disabled={!clienteSelecionado || !formaPagamento || (produtosSelecionados.length === 0 && servicosSelecionados.length === 0)}
+                  >
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    Finalizar OS
+                  </Button>
+                </>
+              )}
             </div>
 
             {/* Alertas */}

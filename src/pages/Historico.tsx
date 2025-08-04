@@ -11,6 +11,7 @@ import { useVendas, useVendaMutations, useLogMovimentacaoMutations } from "@/hoo
 import { useSupabaseEstoque } from "@/lib/supabaseEstoque";
 import { ConfirmCancelModal } from "@/components/ConfirmCancelModal";
 import { FinalizarOSModal } from "@/components/FinalizarOSModal";
+import { VisualizarOSModal } from "@/components/VisualizarOSModal";
 import { 
   Search, 
   Edit, 
@@ -61,6 +62,8 @@ const Historico = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [vendaParaFinalizar, setVendaParaFinalizar] = useState<any>(null);
   const [showFinalizarModal, setShowFinalizarModal] = useState(false);
+  const [osParaVisualizar, setOsParaVisualizar] = useState<string | null>(null);
+  const [showVisualizarModal, setShowVisualizarModal] = useState(false);
   
   const { data: vendas = [], isLoading } = useVendas();
   const { updateVenda } = useVendaMutations();
@@ -169,8 +172,8 @@ const Historico = () => {
   };
 
   const handleViewDetails = (venda: any) => {
-    // This would open a details modal or navigate to details page
-    console.log("View details:", venda);
+    setOsParaVisualizar(venda.id);
+    setShowVisualizarModal(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -390,6 +393,18 @@ const Historico = () => {
           }
         }}
         venda={vendaParaFinalizar}
+      />
+      
+      {/* Modal de visualização */}
+      <VisualizarOSModal
+        open={showVisualizarModal}
+        onOpenChange={(open) => {
+          setShowVisualizarModal(open);
+          if (!open) {
+            setOsParaVisualizar(null);
+          }
+        }}
+        osId={osParaVisualizar}
       />
     </div>
   );

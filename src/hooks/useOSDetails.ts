@@ -34,6 +34,10 @@ export interface OSDetails {
     ano?: string;
     observacoes?: string;
   } | null;
+  mecanico: {
+    nome: string;
+    especialidade?: string;
+  } | null;
   venda_produtos: Array<{
     id: string;
     produto_nome: string;
@@ -93,6 +97,10 @@ export const useOSDetails = (osId: string | null) => {
             placa,
             ano,
             observacoes
+          ),
+          mecanicos!vendas_mecanico_id_fkey (
+            nome,
+            especialidade
           )
         `)
         .eq('id', osId)
@@ -133,6 +141,7 @@ export const useOSDetails = (osId: string | null) => {
         ...vendaData,
         cliente: vendaData.clientes || null,
         veiculo: vendaData.veiculos || null,
+        mecanico: vendaData.mecanicos || null,
         venda_produtos: produtosData || [],
         venda_servicos: servicosData || [],
         creator: creatorData

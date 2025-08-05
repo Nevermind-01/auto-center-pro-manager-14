@@ -22,7 +22,8 @@ import {
   User,
   FileText,
   Car,
-  CheckCircle
+  CheckCircle,
+  Wrench
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -296,15 +297,15 @@ const Historico = () => {
                                  <User className="h-4 w-4" />
                                  <span>{venda.cliente_nome}</span>
                                </div>
-                               {venda.veiculo && (
-                                 <div className="flex items-center gap-2">
-                                   <Car className="h-4 w-4" />
-                                   <span>
-                                     {venda.veiculo.marca} {venda.veiculo.modelo} - {venda.veiculo.placa}
-                                     {venda.veiculo.ano && ` (${venda.veiculo.ano})`}
-                                   </span>
-                                 </div>
-                               )}
+                                {venda.veiculo && (
+                                  <div className="flex items-center gap-2">
+                                    <Car className="h-4 w-4" />
+                                    <span>
+                                      {venda.veiculo.marca} {venda.veiculo.modelo} - {venda.veiculo.placa}
+                                      {venda.veiculo.ano && ` (${venda.veiculo.ano})`}
+                                    </span>
+                                  </div>
+                                )}
                                <div className="flex items-center gap-2">
                                  <DollarSign className="h-4 w-4" />
                                  <span>R$ {Number(venda.valor_final).toFixed(2)}</span>

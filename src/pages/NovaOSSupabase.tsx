@@ -22,6 +22,7 @@ import {
   useLogMovimentacaoMutations,
   useVendas
 } from "@/hooks/useSupabaseQueries";
+import { useMecanicos } from "@/hooks/useMecanicos";
 import { useSupabaseEstoque, ProdutoComCategoria } from "@/lib/supabaseEstoque";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -40,7 +41,8 @@ import {
   AlertTriangle,
   Car,
   Edit,
-  Truck
+  Truck,
+  Wrench
 } from "lucide-react";
 
 // Interfaces
@@ -74,6 +76,7 @@ const NovaOSSupabase = () => {
   const { data: produtosDisponiveis = [], isLoading: loadingProdutos } = useProdutos();
   const { data: clientesDisponiveis = [], isLoading: loadingClientes } = useClientes();
   const { data: servicosDisponiveis = [], isLoading: loadingServicos } = useServicos();
+  const { data: mecanicosDisponiveis = [] } = useMecanicos();
   const { data: vendas = [] } = useVendas();
   
   // Mutations
@@ -96,6 +99,7 @@ const NovaOSSupabase = () => {
   // Estados para veículos
   const [veiculoSelecionado, setVeiculoSelecionado] = useState<any>(null);
   const [showVeiculoModal, setShowVeiculoModal] = useState(false);
+  const [mecanicoSelecionado, setMecanicoSelecionado] = useState<string>("");
   const [novoVeiculo, setNovoVeiculo] = useState({
     marca: "",
     modelo: "",
@@ -196,6 +200,11 @@ const NovaOSSupabase = () => {
           const cliente = clientesDisponiveis.find(c => c.id === vendaParaEditar.cliente_id);
           if (cliente) {
             setClienteSelecionado(cliente);
+          }
+          
+          // Carregar mecânico se houver
+          if (vendaParaEditar.mecanico_id) {
+            setMecanicoSelecionado(vendaParaEditar.mecanico_id);
           }
           
           setEditDataLoaded(true);
@@ -606,6 +615,7 @@ const NovaOSSupabase = () => {
           cliente_id: clienteSelecionado.id,
           cliente_nome: clienteSelecionado.nome,
           veiculo_id: veiculoSelecionado?.id || null,
+          mecanico_id: mecanicoSelecionado || null,
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
@@ -660,6 +670,7 @@ const NovaOSSupabase = () => {
           cliente_id: clienteSelecionado.id,
           cliente_nome: clienteSelecionado.nome,
           veiculo_id: veiculoSelecionado?.id || null,
+          mecanico_id: mecanicoSelecionado || null,
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
@@ -707,6 +718,7 @@ const NovaOSSupabase = () => {
         // Limpar formulário
         setClienteSelecionado(null);
         setVeiculoSelecionado(null);
+        setMecanicoSelecionado("");
         setProdutosSelecionados([]);
         setServicosSelecionados([]);
         setDesconto(0);
@@ -816,6 +828,7 @@ const NovaOSSupabase = () => {
           cliente_id: clienteSelecionado.id,
           cliente_nome: clienteSelecionado.nome,
           veiculo_id: veiculoSelecionado?.id || null,
+          mecanico_id: mecanicoSelecionado || null,
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
@@ -1323,6 +1336,71 @@ const NovaOSSupabase = () => {
                   </div>
                 </DialogContent>
               </Dialog>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Seção de Mecânico */}
+        {clienteSelecionado && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wrench className="h-5 w-5" />
+                Mecânico Responsável
+              </CardTitle>
+              <CardDescription>Selecione o mecânico responsável (opcional)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Mecânico (Opcional)</Label>
+                <Select 
+                  value={mecanicoSelecionado} 
+                  onValueChange={setMecanicoSelecionado}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um mecânico" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum</SelectItem>
+                    {mecanicosDisponiveis.map((mecanico) => (
+                      <SelectItem key={mecanico.id} value={mecanico.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{mecanico.nome}</span>
+                          {mecanico.especialidade && (
+                            <span className="text-xs text-muted-foreground">{mecanico.especialidade}</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                {mecanicoSelecionado && (
+                  <div className="p-3 border rounded-lg bg-green-50">
+                    {(() => {
+                      const mecanico = mecanicosDisponiveis.find(m => m.id === mecanicoSelecionado);
+                      return mecanico ? (
+                        <div>
+                          <div className="font-medium flex items-center gap-2">
+                            <Wrench className="h-4 w-4" />
+                            {mecanico.nome}
+                          </div>
+                          {mecanico.especialidade && (
+                            <div className="text-sm text-gray-600">
+                              Especialidade: {mecanico.especialidade}
+                            </div>
+                          )}
+                          {mecanico.telefone && (
+                            <div className="text-sm text-gray-600">
+                              Telefone: {mecanico.telefone}
+                            </div>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}

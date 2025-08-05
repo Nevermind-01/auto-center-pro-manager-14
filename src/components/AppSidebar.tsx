@@ -9,7 +9,8 @@ import {
   LogOut,
   Plus,
   History,
-  CreditCard
+  CreditCard,
+  Wrench
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -37,6 +38,10 @@ const menuItems = [
   { title: "Contas a Pagar", url: "/contas-pagar", icon: CreditCard },
   { title: "Ordens de Serviço", url: "/history", icon: FileText },
   { title: "Histórico de Movimentações", url: "/log-movimentacoes", icon: History },
+];
+
+const configItems = [
+  { title: "Mecânicos", url: "/configuracoes/mecanicos", icon: Wrench },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];
 
@@ -81,6 +86,32 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to={item.url} 
+                      className={({ isActive }) => getNavClass({ isActive })}
+                      title={isCollapsed ? item.title : undefined}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className={isCollapsed ? "sr-only" : "ml-2"}>
+                        {item.title}
+                      </span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        <SidebarGroup>
+          <SidebarGroupLabel className={isCollapsed ? "sr-only" : ""}>
+            Configurações
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {configItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink 

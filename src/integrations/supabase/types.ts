@@ -193,6 +193,39 @@ export type Database = {
           },
         ]
       }
+      mecanicos: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          especialidade: string | null
+          id: string
+          nome: string
+          telefone: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          especialidade?: string | null
+          id?: string
+          nome: string
+          telefone?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          especialidade?: string | null
+          id?: string
+          nome?: string
+          telefone?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       movimentacoes: {
         Row: {
           created_at: string
@@ -524,6 +557,7 @@ export type Database = {
           created_at: string
           forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
           id: string
+          mecanico_id: string | null
           numero_os: string
           observacoes: string | null
           parcelas: number | null
@@ -541,6 +575,7 @@ export type Database = {
           created_at?: string
           forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
           id?: string
+          mecanico_id?: string | null
           numero_os: string
           observacoes?: string | null
           parcelas?: number | null
@@ -558,6 +593,7 @@ export type Database = {
           created_at?: string
           forma_pagamento?: Database["public"]["Enums"]["forma_pagamento"]
           id?: string
+          mecanico_id?: string | null
           numero_os?: string
           observacoes?: string | null
           parcelas?: number | null
@@ -575,6 +611,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendas_mecanico_id_fkey"
+            columns: ["mecanico_id"]
+            isOneToOne: false
+            referencedRelation: "mecanicos"
             referencedColumns: ["id"]
           },
           {

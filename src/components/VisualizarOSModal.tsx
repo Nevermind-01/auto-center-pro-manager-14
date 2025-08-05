@@ -237,6 +237,34 @@ export const VisualizarOSModal = ({ open, onOpenChange, osId }: VisualizarOSModa
                   )}
                 </CardContent>
               </Card>
+
+              {/* Mecânico */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wrench className="h-4 w-4" />
+                    Mecânico Responsável
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {osDetails.mecanico ? (
+                    <>
+                      <div>
+                        <span className="font-medium">Nome:</span>
+                        <p>{osDetails.mecanico.nome}</p>
+                      </div>
+                      {osDetails.mecanico.especialidade && (
+                        <div>
+                          <span className="font-medium">Especialidade:</span>
+                          <p>{osDetails.mecanico.especialidade}</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground">Nenhum mecânico responsável</p>
+                  )}
+                </CardContent>
+              </Card>
             </div>
 
             {/* Pagamento */}

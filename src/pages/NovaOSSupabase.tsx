@@ -1361,7 +1361,7 @@ const NovaOSSupabase = () => {
                     <SelectValue placeholder="Selecione um mecânico" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {mecanicosDisponiveis.map((mecanico) => (
                       <SelectItem key={mecanico.id} value={mecanico.id}>
                         <div className="flex flex-col">

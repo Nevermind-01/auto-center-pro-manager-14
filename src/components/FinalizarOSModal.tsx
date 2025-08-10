@@ -11,9 +11,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useVendaMutations, useLogMovimentacaoMutations } from "@/hooks/useSupabaseQueries";
 import { useSupabaseEstoque } from "@/lib/supabaseEstoque";
-import { DollarSign, Package, Wrench, ShoppingCart, AlertTriangle, User, FileText } from "lucide-react";
+import { DollarSign, Package, Wrench, ShoppingCart, AlertTriangle, User, FileText, Calculator } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useComissoesMutations } from "@/hooks/useComissoes";
+import { useMecanicos } from "@/hooks/useMecanicos";
 import { supabase } from "@/integrations/supabase/client";
 
 interface FinalizarOSModalProps {
@@ -33,14 +34,14 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
   const [desconto, setDesconto] = useState(0);
   const [formaPagamento, setFormaPagamento] = useState("");
   const [parcelas, setParcelas] = useState(1);
-const [observacoes, setObservacoes] = useState("");
-const [isLoading, setIsLoading] = useState(false);
+  const [observacoes, setObservacoes] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-// Comissão do mecânico
-const [tipoCalculo, setTipoCalculo] = useState<'' | 'percentual' | 'fixo'>('');
-const [valorPercentual, setValorPercentual] = useState<number | ''>('');
-const [valorFixo, setValorFixo] = useState<number | ''>('');
-const [obsComissao, setObsComissao] = useState("");
+  // Estados para comissão do mecânico
+  const [tipoCalculo, setTipoCalculo] = useState<'percentual' | 'fixo' | null>(null);
+  const [valorPercentual, setValorPercentual] = useState<number | ''>('');
+  const [valorFixo, setValorFixo] = useState<number | ''>('');
+  const [obsComissao, setObsComissao] = useState("");
 
   // Resetar valores quando a modal abrir/fechar ou venda mudar
   useEffect(() => {
@@ -53,12 +54,22 @@ const [obsComissao, setObsComissao] = useState("");
       setFormaPagamento(venda.forma_pagamento || '');
       setParcelas(venda.parcelas || 1);
       setObservacoes(venda.observacoes || '');
+      
+      // Reset comissão
+      setTipoCalculo(null);
+      setValorPercentual('');
+      setValorFixo('');
+      setObsComissao('');
     } else {
       // Reset quando fechar
       setDesconto(0);
       setFormaPagamento("");
       setParcelas(1);
       setObservacoes("");
+      setTipoCalculo(null);
+      setValorPercentual('');
+      setValorFixo('');
+      setObsComissao('');
     }
   }, [open, venda]);
 
@@ -80,16 +91,19 @@ const valorTotal = valorProdutos + valorServicos;
 const valorDesconto = (valorTotal * desconto) / 100;
 const valorFinal = valorTotal - valorDesconto;
 
-const baseCalculo = valorServicos;
-const comissaoPreview = tipoCalculo === 'percentual'
-  ? baseCalculo * ((typeof valorPercentual === 'number' ? valorPercentual : 0) / 100)
-  : tipoCalculo === 'fixo'
-  ? (typeof valorFixo === 'number' ? valorFixo : 0)
-  : 0;
+  // Cálculos de comissão
+  const baseCalculo = valorServicos;
+  const comissaoPreview = tipoCalculo === 'percentual'
+    ? baseCalculo * ((typeof valorPercentual === 'number' ? valorPercentual : 0) / 100)
+    : tipoCalculo === 'fixo'
+    ? (typeof valorFixo === 'number' ? valorFixo : 0)
+    : 0;
 
-const hasMecanico = Boolean((venda as any).mecanico_id);
+  const hasMecanico = Boolean(venda.mecanico_id);
+  const hasServicos = servicos.length > 0;
 
   const handleFinalizarOS = async () => {
+    // Validações obrigatórias
     if (!formaPagamento) {
       toast({
         title: "Erro", 
@@ -97,6 +111,63 @@ const hasMecanico = Boolean((venda as any).mecanico_id);
         variant: "destructive",
       });
       return;
+    }
+
+    if (!hasServicos) {
+      toast({
+        title: "Erro", 
+        description: "A OS deve ter pelo menos um serviço para ser finalizada.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!hasMecanico) {
+      toast({
+        title: "Erro", 
+        description: "A OS deve ter um mecânico vinculado para ser finalizada.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validações de comissão
+    if (tipoCalculo) {
+      if (tipoCalculo === 'percentual') {
+        if (!valorPercentual || valorPercentual <= 0 || valorPercentual > 100) {
+          toast({
+            title: "Erro", 
+            description: "O percentual deve ser maior que 0 e até 100%.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else if (tipoCalculo === 'fixo') {
+        if (!valorFixo || valorFixo <= 0) {
+          toast({
+            title: "Erro", 
+            description: "O valor fixo deve ser maior que 0.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Verificar se já existe comissão para esta OS
+      const { data: comissaoExistente } = await supabase
+        .from('comissoes_mecanicos')
+        .select('id')
+        .eq('venda_id', venda.id)
+        .maybeSingle();
+
+      if (comissaoExistente) {
+        toast({
+          title: "Erro", 
+          description: "Já existe uma comissão registrada para esta OS.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -151,17 +222,39 @@ const hasMecanico = Boolean((venda as any).mecanico_id);
         status: 'finalizada'
       });
 
+      // Registrar comissão se especificada
+      if (tipoCalculo && hasMecanico) {
+        await createComissao.mutateAsync({
+          venda_id: venda.id,
+          mecanico_id: venda.mecanico_id,
+          tipo_calculo: tipoCalculo,
+          percentual: tipoCalculo === 'percentual' ? Number(valorPercentual) : null,
+          valor_fixo: tipoCalculo === 'fixo' ? Number(valorFixo) : null,
+          valor_final: comissaoPreview,
+          base_calculo: baseCalculo,
+          observacoes: obsComissao || null
+        });
+      }
+
       // Registrar log de finalização
+      const logDescricao = tipoCalculo
+        ? `OS ${venda.numero_os} finalizada com comissão registrada - ${formaPagamento}${formaPagamento === 'parcelado' ? ` (${parcelas}x)` : ''}`
+        : `OS ${venda.numero_os} finalizada via modal - ${formaPagamento}${formaPagamento === 'parcelado' ? ` (${parcelas}x)` : ''}`;
+
       await createLog.mutateAsync({
         os_id: venda.id,
         tipo: 'finalizacao',
         usuario: 'Admin',
-        observacoes: `OS ${venda.numero_os} finalizada via modal - ${formaPagamento}${formaPagamento === 'parcelado' ? ` (${parcelas}x)` : ''}`
+        observacoes: logDescricao
       });
 
+      const successMessage = tipoCalculo
+        ? `OS ${venda.numero_os} finalizada e comissão registrada com sucesso.`
+        : `OS ${venda.numero_os} foi finalizada com sucesso.`;
+
       toast({
-        title: "OS finalizada",
-        description: `OS ${venda.numero_os} foi finalizada com sucesso.`,
+        title: "Sucesso",
+        description: successMessage,
       });
 
       onOpenChange(false);
@@ -191,7 +284,7 @@ const hasMecanico = Boolean((venda as any).mecanico_id);
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Coluna 1: Produtos e Serviços */}
           <div className="space-y-4">
             {/* Produtos */}
@@ -248,7 +341,120 @@ const hasMecanico = Boolean((venda as any).mecanico_id);
             )}
           </div>
 
-          {/* Coluna 2: Pagamento */}
+          {/* Coluna 2: Comissão do Mecânico */}
+          <div className="space-y-4">
+            {hasMecanico && hasServicos && (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calculator className="h-4 w-4 text-purple-600" />
+                    <h3 className="font-semibold">Comissão do Mecânico</h3>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 p-3 rounded-lg text-sm">
+                      <div className="flex justify-between items-center">
+                        <span>Base de cálculo (serviços):</span>
+                        <span className="font-medium">R$ {baseCalculo.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium">Tipo de Cálculo</Label>
+                      <RadioGroup 
+                        value={tipoCalculo || ''} 
+                        onValueChange={(value) => {
+                          setTipoCalculo(value as 'percentual' | 'fixo' || null);
+                          setValorPercentual('');
+                          setValorFixo('');
+                        }}
+                        className="mt-2"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="percentual" id="percentual" />
+                          <Label htmlFor="percentual" className="text-sm cursor-pointer">Percentual (%)</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="fixo" id="fixo" />
+                          <Label htmlFor="fixo" className="text-sm cursor-pointer">Valor Fixo (R$)</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    {tipoCalculo === 'percentual' && (
+                      <div>
+                        <Label htmlFor="valor-percentual" className="text-sm">Percentual (%)</Label>
+                        <Input
+                          id="valor-percentual"
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                          value={valorPercentual}
+                          onChange={(e) => setValorPercentual(parseFloat(e.target.value) || '')}
+                          placeholder="Ex: 10"
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
+
+                    {tipoCalculo === 'fixo' && (
+                      <div>
+                        <Label htmlFor="valor-fixo" className="text-sm">Valor Fixo (R$)</Label>
+                        <Input
+                          id="valor-fixo"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={valorFixo}
+                          onChange={(e) => setValorFixo(parseFloat(e.target.value) || '')}
+                          placeholder="Ex: 100.00"
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
+
+                    {comissaoPreview > 0 && (
+                      <div className="bg-green-50 p-3 rounded-lg">
+                        <div className="flex justify-between items-center text-sm">
+                          <span>Valor da comissão:</span>
+                          <span className="font-bold text-green-700">R$ {comissaoPreview.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <Label htmlFor="obs-comissao" className="text-sm">Observações</Label>
+                      <Textarea
+                        id="obs-comissao"
+                        value={obsComissao}
+                        onChange={(e) => setObsComissao(e.target.value)}
+                        placeholder="Observações sobre a comissão..."
+                        rows={2}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {!hasMecanico && (
+              <div className="flex items-center gap-2 p-3 bg-yellow-50 text-yellow-800 rounded-lg text-sm">
+                <AlertTriangle className="h-4 w-4" />
+                Vincule um mecânico à OS para registrar comissão
+              </div>
+            )}
+
+            {!hasServicos && (
+              <div className="flex items-center gap-2 p-3 bg-yellow-50 text-yellow-800 rounded-lg text-sm">
+                <AlertTriangle className="h-4 w-4" />
+                Adicione pelo menos um serviço para calcular comissão
+              </div>
+            )}
+          </div>
+
+          {/* Coluna 3: Pagamento */}
           <div className="space-y-4">
             {/* Resumo de valores */}
             <Card>
@@ -365,9 +571,9 @@ const hasMecanico = Boolean((venda as any).mecanico_id);
           </Button>
           <Button 
             onClick={handleFinalizarOS} 
-            disabled={!formaPagamento || isLoading}
+            disabled={!formaPagamento || !hasServicos || !hasMecanico || isLoading}
           >
-            {isLoading ? "Finalizando..." : "Finalizar OS"}
+            {isLoading ? "Finalizando..." : (tipoCalculo ? "Finalizar OS e Registrar Comissão" : "Finalizar OS")}
           </Button>
         </div>
       </DialogContent>

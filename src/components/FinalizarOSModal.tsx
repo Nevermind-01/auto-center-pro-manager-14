@@ -11,7 +11,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useVendaMutations, useLogMovimentacaoMutations } from "@/hooks/useSupabaseQueries";
 import { useSupabaseEstoque } from "@/lib/supabaseEstoque";
-import { DollarSign, Package, Wrench, ShoppingCart, AlertTriangle } from "lucide-react";
+import { DollarSign, Package, Wrench, ShoppingCart, AlertTriangle, User, FileText } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useComissoesMutations } from "@/hooks/useComissoes";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FinalizarOSModalProps {
   open: boolean;
@@ -23,14 +26,21 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
   const { toast } = useToast();
   const { updateVenda } = useVendaMutations();
   const { createLog } = useLogMovimentacaoMutations();
+  const { createComissao } = useComissoesMutations();
   const estoqueManager = useSupabaseEstoque();
 
   // Estados para a finalização
   const [desconto, setDesconto] = useState(0);
   const [formaPagamento, setFormaPagamento] = useState("");
   const [parcelas, setParcelas] = useState(1);
-  const [observacoes, setObservacoes] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+const [observacoes, setObservacoes] = useState("");
+const [isLoading, setIsLoading] = useState(false);
+
+// Comissão do mecânico
+const [tipoCalculo, setTipoCalculo] = useState<'' | 'percentual' | 'fixo'>('');
+const [valorPercentual, setValorPercentual] = useState<number | ''>('');
+const [valorFixo, setValorFixo] = useState<number | ''>('');
+const [obsComissao, setObsComissao] = useState("");
 
   // Resetar valores quando a modal abrir/fechar ou venda mudar
   useEffect(() => {
@@ -66,9 +76,18 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
     total + (Number(servico.preco) || 0), 0
   );
   
-  const valorTotal = valorProdutos + valorServicos;
-  const valorDesconto = (valorTotal * desconto) / 100;
-  const valorFinal = valorTotal - valorDesconto;
+const valorTotal = valorProdutos + valorServicos;
+const valorDesconto = (valorTotal * desconto) / 100;
+const valorFinal = valorTotal - valorDesconto;
+
+const baseCalculo = valorServicos;
+const comissaoPreview = tipoCalculo === 'percentual'
+  ? baseCalculo * ((typeof valorPercentual === 'number' ? valorPercentual : 0) / 100)
+  : tipoCalculo === 'fixo'
+  ? (typeof valorFixo === 'number' ? valorFixo : 0)
+  : 0;
+
+const hasMecanico = Boolean((venda as any).mecanico_id);
 
   const handleFinalizarOS = async () => {
     if (!formaPagamento) {

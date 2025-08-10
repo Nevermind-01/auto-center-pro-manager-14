@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Wrench, 
   Plus, 
@@ -14,12 +15,16 @@ import {
   Phone, 
   User,
   CheckCircle,
-  XCircle
+  XCircle,
+  Coins
 } from "lucide-react";
 import { useMecanicos, useCriarMecanico, useAtualizarMecanico, useDeletarMecanico, type Mecanico } from "@/hooks/useMecanicos";
+import { MecanicoComissoesModal } from "@/components/MecanicoComissoesModal";
 
 const ConfiguracoesMecanicos = () => {
   const [showDialog, setShowDialog] = useState(false);
+  const [showComissoes, setShowComissoes] = useState(false);
+  const [selectedMecanico, setSelectedMecanico] = useState<Mecanico | null>(null);
   const [editingMecanico, setEditingMecanico] = useState<Mecanico | null>(null);
   const [formData, setFormData] = useState({
     nome: '',
@@ -249,6 +254,22 @@ const ConfiguracoesMecanicos = () => {
                   </div>
                   
                   <div className="flex items-center gap-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => { setSelectedMecanico(mecanico); setShowComissoes(true); }}
+                          >
+                            <Coins className="h-4 w-4 mr-1" />
+                            Comissões
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Ver comissões</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -293,6 +314,12 @@ const ConfiguracoesMecanicos = () => {
           ))
         )}
       </div>
+
+      <MecanicoComissoesModal
+        open={showComissoes}
+        onOpenChange={setShowComissoes}
+        mecanico={selectedMecanico}
+      />
     </div>
   );
 };

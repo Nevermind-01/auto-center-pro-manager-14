@@ -98,6 +98,69 @@ export type Database = {
         }
         Relationships: []
       }
+      comissoes_mecanicos: {
+        Row: {
+          base_calculo: number
+          created_at: string
+          finalizado_em: string
+          id: string
+          mecanico_id: string
+          observacoes: string | null
+          percentual: number | null
+          tipo_calculo: string
+          updated_at: string
+          user_id: string
+          valor_final: number
+          valor_fixo: number | null
+          venda_id: string
+        }
+        Insert: {
+          base_calculo?: number
+          created_at?: string
+          finalizado_em?: string
+          id?: string
+          mecanico_id: string
+          observacoes?: string | null
+          percentual?: number | null
+          tipo_calculo: string
+          updated_at?: string
+          user_id: string
+          valor_final?: number
+          valor_fixo?: number | null
+          venda_id: string
+        }
+        Update: {
+          base_calculo?: number
+          created_at?: string
+          finalizado_em?: string
+          id?: string
+          mecanico_id?: string
+          observacoes?: string | null
+          percentual?: number | null
+          tipo_calculo?: string
+          updated_at?: string
+          user_id?: string
+          valor_final?: number
+          valor_fixo?: number | null
+          venda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comissoes_mecanicos_mecanico_id_fkey"
+            columns: ["mecanico_id"]
+            isOneToOne: false
+            referencedRelation: "mecanicos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comissoes_mecanicos_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: true
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contas_a_pagar: {
         Row: {
           comprovante_url: string | null

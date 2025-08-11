@@ -1,7 +1,6 @@
 import { 
   LayoutDashboard, 
   Users, 
-  ShoppingCart, 
   Package, 
   FileText, 
   Settings,
@@ -32,7 +31,6 @@ import { Button } from "@/components/ui/button";
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "NOVA OS", url: "/nova-os", icon: Plus },
-  { title: "Vendas", url: "/sales", icon: ShoppingCart },
   { title: "Estoque", url: "/inventory", icon: Package },
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Contas a Pagar", url: "/contas-pagar", icon: CreditCard },

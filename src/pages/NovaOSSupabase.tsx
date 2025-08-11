@@ -23,6 +23,8 @@ import {
   useVendas
 } from "@/hooks/useSupabaseQueries";
 import { useMecanicos } from "@/hooks/useMecanicos";
+import { ComissaoConfirmModal } from "@/components/ComissaoConfirmModal";
+import { ComissaoCalculatorModal } from "@/components/ComissaoCalculatorModal";
 import { useSupabaseEstoque, ProdutoComCategoria } from "@/lib/supabaseEstoque";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -147,6 +149,11 @@ const NovaOSSupabase = () => {
   // Estado da modal de serviço
   const [showServicoModal, setShowServicoModal] = useState(false);
   const [editandoServico, setEditandoServico] = useState<ServicoSelecionado | null>(null);
+
+  // Estados para comissão
+  const [showComissaoConfirm, setShowComissaoConfirm] = useState(false);
+  const [showComissaoCalculator, setShowComissaoCalculator] = useState(false);
+  const [vendaIdForComissao, setVendaIdForComissao] = useState<string>("");
 
   // Função para gerar novo número de OS único
   const gerarNovoNumeroOS = async () => {
@@ -833,6 +840,21 @@ const NovaOSSupabase = () => {
       }
     }
 
+    // Verificar se deve perguntar sobre comissão
+    const temServicos = servicosSelecionados.length > 0;
+    const temMecanico = mecanicoSelecionado;
+    
+    if (temServicos && temMecanico && !isEditing) {
+      // Abrir modal de confirmação de comissão
+      setShowComissaoConfirm(true);
+      return;
+    }
+
+    // Se não tem serviços ou mecânico, ou está editando, finalizar direto
+    await processarFinalizacao();
+  };
+
+  const processarFinalizacao = async () => {
     try {
       let vendaId: string;
 
@@ -938,17 +960,23 @@ const NovaOSSupabase = () => {
         numeroOS
       );
 
+      // Armazenar vendaId para comissão se necessário
+      setVendaIdForComissao(vendaId);
+
       toast({
         title: "OS finalizada",
         description: `OS ${numeroOS} foi finalizada com sucesso.`,
       });
 
-      if (isEditing) {
-        // Se estava editando, voltar para o histórico
-        navigate('/history');
-      } else {
-        // Se era nova OS, limpar formulário para criar outra
-        resetarFormulario();
+      // Se não vai calcular comissão, fazer o reset/navegação normal
+      if (!showComissaoCalculator) {
+        if (isEditing) {
+          // Se estava editando, voltar para o histórico
+          navigate('/history');
+        } else {
+          // Se era nova OS, limpar formulário para criar outra
+          resetarFormulario();
+        }
       }
 
     } catch (error) {
@@ -958,6 +986,40 @@ const NovaOSSupabase = () => {
         description: "Erro ao finalizar a OS. Tente novamente.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleComissaoConfirm = () => {
+    setShowComissaoConfirm(false);
+    // Finalizar OS primeiro, depois calcular comissão
+    processarFinalizacaoComComissao();
+  };
+
+  const handleComissaoReject = () => {
+    setShowComissaoConfirm(false);
+    // Finalizar sem comissão
+    processarFinalizacao();
+  };
+
+  const processarFinalizacaoComComissao = async () => {
+    // Primeiro finalizar a OS
+    await processarFinalizacao();
+    
+    // Se finalizou com sucesso e temos uma venda, abrir calculadora de comissão
+    if (vendaIdForComissao) {
+      setShowComissaoCalculator(true);
+    }
+  };
+
+  const handleComissaoFinalized = () => {
+    setShowComissaoCalculator(false);
+    setVendaIdForComissao("");
+    
+    // Resetar formulário se não estava editando
+    if (!isEditing) {
+      resetarFormulario();
+    } else {
+      navigate('/history');
     }
   };
 
@@ -1827,6 +1889,26 @@ const NovaOSSupabase = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modais de Comissão */}
+      <ComissaoConfirmModal
+        isOpen={showComissaoConfirm}
+        onClose={() => setShowComissaoConfirm(false)}
+        onConfirm={handleComissaoConfirm}
+        onReject={handleComissaoReject}
+        mecanicoNome={mecanicosDisponiveis.find(m => m.id === mecanicoSelecionado)?.nome}
+      />
+
+      <ComissaoCalculatorModal
+        isOpen={showComissaoCalculator}
+        onClose={() => setShowComissaoCalculator(false)}
+        onFinalized={handleComissaoFinalized}
+        vendaId={vendaIdForComissao}
+        mecanicoId={mecanicoSelecionado}
+        mecanicoNome={mecanicosDisponiveis.find(m => m.id === mecanicoSelecionado)?.nome || ""}
+        valorServicos={valorServicos}
+        valorTotal={valorTotal}
+      />
     </div>
   );
 };

@@ -961,6 +961,7 @@ const NovaOSSupabase = () => {
       );
 
       // Armazenar vendaId para comissão se necessário
+      console.log("💾 Armazenando vendaId para comissão:", vendaId);
       setVendaIdForComissao(vendaId);
 
       toast({
@@ -969,7 +970,9 @@ const NovaOSSupabase = () => {
       });
 
       // Se não vai calcular comissão, fazer o reset/navegação normal
-      if (!showComissaoCalculator) {
+      // Não resetar aqui se estivermos no fluxo de comissão
+      console.log("🔍 Verificando se deve resetar formulário. ShowComissaoCalculator:", showComissaoCalculator);
+      if (!showComissaoCalculator && vendaIdForComissao === "") {
         if (isEditing) {
           // Se estava editando, voltar para o histórico
           navigate('/history');
@@ -990,28 +993,35 @@ const NovaOSSupabase = () => {
   };
 
   const handleComissaoConfirm = () => {
+    console.log("🔄 Confirmando cálculo de comissão");
     setShowComissaoConfirm(false);
     // Finalizar OS primeiro, depois calcular comissão
     processarFinalizacaoComComissao();
   };
 
   const handleComissaoReject = () => {
+    console.log("❌ Rejeitando cálculo de comissão");
     setShowComissaoConfirm(false);
     // Finalizar sem comissão
     processarFinalizacao();
   };
 
   const processarFinalizacaoComComissao = async () => {
-    // Primeiro finalizar a OS
-    await processarFinalizacao();
-    
-    // Se finalizou com sucesso e temos uma venda, abrir calculadora de comissão
-    if (vendaIdForComissao) {
+    console.log("🚀 Iniciando finalização com comissão");
+    try {
+      // Primeiro finalizar a OS
+      await processarFinalizacao();
+      
+      console.log("✅ OS finalizada, abrindo modal de comissão. VendaId:", vendaIdForComissao);
+      // Abrir modal de comissão imediatamente após finalização
       setShowComissaoCalculator(true);
+    } catch (error) {
+      console.error("❌ Erro na finalização com comissão:", error);
     }
   };
 
   const handleComissaoFinalized = () => {
+    console.log("🎉 Comissão finalizada, fechando modal e resetando");
     setShowComissaoCalculator(false);
     setVendaIdForComissao("");
     

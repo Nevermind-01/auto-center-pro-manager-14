@@ -98,8 +98,8 @@ export const ComissaoCalculatorModal = ({
     if (!formaPagamento) throw new Error("Forma de pagamento não selecionada");
 
     // Calcular valores
-    const valorServicos = servicosSelecionados.reduce((total, servico) => total + servico.preco, 0);
-    const valorProdutos = produtosSelecionados.reduce((total, produto) => total + (produto.preco_venda * produto.quantidade), 0);
+    const valorServicos = servicosSelecionados.reduce((total, servico) => total + servico.valor, 0);
+    const valorProdutos = produtosSelecionados.reduce((total, produto) => total + (produto.valor * produto.quantidade), 0);
     const valorTotal = valorServicos + valorProdutos;
     const valorFinal = valorTotal - valorDesconto;
 
@@ -133,8 +133,8 @@ export const ComissaoCalculatorModal = ({
         produto_id: produto.id,
         produto_nome: produto.nome,
         quantidade: produto.quantidade,
-        preco_unitario: produto.preco_venda,
-        preco_total: produto.preco_venda * produto.quantidade,
+        preco_unitario: produto.valor,
+        preco_total: produto.valor * produto.quantidade,
       }));
 
       const { error: produtosError } = await supabase
@@ -150,7 +150,7 @@ export const ComissaoCalculatorModal = ({
         venda_id: venda.id,
         servico_id: servico.id,
         servico_nome: servico.nome,
-        preco: servico.preco,
+        preco: servico.valor,
       }));
 
       const { error: servicosError } = await supabase

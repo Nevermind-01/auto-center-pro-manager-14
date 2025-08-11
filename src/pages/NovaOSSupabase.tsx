@@ -154,6 +154,10 @@ const NovaOSSupabase = () => {
   const [showComissaoConfirm, setShowComissaoConfirm] = useState(false);
   const [showComissaoCalculator, setShowComissaoCalculator] = useState(false);
   const [vendaIdForComissao, setVendaIdForComissao] = useState<string>("");
+  
+  // Estados para preservar valores durante cálculo de comissão
+  const [valorServicosParaComissao, setValorServicosParaComissao] = useState<number>(0);
+  const [valorTotalParaComissao, setValorTotalParaComissao] = useState<number>(0);
 
   // Função para gerar novo número de OS único
   const gerarNovoNumeroOS = async () => {
@@ -1009,6 +1013,11 @@ const NovaOSSupabase = () => {
   const processarFinalizacaoComComissao = async () => {
     console.log("🚀 Iniciando finalização com comissão");
     try {
+      // Capturar valores antes da finalização (antes do reset)
+      console.log("💰 Capturando valores para comissão - Serviços:", valorServicos, "Total:", valorTotal);
+      setValorServicosParaComissao(valorServicos);
+      setValorTotalParaComissao(valorTotal);
+      
       // Primeiro finalizar a OS
       await processarFinalizacao();
       
@@ -1024,6 +1033,10 @@ const NovaOSSupabase = () => {
     console.log("🎉 Comissão finalizada, fechando modal e resetando");
     setShowComissaoCalculator(false);
     setVendaIdForComissao("");
+    
+    // Limpar valores preservados para comissão
+    setValorServicosParaComissao(0);
+    setValorTotalParaComissao(0);
     
     // Resetar formulário se não estava editando
     if (!isEditing) {
@@ -1916,8 +1929,8 @@ const NovaOSSupabase = () => {
         vendaId={vendaIdForComissao}
         mecanicoId={mecanicoSelecionado}
         mecanicoNome={mecanicosDisponiveis.find(m => m.id === mecanicoSelecionado)?.nome || ""}
-        valorServicos={valorServicos}
-        valorTotal={valorTotal}
+        valorServicos={valorServicosParaComissao}
+        valorTotal={valorTotalParaComissao}
       />
     </div>
   );

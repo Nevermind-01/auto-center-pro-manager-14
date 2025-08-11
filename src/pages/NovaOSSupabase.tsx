@@ -148,23 +148,72 @@ const NovaOSSupabase = () => {
   const [showServicoModal, setShowServicoModal] = useState(false);
   const [editandoServico, setEditandoServico] = useState<ServicoSelecionado | null>(null);
 
+  // Função para gerar novo número de OS único
+  const gerarNovoNumeroOS = async () => {
+    let numeroValido = false;
+    let novoNumero = "";
+    let tentativas = 0;
+    
+    while (!numeroValido && tentativas < 100) {
+      const agora = new Date();
+      const ano = agora.getFullYear();
+      const mes = String(agora.getMonth() + 1).padStart(2, '0');
+      const dia = String(agora.getDate()).padStart(2, '0');
+      const hora = String(agora.getHours()).padStart(2, '0');
+      const minuto = String(agora.getMinutes()).padStart(2, '0');
+      const segundo = String(agora.getSeconds()).padStart(2, '0');
+      
+      // Adicionar segundos se houver tentativas anteriores
+      novoNumero = tentativas > 0 
+        ? `OS${ano}${mes}${dia}${hora}${minuto}${segundo}${tentativas}`
+        : `OS${ano}${mes}${dia}${hora}${minuto}`;
+      
+      // Verificar se o número já existe
+      const { data: existeOS } = await supabase
+        .from('vendas')
+        .select('id')
+        .eq('numero_os', novoNumero)
+        .maybeSingle();
+      
+      if (!existeOS) {
+        numeroValido = true;
+      } else {
+        tentativas++;
+        // Aguardar 100ms antes da próxima tentativa
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    if (!numeroValido) {
+      throw new Error("Não foi possível gerar um número de OS único");
+    }
+    
+    return novoNumero;
+  };
+
   // Gerar número da OS automaticamente
   useEffect(() => {
-    if (!editingId && !isEditing) {
-      const gerarNumeroOS = () => {
-        const agora = new Date();
-        const ano = agora.getFullYear();
-        const mes = String(agora.getMonth() + 1).padStart(2, '0');
-        const dia = String(agora.getDate()).padStart(2, '0');
-        const hora = String(agora.getHours()).padStart(2, '0');
-        const minuto = String(agora.getMinutes()).padStart(2, '0');
-        
-        return `OS${ano}${mes}${dia}${hora}${minuto}`;
+    if (!editingId && !isEditing && !numeroOS) {
+      const inicializarNumeroOS = async () => {
+        try {
+          const novoNumero = await gerarNovoNumeroOS();
+          setNumeroOS(novoNumero);
+        } catch (error) {
+          console.error('Erro ao gerar número inicial da OS:', error);
+          // Fallback para número simples em caso de erro
+          const agora = new Date();
+          const ano = agora.getFullYear();
+          const mes = String(agora.getMonth() + 1).padStart(2, '0');
+          const dia = String(agora.getDate()).padStart(2, '0');
+          const hora = String(agora.getHours()).padStart(2, '0');
+          const minuto = String(agora.getMinutes()).padStart(2, '0');
+          setNumeroOS(`OS${ano}${mes}${dia}${hora}${minuto}`);
+        }
       };
 
-      setNumeroOS(gerarNumeroOS());
+      inicializarNumeroOS();
     }
-  }, [editingId, isEditing]);
+  }, [editingId, isEditing, numeroOS]);
 
   // Carregar dados para edição - aguarda clientes carregarem primeiro
   useEffect(() => {
@@ -291,10 +340,12 @@ const NovaOSSupabase = () => {
   const valorDesconto = (valorTotal * desconto) / 100;
   const valorFinal = valorTotal - valorDesconto;
 
+
   // Função para resetar formulário
-  const resetarFormulario = () => {
+  const resetarFormulario = async () => {
     setClienteSelecionado(null);
     setVeiculoSelecionado(null);
+    setMecanicoSelecionado("");
     setProdutosSelecionados([]);
     setServicosSelecionados([]);
     setDesconto(0);
@@ -308,6 +359,19 @@ const NovaOSSupabase = () => {
     setOriginalData(null);
     setEditDataLoaded(false);
     setLoadingEditData(false);
+    
+    // Gerar novo número de OS único
+    try {
+      const novoNumero = await gerarNovoNumeroOS();
+      setNumeroOS(novoNumero);
+    } catch (error) {
+      console.error('Erro ao gerar novo número de OS:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao gerar novo número de OS.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Reset quando sair do modo de edição
@@ -715,25 +779,8 @@ const NovaOSSupabase = () => {
           description: `OS ${numeroOS} foi salva com sucesso como pendente.`,
         });
 
-        // Limpar formulário
-        setClienteSelecionado(null);
-        setVeiculoSelecionado(null);
-        setMecanicoSelecionado("");
-        setProdutosSelecionados([]);
-        setServicosSelecionados([]);
-        setDesconto(0);
-        setFormaPagamento("");
-        setParcelas(1);
-        setObservacoes("");
-        
-        // Gerar novo número de OS
-        const agora = new Date();
-        const ano = agora.getFullYear();
-        const mes = String(agora.getMonth() + 1).padStart(2, '0');
-        const dia = String(agora.getDate()).padStart(2, '0');
-        const hora = String(agora.getHours()).padStart(2, '0');
-        const minuto = String(agora.getMinutes()).padStart(2, '0');
-        setNumeroOS(`OS${ano}${mes}${dia}${hora}${minuto}`);
+        // Limpar formulário e gerar novo número de OS
+        await resetarFormulario();
       }
     } catch (error) {
       console.error('Erro ao salvar OS:', error);

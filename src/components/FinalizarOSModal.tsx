@@ -219,7 +219,8 @@ const valorFinal = valorTotal - valorDesconto;
         forma_pagamento: formaPagamento as any,
         parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
         observacoes: observacoes || null,
-        status: 'finalizada'
+        status: 'finalizada',
+        finalizado_em: new Date().toISOString()
       });
 
       // Registrar comissão se especificada

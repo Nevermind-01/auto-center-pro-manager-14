@@ -618,6 +618,7 @@ export type Database = {
           cliente_id: string | null
           cliente_nome: string
           created_at: string
+          finalizado_em: string | null
           forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
           id: string
           mecanico_id: string | null
@@ -636,6 +637,7 @@ export type Database = {
           cliente_id?: string | null
           cliente_nome: string
           created_at?: string
+          finalizado_em?: string | null
           forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
           id?: string
           mecanico_id?: string | null
@@ -654,6 +656,7 @@ export type Database = {
           cliente_id?: string | null
           cliente_nome?: string
           created_at?: string
+          finalizado_em?: string | null
           forma_pagamento?: Database["public"]["Enums"]["forma_pagamento"]
           id?: string
           mecanico_id?: string | null

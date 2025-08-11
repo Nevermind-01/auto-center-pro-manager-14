@@ -121,6 +121,13 @@ export const VisualizarOSModal = ({ open, onOpenChange, osId }: VisualizarOSModa
                     <span className="font-medium">Criado em:</span>
                     <span>{formatDate(osDetails.created_at)}</span>
                   </div>
+                  {osDetails.finalizado_em && osDetails.status === 'finalizada' && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      <span className="font-medium">Finalizada em:</span>
+                      <span>{formatDate(osDetails.finalizado_em)}</span>
+                    </div>
+                  )}
                   {osDetails.creator && (
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4" />

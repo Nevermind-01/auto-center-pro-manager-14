@@ -7,6 +7,7 @@ export interface OSDetails {
   status: string;
   created_at: string;
   updated_at: string;
+  finalizado_em?: string;
   cliente_nome: string;
   observacoes?: string;
   valor_total: number;
@@ -71,6 +72,7 @@ export const useOSDetails = (osId: string | null) => {
           status,
           created_at,
           updated_at,
+          finalizado_em,
           cliente_nome,
           observacoes,
           valor_total,

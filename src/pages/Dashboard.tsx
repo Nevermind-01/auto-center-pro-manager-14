@@ -373,7 +373,7 @@ const Dashboard = () => {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => navigate('/InventorySupabase')}
+                      onClick={() => navigate('/inventory')}
                     >
                       Reabastecer
                     </Button>

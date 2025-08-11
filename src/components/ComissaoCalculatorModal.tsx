@@ -78,6 +78,7 @@ export const ComissaoCalculatorModal = ({
 
     try {
       // 2. Revalidar estado da OS no banco
+      console.log("🔍 Validando OS no banco. VendaId:", vendaId);
       const { data: vendaData, error: vendaError } = await supabase
         .from("vendas")
         .select("status, mecanico_id, finalizado_em")
@@ -85,6 +86,7 @@ export const ComissaoCalculatorModal = ({
         .single();
 
       if (vendaError) {
+        console.error("❌ Erro ao consultar venda:", vendaError);
         throw new Error("Erro ao validar OS no banco");
       }
 

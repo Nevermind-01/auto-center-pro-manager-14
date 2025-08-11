@@ -1011,22 +1011,21 @@ const NovaOSSupabase = () => {
   };
 
   const processarFinalizacaoComComissao = async () => {
-    console.log("🚀 Iniciando finalização com comissão");
-    try {
-      // Capturar valores antes da finalização (antes do reset)
-      console.log("💰 Capturando valores para comissão - Serviços:", valorServicos, "Total:", valorTotal);
-      setValorServicosParaComissao(valorServicos);
-      setValorTotalParaComissao(valorTotal);
-      
-      // Primeiro finalizar a OS para obter o vendaId
-      await processarFinalizacao();
-      
-      console.log("✅ OS finalizada, abrindo modal de comissão. VendaId:", vendaIdForComissao);
-      // Abrir modal de comissão imediatamente após finalização
-      setShowComissaoCalculator(true);
-    } catch (error) {
-      console.error("❌ Erro na finalização com comissão:", error);
+    console.log("🚀 Preparando modal de comissão (não finalizando OS ainda)");
+    
+    // Capturar valores para exibição no modal (apenas informativos)
+    console.log("💰 Capturando valores informativos - Serviços:", valorServicos, "Total:", valorTotal);
+    setValorServicosParaComissao(valorServicos);
+    setValorTotalParaComissao(valorTotal);
+    
+    // Definir vendaId se editando uma OS existente
+    if (isEditing && editingVenda?.id) {
+      setVendaIdForComissao(editingVenda.id);
     }
+    
+    // Abrir modal de comissão SEM finalizar a OS
+    console.log("📋 Abrindo modal de comissão. VendaId para edição:", isEditing ? editingVenda?.id : 'nova OS');
+    setShowComissaoCalculator(true);
   };
 
   const handleComissaoFinalized = () => {
@@ -1931,6 +1930,19 @@ const NovaOSSupabase = () => {
         mecanicoNome={mecanicosDisponiveis.find(m => m.id === mecanicoSelecionado)?.nome || ""}
         valorServicos={valorServicosParaComissao}
         valorTotal={valorTotalParaComissao}
+        osData={{
+          clienteSelecionado,
+          veiculoSelecionado,
+          servicosSelecionados,
+          produtosSelecionados,
+          formaPagamento,
+          parcelas,
+          valorDesconto,
+          observacoes,
+          numeroOS,
+          isEditing,
+          editingVenda
+        }}
       />
     </div>
   );

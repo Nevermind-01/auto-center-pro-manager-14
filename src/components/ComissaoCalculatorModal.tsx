@@ -25,6 +25,20 @@ interface ComissaoCalculatorModalProps {
   mecanicoNome: string;
   valorServicos: number;
   valorTotal: number;
+  // Dados necessários para finalizar a OS
+  osData?: {
+    clienteSelecionado: any;
+    veiculoSelecionado: any;
+    servicosSelecionados: any[];
+    produtosSelecionados: any[];
+    formaPagamento: string;
+    parcelas: number;
+    valorDesconto: number;
+    observacoes: string;
+    numeroOS: string;
+    isEditing: boolean;
+    editingVenda?: any;
+  };
 }
 
 export const ComissaoCalculatorModal = ({
@@ -35,7 +49,8 @@ export const ComissaoCalculatorModal = ({
   mecanicoId,
   mecanicoNome,
   valorServicos,
-  valorTotal
+  valorTotal,
+  osData
 }: ComissaoCalculatorModalProps) => {
   const { toast } = useToast();
 
@@ -72,49 +87,135 @@ export const ComissaoCalculatorModal = ({
     }
   };
 
+  // Função para criar nova OS
+  const criarNovaOS = async (): Promise<string> => {
+    if (!osData) throw new Error("Dados da OS não fornecidos");
+    
+    const { clienteSelecionado, veiculoSelecionado, servicosSelecionados, produtosSelecionados, 
+            formaPagamento, parcelas, valorDesconto, observacoes, numeroOS } = osData;
+
+    if (!clienteSelecionado) throw new Error("Cliente não selecionado");
+    if (!formaPagamento) throw new Error("Forma de pagamento não selecionada");
+
+    // Calcular valores
+    const valorServicos = servicosSelecionados.reduce((total, servico) => total + servico.preco, 0);
+    const valorProdutos = produtosSelecionados.reduce((total, produto) => total + (produto.preco_venda * produto.quantidade), 0);
+    const valorTotal = valorServicos + valorProdutos;
+    const valorFinal = valorTotal - valorDesconto;
+
+    // Criar venda
+    const { data: venda, error: vendaError } = await supabase
+      .from("vendas")
+      .insert({
+        numero_os: numeroOS,
+        cliente_id: clienteSelecionado.id,
+        cliente_nome: clienteSelecionado.nome,
+        veiculo_id: veiculoSelecionado?.id || null,
+        mecanico_id: mecanicoId,
+        forma_pagamento: formaPagamento as any,
+        parcelas,
+        valor_total: valorTotal,
+        valor_desconto: valorDesconto,
+        valor_final: valorFinal,
+        observacoes,
+        status: "pendente",
+        user_id: (await supabase.auth.getUser()).data.user?.id || "",
+      })
+      .select()
+      .single();
+
+    if (vendaError) throw new Error("Erro ao criar OS");
+
+    // Criar produtos da venda
+    if (produtosSelecionados.length > 0) {
+      const produtosData = produtosSelecionados.map(produto => ({
+        venda_id: venda.id,
+        produto_id: produto.id,
+        produto_nome: produto.nome,
+        quantidade: produto.quantidade,
+        preco_unitario: produto.preco_venda,
+        preco_total: produto.preco_venda * produto.quantidade,
+      }));
+
+      const { error: produtosError } = await supabase
+        .from("venda_produtos")
+        .insert(produtosData);
+
+      if (produtosError) throw new Error("Erro ao criar produtos da OS");
+    }
+
+    // Criar serviços da venda
+    if (servicosSelecionados.length > 0) {
+      const servicosData = servicosSelecionados.map(servico => ({
+        venda_id: venda.id,
+        servico_id: servico.id,
+        servico_nome: servico.nome,
+        preco: servico.preco,
+      }));
+
+      const { error: servicosError } = await supabase
+        .from("venda_servicos")
+        .insert(servicosData);
+
+      if (servicosError) throw new Error("Erro ao criar serviços da OS");
+    }
+
+    return venda.id;
+  };
+
   const handleFinalizar = async () => {
     // 1. Desabilitar UI imediatamente
     setIsProcessing(true);
 
     try {
-      // 2. Revalidar estado da OS no banco
-      console.log("🔍 Validando OS no banco. VendaId:", vendaId);
-      const { data: vendaData, error: vendaError } = await supabase
-        .from("vendas")
-        .select("status, mecanico_id, finalizado_em")
-        .eq("id", vendaId)
-        .single();
-
-      if (vendaError) {
-        console.error("❌ Erro ao consultar venda:", vendaError);
-        throw new Error("Erro ao validar OS no banco");
+      let finalVendaId = vendaId;
+      
+      // Se não temos vendaId, precisamos criar a OS primeiro
+      if (!vendaId && osData && !osData.isEditing) {
+        console.log("🆕 Criando nova OS antes de registrar comissão");
+        finalVendaId = await criarNovaOS();
       }
+      
+      // 2. Revalidar estado da OS no banco (se já existe)
+      if (finalVendaId) {
+        console.log("🔍 Validando OS no banco. VendaId:", finalVendaId);
+        const { data: vendaData, error: vendaError } = await supabase
+          .from("vendas")
+          .select("status, mecanico_id, finalizado_em")
+          .eq("id", finalVendaId)
+          .single();
 
-      // OS não pode estar finalizada
-      if (vendaData.status === "finalizada") {
-        toast({
-          title: "Erro",
-          description: "A OS já foi finalizada. Recarregue a página.",
-          variant: "destructive",
-        });
-        return;
-      }
+        if (vendaError) {
+          console.error("❌ Erro ao consultar venda:", vendaError);
+          throw new Error("Erro ao validar OS no banco");
+        }
 
-      // OS precisa ter mecânico vinculado
-      if (!vendaData.mecanico_id) {
-        toast({
-          title: "Erro",
-          description: "A OS precisa ter um mecânico atribuído.",
-          variant: "destructive",
-        });
-        return;
+        // OS não pode estar finalizada
+        if (vendaData.status === "finalizada") {
+          toast({
+            title: "Erro",
+            description: "A OS já foi finalizada. Recarregue a página.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // OS precisa ter mecânico vinculado
+        if (!vendaData.mecanico_id) {
+          toast({
+            title: "Erro",
+            description: "A OS precisa ter um mecânico atribuído.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       // 3. Recalcular base de serviços direto no banco
       const { data: servicosData, error: servicosError } = await supabase
         .from("venda_servicos")
         .select("preco")
-        .eq("venda_id", vendaId);
+        .eq("venda_id", finalVendaId);
 
       if (servicosError) {
         throw new Error("Erro ao consultar serviços da OS");
@@ -166,7 +267,7 @@ export const ComissaoCalculatorModal = ({
       const { data: comissaoExistente, error: comissaoError } = await supabase
         .from("comissoes_mecanicos")
         .select("id")
-        .eq("venda_id", vendaId)
+        .eq("venda_id", finalVendaId)
         .single();
 
       if (comissaoError && comissaoError.code !== "PGRST116") { // PGRST116 = No rows found
@@ -191,7 +292,7 @@ export const ComissaoCalculatorModal = ({
       const { error: comissaoInsertError } = await supabase
         .from("comissoes_mecanicos")
         .insert({
-          venda_id: vendaId,
+          venda_id: finalVendaId,
           mecanico_id: mecanicoId,
           tipo_calculo: tipoCalculo,
           percentual: tipoCalculo === "percentual" ? percentual : null,
@@ -213,7 +314,7 @@ export const ComissaoCalculatorModal = ({
           status: "finalizada",
           finalizado_em: new Date().toISOString()
         })
-        .eq("id", vendaId);
+        .eq("id", finalVendaId);
 
       if (osUpdateError) {
         throw new Error("Erro ao finalizar OS");

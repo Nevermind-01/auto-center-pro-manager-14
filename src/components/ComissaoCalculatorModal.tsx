@@ -13,8 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useComissoesMutations } from "@/hooks/useComissoes";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ComissaoCalculatorModalProps {
   isOpen: boolean;
@@ -38,7 +38,6 @@ export const ComissaoCalculatorModal = ({
   valorTotal
 }: ComissaoCalculatorModalProps) => {
   const { toast } = useToast();
-  const { createComissao } = useComissoesMutations();
 
   const [tipoCalculo, setTipoCalculo] = useState<"percentual" | "fixo">("percentual");
   const [baseCalculo, setBaseCalculo] = useState<"servicos" | "total" | "manual">("servicos");
@@ -74,52 +73,163 @@ export const ComissaoCalculatorModal = ({
   };
 
   const handleFinalizar = async () => {
-    const baseValue = getBaseCalculoValue();
-    const valorFinal = getValorFinalComissao();
-
-    if (baseValue <= 0) {
-      toast({
-        title: "Erro",
-        description: "Base de cálculo deve ser maior que zero.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (valorFinal <= 0) {
-      toast({
-        title: "Erro", 
-        description: "Valor da comissão deve ser maior que zero.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    // 1. Desabilitar UI imediatamente
     setIsProcessing(true);
 
     try {
-      await createComissao.mutateAsync({
-        venda_id: vendaId,
-        mecanico_id: mecanicoId,
-        tipo_calculo: tipoCalculo,
-        percentual: tipoCalculo === "percentual" ? percentual : null,
-        valor_fixo: tipoCalculo === "fixo" ? valorFixo : null,
-        valor_final: valorFinal,
-        base_calculo: baseValue,
-        observacoes: observacoes || null,
-      });
+      // 2. Revalidar estado da OS no banco
+      const { data: vendaData, error: vendaError } = await supabase
+        .from("vendas")
+        .select("status, mecanico_id, finalizado_em")
+        .eq("id", vendaId)
+        .single();
 
+      if (vendaError) {
+        throw new Error("Erro ao validar OS no banco");
+      }
+
+      // OS não pode estar finalizada
+      if (vendaData.status === "finalizada") {
+        toast({
+          title: "Erro",
+          description: "A OS já foi finalizada. Recarregue a página.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // OS precisa ter mecânico vinculado
+      if (!vendaData.mecanico_id) {
+        toast({
+          title: "Erro",
+          description: "A OS precisa ter um mecânico atribuído.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 3. Recalcular base de serviços direto no banco
+      const { data: servicosData, error: servicosError } = await supabase
+        .from("venda_servicos")
+        .select("preco")
+        .eq("venda_id", vendaId);
+
+      if (servicosError) {
+        throw new Error("Erro ao consultar serviços da OS");
+      }
+
+      const baseServicosReal = servicosData.reduce((total, item) => total + Number(item.preco), 0);
+
+      if (baseServicosReal === 0) {
+        toast({
+          title: "Erro",
+          description: "Não há serviços na OS.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 4. Validar entrada do modal
+      // Exatamente um método
+      if (tipoCalculo !== "percentual" && tipoCalculo !== "fixo") {
+        toast({
+          title: "Erro",
+          description: "Selecione apenas um método: Percentual ou Valor Fixo.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validar percentual
+      if (tipoCalculo === "percentual" && (percentual <= 0 || percentual > 100)) {
+        toast({
+          title: "Erro",
+          description: "Informe um percentual entre 0,01% e 100%.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validar valor fixo
+      if (tipoCalculo === "fixo" && valorFixo <= 0) {
+        toast({
+          title: "Erro",
+          description: "Informe um valor fixo maior que zero.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 5. Checar duplicidade
+      const { data: comissaoExistente, error: comissaoError } = await supabase
+        .from("comissoes_mecanicos")
+        .select("id")
+        .eq("venda_id", vendaId)
+        .single();
+
+      if (comissaoError && comissaoError.code !== "PGRST116") { // PGRST116 = No rows found
+        throw new Error("Erro ao verificar duplicidade de comissão");
+      }
+
+      if (comissaoExistente) {
+        toast({
+          title: "Erro",
+          description: "Comissão desta OS já registrada.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 6. Calcular valor final usando base recalculada
+      const valorFinalComissao = tipoCalculo === "percentual" 
+        ? (baseServicosReal * percentual) / 100
+        : valorFixo;
+
+      // 7. Operação atômica: inserir comissão + finalizar OS
+      const { error: comissaoInsertError } = await supabase
+        .from("comissoes_mecanicos")
+        .insert({
+          venda_id: vendaId,
+          mecanico_id: mecanicoId,
+          tipo_calculo: tipoCalculo,
+          percentual: tipoCalculo === "percentual" ? percentual : null,
+          valor_fixo: tipoCalculo === "fixo" ? valorFixo : null,
+          valor_final: valorFinalComissao,
+          base_calculo: baseServicosReal,
+          observacoes: observacoes || null,
+          user_id: (await supabase.auth.getUser()).data.user?.id || "",
+        });
+
+      if (comissaoInsertError) {
+        throw new Error("Erro ao inserir comissão");
+      }
+
+      // Atualizar OS para finalizada
+      const { error: osUpdateError } = await supabase
+        .from("vendas")
+        .update({ 
+          status: "finalizada",
+          finalizado_em: new Date().toISOString()
+        })
+        .eq("id", vendaId);
+
+      if (osUpdateError) {
+        throw new Error("Erro ao finalizar OS");
+      }
+
+      // 8. Sucesso
       toast({
-        title: "Comissão calculada",
-        description: `Comissão de R$ ${valorFinal.toFixed(2)} registrada para ${mecanicoNome}.`,
+        title: "Sucesso",
+        description: "OS finalizada e comissão registrada.",
       });
 
       onFinalized();
+
     } catch (error) {
-      console.error("Erro ao criar comissão:", error);
+      console.error("Erro ao processar comissão:", error);
       toast({
         title: "Erro",
-        description: "Erro ao registrar comissão.",
+        description: "Erro ao registrar comissão. Nada foi alterado. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -151,6 +261,9 @@ export const ComissaoCalculatorModal = ({
                   <p className="font-medium">R$ {valorTotal.toFixed(2)}</p>
                 </div>
               </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                * Valores serão recalculados no momento da confirmação
+              </p>
             </CardContent>
           </Card>
 

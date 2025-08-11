@@ -1011,22 +1011,21 @@ const NovaOSSupabase = () => {
   };
 
   const processarFinalizacaoComComissao = async () => {
-    console.log("🚀 Iniciando finalização com comissão");
-    try {
-      // Capturar valores antes da finalização (antes do reset)
-      console.log("💰 Capturando valores para comissão - Serviços:", valorServicos, "Total:", valorTotal);
-      setValorServicosParaComissao(valorServicos);
-      setValorTotalParaComissao(valorTotal);
-      
-      // Primeiro finalizar a OS
-      await processarFinalizacao();
-      
-      console.log("✅ OS finalizada, abrindo modal de comissão. VendaId:", vendaIdForComissao);
-      // Abrir modal de comissão imediatamente após finalização
-      setShowComissaoCalculator(true);
-    } catch (error) {
-      console.error("❌ Erro na finalização com comissão:", error);
+    console.log("🚀 Iniciando processo de comissão");
+    
+    // Capturar valores para exibição no modal (apenas informativos)
+    console.log("💰 Capturando valores informativos - Serviços:", valorServicos, "Total:", valorTotal);
+    setValorServicosParaComissao(valorServicos);
+    setValorTotalParaComissao(valorTotal);
+    
+    // Definir vendaId se ainda não foi definido
+    if (!vendaIdForComissao && editingVenda?.id) {
+      setVendaIdForComissao(editingVenda.id);
     }
+    
+    // Abrir modal de comissão diretamente (não finalizar OS ainda)
+    console.log("📋 Abrindo modal de comissão. VendaId:", vendaIdForComissao || editingVenda?.id);
+    setShowComissaoCalculator(true);
   };
 
   const handleComissaoFinalized = () => {

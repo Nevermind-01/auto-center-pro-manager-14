@@ -13,6 +13,7 @@ import { useVendaMutations, useLogMovimentacaoMutations } from "@/hooks/useSupab
 import { useSupabaseEstoque } from "@/lib/supabaseEstoque";
 import { DollarSign, Package, Wrench, ShoppingCart, AlertTriangle, User, FileText, Calculator } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 import { useComissoesMutations } from "@/hooks/useComissoes";
 import { useMecanicos } from "@/hooks/useMecanicos";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +39,8 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
   const [isLoading, setIsLoading] = useState(false);
 
   // Estados para comissão do mecânico
+  const [registrarComissao, setRegistrarComissao] = useState(false);
+  const [temComissaoRegistrada, setTemComissaoRegistrada] = useState(false);
   const [tipoCalculo, setTipoCalculo] = useState<'percentual' | 'fixo' | null>(null);
   const [valorPercentual, setValorPercentual] = useState<number | ''>('');
   const [valorFixo, setValorFixo] = useState<number | ''>('');
@@ -56,16 +59,32 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
       setObservacoes(venda.observacoes || '');
       
       // Reset comissão
+      setRegistrarComissao(false);
       setTipoCalculo(null);
       setValorPercentual('');
       setValorFixo('');
       setObsComissao('');
+
+      // Verificar se já existe comissão para esta OS
+      const checkComissaoExistente = async () => {
+        const { data: comissaoExistente } = await supabase
+          .from('comissoes_mecanicos')
+          .select('id')
+          .eq('venda_id', venda.id)
+          .maybeSingle();
+        
+        setTemComissaoRegistrada(!!comissaoExistente);
+      };
+      
+      checkComissaoExistente();
     } else {
       // Reset quando fechar
       setDesconto(0);
       setFormaPagamento("");
       setParcelas(1);
       setObservacoes("");
+      setRegistrarComissao(false);
+      setTemComissaoRegistrada(false);
       setTipoCalculo(null);
       setValorPercentual('');
       setValorFixo('');
@@ -131,8 +150,17 @@ const valorFinal = valorTotal - valorDesconto;
       return;
     }
 
-    // Validações de comissão
-    if (tipoCalculo) {
+    // Validações de comissão apenas se estiver habilitada
+    if (registrarComissao) {
+      if (!tipoCalculo) {
+        toast({
+          title: "Erro", 
+          description: "Selecione o tipo de cálculo da comissão.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (tipoCalculo === 'percentual') {
         if (!valorPercentual || valorPercentual <= 0 || valorPercentual > 100) {
           toast({
@@ -151,22 +179,6 @@ const valorFinal = valorTotal - valorDesconto;
           });
           return;
         }
-      }
-
-      // Verificar se já existe comissão para esta OS
-      const { data: comissaoExistente } = await supabase
-        .from('comissoes_mecanicos')
-        .select('id')
-        .eq('venda_id', venda.id)
-        .maybeSingle();
-
-      if (comissaoExistente) {
-        toast({
-          title: "Erro", 
-          description: "Já existe uma comissão registrada para esta OS.",
-          variant: "destructive",
-        });
-        return;
       }
     }
 
@@ -224,7 +236,7 @@ const valorFinal = valorTotal - valorDesconto;
       });
 
       // Registrar comissão se especificada
-      if (tipoCalculo && hasMecanico) {
+      if (registrarComissao && tipoCalculo && hasMecanico) {
         await createComissao.mutateAsync({
           venda_id: venda.id,
           mecanico_id: venda.mecanico_id,
@@ -238,7 +250,7 @@ const valorFinal = valorTotal - valorDesconto;
       }
 
       // Registrar log de finalização
-      const logDescricao = tipoCalculo
+      const logDescricao = registrarComissao && tipoCalculo
         ? `OS ${venda.numero_os} finalizada com comissão registrada - ${formaPagamento}${formaPagamento === 'parcelado' ? ` (${parcelas}x)` : ''}`
         : `OS ${venda.numero_os} finalizada via modal - ${formaPagamento}${formaPagamento === 'parcelado' ? ` (${parcelas}x)` : ''}`;
 
@@ -249,7 +261,7 @@ const valorFinal = valorTotal - valorDesconto;
         observacoes: logDescricao
       });
 
-      const successMessage = tipoCalculo
+      const successMessage = registrarComissao && tipoCalculo
         ? `OS ${venda.numero_os} finalizada e comissão registrada com sucesso.`
         : `OS ${venda.numero_os} foi finalizada com sucesso.`;
 
@@ -351,91 +363,120 @@ const valorFinal = valorTotal - valorDesconto;
                     <Calculator className="h-4 w-4 text-purple-600" />
                     <h3 className="font-semibold">Comissão do Mecânico</h3>
                   </div>
-                  
-                  <div className="space-y-4">
-                    <div className="bg-blue-50 p-3 rounded-lg text-sm">
-                      <div className="flex justify-between items-center">
-                        <span>Base de cálculo (serviços):</span>
-                        <span className="font-medium">R$ {baseCalculo.toFixed(2)}</span>
-                      </div>
-                    </div>
 
-                    <div>
-                      <Label className="text-sm font-medium">Tipo de Cálculo</Label>
-                      <RadioGroup 
-                        value={tipoCalculo || ''} 
-                        onValueChange={(value) => {
-                          setTipoCalculo(value as 'percentual' | 'fixo' || null);
-                          setValorPercentual('');
-                          setValorFixo('');
-                        }}
-                        className="mt-2"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="percentual" id="percentual" />
-                          <Label htmlFor="percentual" className="text-sm cursor-pointer">Percentual (%)</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="fixo" id="fixo" />
-                          <Label htmlFor="fixo" className="text-sm cursor-pointer">Valor Fixo (R$)</Label>
-                        </div>
-                      </RadioGroup>
+                  {temComissaoRegistrada ? (
+                    <div className="p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">
+                      ✓ Já existe uma comissão registrada para esta OS.
                     </div>
-
-                    {tipoCalculo === 'percentual' && (
-                      <div>
-                        <Label htmlFor="valor-percentual" className="text-sm">Percentual (%)</Label>
-                        <Input
-                          id="valor-percentual"
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.1"
-                          value={valorPercentual}
-                          onChange={(e) => setValorPercentual(parseFloat(e.target.value) || '')}
-                          placeholder="Ex: 10"
-                          className="mt-1"
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between mb-4">
+                        <Label htmlFor="registrar-comissao" className="text-sm font-medium">
+                          Registrar comissão
+                        </Label>
+                        <Switch
+                          id="registrar-comissao"
+                          checked={registrarComissao}
+                          onCheckedChange={(checked) => {
+                            setRegistrarComissao(checked);
+                            if (!checked) {
+                              setTipoCalculo(null);
+                              setValorPercentual('');
+                              setValorFixo('');
+                              setObsComissao('');
+                            }
+                          }}
                         />
                       </div>
-                    )}
 
-                    {tipoCalculo === 'fixo' && (
-                      <div>
-                        <Label htmlFor="valor-fixo" className="text-sm">Valor Fixo (R$)</Label>
-                        <Input
-                          id="valor-fixo"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={valorFixo}
-                          onChange={(e) => setValorFixo(parseFloat(e.target.value) || '')}
-                          placeholder="Ex: 100.00"
-                          className="mt-1"
-                        />
-                      </div>
-                    )}
+                      {registrarComissao && (
+                        <div className="space-y-4">
+                          <div className="bg-blue-50 p-3 rounded-lg text-sm">
+                            <div className="flex justify-between items-center">
+                              <span>Base de cálculo (serviços):</span>
+                              <span className="font-medium">R$ {baseCalculo.toFixed(2)}</span>
+                            </div>
+                          </div>
 
-                    {comissaoPreview > 0 && (
-                      <div className="bg-green-50 p-3 rounded-lg">
-                        <div className="flex justify-between items-center text-sm">
-                          <span>Valor da comissão:</span>
-                          <span className="font-bold text-green-700">R$ {comissaoPreview.toFixed(2)}</span>
+                          <div>
+                            <Label className="text-sm font-medium">Tipo de Cálculo</Label>
+                            <RadioGroup 
+                              value={tipoCalculo || ''} 
+                              onValueChange={(value) => {
+                                setTipoCalculo(value as 'percentual' | 'fixo' || null);
+                                setValorPercentual('');
+                                setValorFixo('');
+                              }}
+                              className="mt-2"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="percentual" id="percentual" />
+                                <Label htmlFor="percentual" className="text-sm cursor-pointer">Percentual (%)</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="fixo" id="fixo" />
+                                <Label htmlFor="fixo" className="text-sm cursor-pointer">Valor Fixo (R$)</Label>
+                              </div>
+                            </RadioGroup>
+                          </div>
+
+                          {tipoCalculo === 'percentual' && (
+                            <div>
+                              <Label htmlFor="valor-percentual" className="text-sm">Percentual (%)</Label>
+                              <Input
+                                id="valor-percentual"
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                value={valorPercentual}
+                                onChange={(e) => setValorPercentual(parseFloat(e.target.value) || '')}
+                                placeholder="Ex: 10"
+                                className="mt-1"
+                              />
+                            </div>
+                          )}
+
+                          {tipoCalculo === 'fixo' && (
+                            <div>
+                              <Label htmlFor="valor-fixo" className="text-sm">Valor Fixo (R$)</Label>
+                              <Input
+                                id="valor-fixo"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={valorFixo}
+                                onChange={(e) => setValorFixo(parseFloat(e.target.value) || '')}
+                                placeholder="Ex: 100.00"
+                                className="mt-1"
+                              />
+                            </div>
+                          )}
+
+                          {comissaoPreview > 0 && (
+                            <div className="bg-green-50 p-3 rounded-lg">
+                              <div className="flex justify-between items-center text-sm">
+                                <span>Valor da comissão:</span>
+                                <span className="font-bold text-green-700">R$ {comissaoPreview.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          <div>
+                            <Label htmlFor="obs-comissao" className="text-sm">Observações</Label>
+                            <Textarea
+                              id="obs-comissao"
+                              value={obsComissao}
+                              onChange={(e) => setObsComissao(e.target.value)}
+                              placeholder="Observações sobre a comissão..."
+                              rows={2}
+                              className="mt-1"
+                            />
+                          </div>
                         </div>
-                      </div>
-                    )}
-
-                    <div>
-                      <Label htmlFor="obs-comissao" className="text-sm">Observações</Label>
-                      <Textarea
-                        id="obs-comissao"
-                        value={obsComissao}
-                        onChange={(e) => setObsComissao(e.target.value)}
-                        placeholder="Observações sobre a comissão..."
-                        rows={2}
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
+                      )}
+                    </>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -574,7 +615,7 @@ const valorFinal = valorTotal - valorDesconto;
             onClick={handleFinalizarOS} 
             disabled={!formaPagamento || !hasServicos || !hasMecanico || isLoading}
           >
-            {isLoading ? "Finalizando..." : (tipoCalculo ? "Finalizar OS e Registrar Comissão" : "Finalizar OS")}
+            {isLoading ? "Finalizando..." : (registrarComissao && tipoCalculo ? "Finalizar OS e Registrar Comissão" : "Finalizar OS")}
           </Button>
         </div>
       </DialogContent>

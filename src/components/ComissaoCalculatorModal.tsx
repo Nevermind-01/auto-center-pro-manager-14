@@ -172,9 +172,10 @@ export const ComissaoCalculatorModal = ({
       const { data: result, error: rpcError } = await supabase.functions.invoke(
         'finalizar-os-comissao',
         { 
-          body: { payload },
+          body: JSON.stringify({ payload }),
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
           }
         }
       );

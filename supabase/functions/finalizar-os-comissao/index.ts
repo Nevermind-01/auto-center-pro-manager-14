@@ -29,15 +29,34 @@ serve(async (req) => {
       }
     );
 
-    // Get the request payload
-    let requestBody;
-    try {
-      requestBody = await req.json();
-    } catch (error) {
-      console.error('❌ Erro ao parsear JSON:', error);
+    // Get request body as text first
+    const bodyText = await req.text();
+    console.log('📥 Request body received:', bodyText?.substring(0, 200) + '...');
+    
+    if (!bodyText) {
+      console.error('❌ Request body is empty');
       return new Response(
         JSON.stringify({ 
-          error: 'Payload JSON inválido',
+          error: 'Request body é obrigatório',
+          success: false 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Parse JSON from text
+    let requestBody;
+    try {
+      requestBody = JSON.parse(bodyText);
+    } catch (parseError) {
+      console.error('❌ Erro ao parsear JSON:', parseError);
+      console.error('❌ Body recebido:', bodyText);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Payload JSON inválido: ' + parseError.message,
           success: false 
         }),
         { 
@@ -50,10 +69,10 @@ serve(async (req) => {
     const { payload } = requestBody;
     
     if (!payload) {
-      console.error('❌ Payload não fornecido');
+      console.error('❌ Payload não fornecido no request body:', requestBody);
       return new Response(
         JSON.stringify({ 
-          error: 'Payload é obrigatório',
+          error: 'Payload é obrigatório no request body',
           success: false 
         }),
         { 

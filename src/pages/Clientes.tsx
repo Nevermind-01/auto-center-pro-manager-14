@@ -3,10 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useClientes, useClienteMutations, Cliente } from '@/hooks/useSupabaseQueries';
-import { Search, Plus, Edit, Trash2 } from 'lucide-react';
+import { MaskedClienteCard } from '@/components/MaskedClienteCard';
+import { useClienteValidation } from '@/hooks/useClienteValidation';
+import { Search, Plus, Shield, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Clientes() {
@@ -17,6 +19,7 @@ export default function Clientes() {
   
   const { data: clientes = [], isLoading } = useClientes();
   const { createCliente, updateCliente, deleteCliente } = useClienteMutations();
+  const { errors, validateClienteData, formatCPF, formatCNPJ, formatTelefone, clearErrors } = useClienteValidation();
   const { toast } = useToast();
 
   const filteredClientes = clientes.filter(cliente =>
@@ -29,6 +32,8 @@ export default function Clientes() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    clearErrors();
+    
     const formData = new FormData(e.currentTarget);
     
     const clienteData = {
@@ -46,6 +51,20 @@ export default function Clientes() {
       endereco: null, // Legacy field, keeping as null
     };
 
+    // Validate sensitive data
+    const dataToValidate = Object.fromEntries(
+      Object.entries(clienteData).filter(([_, value]) => value !== null && value !== '')
+    ) as Record<string, string>;
+
+    if (!validateClienteData(dataToValidate)) {
+      toast({ 
+        title: "Dados inválidos", 
+        description: "Verifique os campos destacados", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     try {
       if (isEditing && selectedCliente) {
         await updateCliente.mutateAsync({ id: selectedCliente.id, ...clienteData });
@@ -57,10 +76,11 @@ export default function Clientes() {
       setIsDialogOpen(false);
       setSelectedCliente(null);
       setIsEditing(false);
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage = error?.message || "Erro ao salvar cliente";
       toast({ 
         title: "Erro", 
-        description: "Erro ao salvar cliente", 
+        description: errorMessage, 
         variant: "destructive" 
       });
     }
@@ -90,6 +110,7 @@ export default function Clientes() {
   const openNewClienteDialog = () => {
     setSelectedCliente(null);
     setIsEditing(false);
+    clearErrors();
     setIsDialogOpen(true);
   };
 
@@ -100,7 +121,10 @@ export default function Clientes() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Gerenciamento de Clientes</h1>
+        <div className="flex items-center gap-3">
+          <Shield className="w-8 h-8 text-primary" />
+          <h1 className="text-3xl font-bold">Gerenciamento de Clientes</h1>
+        </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openNewClienteDialog}>
@@ -110,8 +134,19 @@ export default function Clientes() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{isEditing ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                {isEditing ? 'Editar Cliente' : 'Novo Cliente'}
+              </DialogTitle>
             </DialogHeader>
+            
+            <Alert className="bg-amber-50 border-amber-200">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Os dados pessoais inseridos são protegidos por criptografia e auditoria de acesso.
+              </AlertDescription>
+            </Alert>
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -130,7 +165,11 @@ export default function Clientes() {
                     name="email" 
                     type="email" 
                     defaultValue={selectedCliente?.email || ''} 
+                    className={errors.email ? 'border-destructive' : ''}
                   />
+                  {errors.email && (
+                    <p className="text-xs text-destructive mt-1">{errors.email}</p>
+                  )}
                 </div>
               </div>
               
@@ -141,7 +180,12 @@ export default function Clientes() {
                     id="telefone" 
                     name="telefone" 
                     defaultValue={selectedCliente?.telefone || ''} 
+                    placeholder="(00) 00000-0000"
+                    className={errors.telefone ? 'border-destructive' : ''}
                   />
+                  {errors.telefone && (
+                    <p className="text-xs text-destructive mt-1">{errors.telefone}</p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="cpf">CPF</Label>
@@ -149,7 +193,12 @@ export default function Clientes() {
                     id="cpf" 
                     name="cpf" 
                     defaultValue={selectedCliente?.cpf || ''} 
+                    placeholder="000.000.000-00"
+                    className={errors.cpf ? 'border-destructive' : ''}
                   />
+                  {errors.cpf && (
+                    <p className="text-xs text-destructive mt-1">{errors.cpf}</p>
+                  )}
                 </div>
               </div>
 
@@ -160,7 +209,12 @@ export default function Clientes() {
                     id="cnpj" 
                     name="cnpj" 
                     defaultValue={selectedCliente?.cnpj || ''} 
+                    placeholder="00.000.000/0000-00"
+                    className={errors.cnpj ? 'border-destructive' : ''}
                   />
+                  {errors.cnpj && (
+                    <p className="text-xs text-destructive mt-1">{errors.cnpj}</p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="rg">RG</Label>
@@ -253,50 +307,12 @@ export default function Clientes() {
 
       <div className="grid gap-4">
         {filteredClientes.map((cliente) => (
-          <Card key={cliente.id}>
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start">
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">{cliente.nome}</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
-                    <div>
-                      {cliente.email && <p>Email: {cliente.email}</p>}
-                      {cliente.telefone && <p>Telefone: {cliente.telefone}</p>}
-                      {cliente.cpf && <p>CPF: {cliente.cpf}</p>}
-                      {cliente.cnpj && <p>CNPJ: {cliente.cnpj}</p>}
-                      {cliente.rg && <p>RG: {cliente.rg}</p>}
-                    </div>
-                    <div>
-                      {(cliente.rua || cliente.numero_residencia || cliente.bairro || cliente.cidade || cliente.estado) && (
-                        <div>
-                          <p className="font-medium">Endereço:</p>
-                          {cliente.rua && <p>{cliente.rua}{cliente.numero_residencia && `, ${cliente.numero_residencia}`}</p>}
-                          {cliente.bairro && <p>{cliente.bairro}</p>}
-                          {cliente.cidade && <p>{cliente.cidade}{cliente.estado && ` - ${cliente.estado}`}</p>}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(cliente)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(cliente.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <MaskedClienteCard
+            key={cliente.id}
+            cliente={cliente}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
         ))}
       </div>
 

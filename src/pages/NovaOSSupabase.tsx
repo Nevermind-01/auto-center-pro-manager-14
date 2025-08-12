@@ -964,19 +964,14 @@ const NovaOSSupabase = () => {
         numeroOS
       );
 
-      // Armazenar vendaId para comissão se necessário
-      console.log("💾 Armazenando vendaId para comissão:", vendaId);
-      setVendaIdForComissao(vendaId);
-
       toast({
         title: "OS finalizada",
         description: `OS ${numeroOS} foi finalizada com sucesso.`,
       });
 
       // Se não vai calcular comissão, fazer o reset/navegação normal
-      // Não resetar aqui se estivermos no fluxo de comissão
       console.log("🔍 Verificando se deve resetar formulário. ShowComissaoCalculator:", showComissaoCalculator);
-      if (!showComissaoCalculator && vendaIdForComissao === "") {
+      if (!showComissaoCalculator) {
         if (isEditing) {
           // Se estava editando, voltar para o histórico
           navigate('/history');
@@ -1018,10 +1013,11 @@ const NovaOSSupabase = () => {
     setValorServicosParaComissao(valorServicos);
     setValorTotalParaComissao(valorTotal);
     
-    // Definir vendaId se editando uma OS existente
+    // Armazenar vendaId para comissão se editando uma OS existente
     if (isEditing && editingVenda?.id) {
       setVendaIdForComissao(editingVenda.id);
     }
+    // Para nova OS, o vendaId será setado no ComissaoCalculatorModal após finalizar
     
     // Abrir modal de comissão SEM finalizar a OS
     console.log("📋 Abrindo modal de comissão. VendaId para edição:", isEditing ? editingVenda?.id : 'nova OS');

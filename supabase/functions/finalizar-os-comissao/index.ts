@@ -13,19 +13,15 @@ serve(async (req) => {
   }
 
   try {
-    // Get the authorization header from the request
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) {
-      throw new Error('Missing authorization header');
-    }
-
-    // Initialize Supabase client with the same project settings
+    // Initialize Supabase client with the user's authorization
+    const authHeader = req.headers.get('Authorization');
+    
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
-          headers: { Authorization: authHeader },
+          headers: authHeader ? { Authorization: authHeader } : {},
         },
         auth: {
           persistSession: false,
@@ -33,21 +29,35 @@ serve(async (req) => {
       }
     );
 
-    // Verify user is authenticated
+    // Get the request payload
+    const { payload } = await req.json();
+    console.log('🚀 Recebida solicitação para finalizar OS com comissão');
+
+    // Verify authentication using the client
     const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
     if (userError || !user) {
-      throw new Error('User not authenticated');
+      console.error('❌ Erro de autenticação:', userError?.message || 'User not found');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Usuário não autenticado',
+          success: false 
+        }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
-    const { payload } = await req.json();
-
-    console.log('🚀 Chamando RPC finalizar_os_com_comissao:', payload);
+    console.log('✅ Usuário autenticado:', user.id);
+    console.log('📋 Chamando RPC finalizar_os_com_comissao');
 
     // Call the RPC function
     const { data, error } = await supabase.rpc('rpc_finalizar_os_com_comissao', { payload });
 
     if (error) {
-      console.error('❌ Erro no RPC:', error);
+      console.error('❌ Erro no RPC:', error.message);
       throw error;
     }
 

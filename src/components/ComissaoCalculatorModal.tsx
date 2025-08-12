@@ -167,18 +167,42 @@ export const ComissaoCalculatorModal = ({
       console.log("🚀 Enviando payload para RPC:", payload);
 
       // 5. Chamar edge function que executa o RPC
+      console.log("🚀 Enviando dados para edge function:", payload);
+      
       const { data: result, error: rpcError } = await supabase.functions.invoke(
         'finalizar-os-comissao',
-        { body: { payload } }
+        { 
+          body: { payload },
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
       );
+
+      console.log("📦 Resposta da edge function:", { result, rpcError });
 
       if (rpcError) {
         console.error("❌ Erro na edge function:", rpcError);
+        
+        // Verificar se é erro HTTP
+        if (rpcError.message?.includes('non 2xx status code')) {
+          toast({
+            title: "Erro de comunicação",
+            description: "Erro ao processar solicitação. Verifique sua conexão e tente novamente.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         throw new Error(rpcError.message || 'Erro ao processar solicitação');
       }
 
-      if (result?.error) {
-        console.error("❌ Erro no RPC:", result.error);
+      if (!result) {
+        throw new Error("Resposta vazia do servidor");
+      }
+
+      if (result.error) {
+        console.error("❌ Erro retornado pela função:", result.error);
         
         // Tratar erros específicos
         if (result.error.includes("já existe")) {
@@ -199,11 +223,20 @@ export const ComissaoCalculatorModal = ({
           return;
         }
 
+        if (result.error.includes("não autenticado")) {
+          toast({
+            title: "Erro de autenticação",
+            description: "Faça login novamente para continuar.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         throw new Error(result.error);
       }
 
-      if (!result?.success) {
-        throw new Error("Resposta inválida do servidor");
+      if (!result.success) {
+        throw new Error("Operação não foi concluída com sucesso");
       }
 
       console.log("✅ OS finalizada com sucesso:", result);

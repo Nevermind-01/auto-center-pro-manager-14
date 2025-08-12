@@ -13,32 +13,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+
+interface OSData {
+  clienteSelecionado: any;
+  veiculoSelecionado: any;
+  servicosSelecionados: any[];
+  produtosSelecionados: any[];
+  formaPagamento: string;
+  parcelas: number;
+  valorDesconto: number;
+  observacoes: string;
+  numeroOS: string;
+  isEditing: boolean;
+  editingVenda?: any;
+}
 
 interface ComissaoCalculatorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onFinalized: () => void;
-  vendaId: string;
+  vendaId: string; // Vazio para nova OS, preenchido para edição
   mecanicoId: string;
   mecanicoNome: string;
   valorServicos: number;
   valorTotal: number;
-  // Dados necessários para finalizar a OS
-  osData?: {
-    clienteSelecionado: any;
-    veiculoSelecionado: any;
-    servicosSelecionados: any[];
-    produtosSelecionados: any[];
-    formaPagamento: string;
-    parcelas: number;
-    valorDesconto: number;
-    observacoes: string;
-    numeroOS: string;
-    isEditing: boolean;
-    editingVenda?: any;
-  };
+  osData: OSData;
 }
 
 export const ComissaoCalculatorModal = ({
@@ -55,284 +57,171 @@ export const ComissaoCalculatorModal = ({
   const { toast } = useToast();
 
   const [tipoCalculo, setTipoCalculo] = useState<"percentual" | "fixo">("percentual");
-  const [baseCalculo, setBaseCalculo] = useState<"servicos" | "total" | "manual">("servicos");
   const [percentual, setPercentual] = useState<number>(10);
   const [valorFixo, setValorFixo] = useState<number>(0);
-  const [valorManual, setValorManual] = useState<number>(0);
   const [observacoes, setObservacoes] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Calcular base de cálculo
-  const getBaseCalculoValue = () => {
-    switch (baseCalculo) {
-      case "servicos":
-        return valorServicos;
-      case "total":
-        return valorTotal;
-      case "manual":
-        return valorManual;
-      default:
-        return 0;
-    }
-  };
-
-  // Calcular valor final da comissão
+  // Calcular valor final da comissão (apenas para preview)
   const getValorFinalComissao = () => {
-    const base = getBaseCalculoValue();
-    
     if (tipoCalculo === "percentual") {
-      return (base * percentual) / 100;
+      return (valorServicos * percentual) / 100;
     } else {
       return valorFixo;
     }
   };
 
-  // Função para criar nova OS
-  const criarNovaOS = async (): Promise<string> => {
-    if (!osData) throw new Error("Dados da OS não fornecidos");
-    
-    const { clienteSelecionado, veiculoSelecionado, servicosSelecionados, produtosSelecionados, 
-            formaPagamento, parcelas, valorDesconto, observacoes, numeroOS } = osData;
-
-    if (!clienteSelecionado) throw new Error("Cliente não selecionado");
-    if (!formaPagamento) throw new Error("Forma de pagamento não selecionada");
-
-    // Calcular valores
-    const valorServicos = servicosSelecionados.reduce((total, servico) => total + servico.valor, 0);
-    const valorProdutos = produtosSelecionados.reduce((total, produto) => total + (produto.valor * produto.quantidade), 0);
-    const valorTotal = valorServicos + valorProdutos;
-    const valorFinal = valorTotal - valorDesconto;
-
-    // Criar venda
-    const { data: venda, error: vendaError } = await supabase
-      .from("vendas")
-      .insert({
-        numero_os: numeroOS,
-        cliente_id: clienteSelecionado.id,
-        cliente_nome: clienteSelecionado.nome,
-        veiculo_id: veiculoSelecionado?.id || null,
-        mecanico_id: mecanicoId,
-        forma_pagamento: formaPagamento as any,
-        parcelas,
-        valor_total: valorTotal,
-        valor_desconto: valorDesconto,
-        valor_final: valorFinal,
-        observacoes,
-        status: "pendente",
-        user_id: (await supabase.auth.getUser()).data.user?.id || "",
-      })
-      .select()
-      .single();
-
-    if (vendaError) throw new Error("Erro ao criar OS");
-
-    // Criar produtos da venda
-    if (produtosSelecionados.length > 0) {
-      const produtosData = produtosSelecionados.map(produto => ({
-        venda_id: venda.id,
-        produto_id: produto.id,
-        produto_nome: produto.nome,
-        quantidade: produto.quantidade,
-        preco_unitario: produto.valor,
-        preco_total: produto.valor * produto.quantidade,
-      }));
-
-      const { error: produtosError } = await supabase
-        .from("venda_produtos")
-        .insert(produtosData);
-
-      if (produtosError) throw new Error("Erro ao criar produtos da OS");
+  // Validar dados antes de enviar
+  const validarDados = (): string | null => {
+    if (!mecanicoId || mecanicoId === "none") {
+      return "Mecânico é obrigatório para calcular comissão.";
     }
 
-    // Criar serviços da venda
-    if (servicosSelecionados.length > 0) {
-      const servicosData = servicosSelecionados.map(servico => ({
-        venda_id: venda.id,
-        servico_id: servico.id,
-        servico_nome: servico.nome,
-        preco: servico.valor,
-      }));
-
-      const { error: servicosError } = await supabase
-        .from("venda_servicos")
-        .insert(servicosData);
-
-      if (servicosError) throw new Error("Erro ao criar serviços da OS");
+    if (osData.servicosSelecionados.length === 0) {
+      return "É necessário ter pelo menos um serviço para calcular comissão.";
     }
 
-    return venda.id;
+    if (!osData.clienteSelecionado) {
+      return "Cliente é obrigatório.";
+    }
+
+    if (!osData.formaPagamento) {
+      return "Forma de pagamento é obrigatória.";
+    }
+
+    if (tipoCalculo === "percentual" && (percentual <= 0 || percentual > 100)) {
+      return "Informe um percentual entre 0,01% e 100%.";
+    }
+
+    if (tipoCalculo === "fixo" && valorFixo <= 0) {
+      return "Informe um valor fixo maior que zero.";
+    }
+
+    return null;
   };
 
-  const handleFinalizar = async () => {
-    // 1. Desabilitar UI imediatamente
+  // Função principal para finalizar OS com comissão atomicamente
+  const handleFinalizarAtomico = async () => {
+    // 1. Validar dados
+    const erro = validarDados();
+    if (erro) {
+      toast({
+        title: "Erro de validação",
+        description: erro,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
-      let finalVendaId = vendaId;
-      
-      // Se não temos vendaId, precisamos criar a OS primeiro
-      if (!vendaId && osData && !osData.isEditing) {
-        console.log("🆕 Criando nova OS antes de registrar comissão");
-        finalVendaId = await criarNovaOS();
-      }
-      
-      // 2. Revalidar estado da OS no banco (se já existe)
-      if (finalVendaId) {
-        console.log("🔍 Validando OS no banco. VendaId:", finalVendaId);
-        const { data: vendaData, error: vendaError } = await supabase
-          .from("vendas")
-          .select("status, mecanico_id, finalizado_em")
-          .eq("id", finalVendaId)
-          .single();
-
-        if (vendaError) {
-          console.error("❌ Erro ao consultar venda:", vendaError);
-          throw new Error("Erro ao validar OS no banco");
-        }
-
-        // OS não pode estar finalizada
-        if (vendaData.status === "finalizada") {
-          toast({
-            title: "Erro",
-            description: "A OS já foi finalizada. Recarregue a página.",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // OS precisa ter mecânico vinculado
-        if (!vendaData.mecanico_id) {
-          toast({
-            title: "Erro",
-            description: "A OS precisa ter um mecânico atribuído.",
-            variant: "destructive",
-          });
-          return;
-        }
+      // 2. Obter usuário atual
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) {
+        throw new Error("Usuário não autenticado");
       }
 
-      // 3. Recalcular base de serviços direto no banco
-      const { data: servicosData, error: servicosError } = await supabase
-        .from("venda_servicos")
-        .select("preco")
-        .eq("venda_id", finalVendaId);
+      // 3. Calcular valores finais
+      const valorProdutos = osData.produtosSelecionados.reduce(
+        (total, produto) => total + (produto.valor * produto.quantidade), 0
+      );
+      const valorServicosCalculado = osData.servicosSelecionados.reduce(
+        (total, servico) => total + servico.valor, 0
+      );
+      const valorTotalCalculado = valorProdutos + valorServicosCalculado;
+      const valorFinalCalculado = valorTotalCalculado - osData.valorDesconto;
 
-      if (servicosError) {
-        throw new Error("Erro ao consultar serviços da OS");
-      }
-
-      const baseServicosReal = servicosData.reduce((total, item) => total + Number(item.preco), 0);
-
-      if (baseServicosReal === 0) {
-        toast({
-          title: "Erro",
-          description: "Não há serviços na OS.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // 4. Validar entrada do modal
-      // Exatamente um método
-      if (tipoCalculo !== "percentual" && tipoCalculo !== "fixo") {
-        toast({
-          title: "Erro",
-          description: "Selecione apenas um método: Percentual ou Valor Fixo.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Validar percentual
-      if (tipoCalculo === "percentual" && (percentual <= 0 || percentual > 100)) {
-        toast({
-          title: "Erro",
-          description: "Informe um percentual entre 0,01% e 100%.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Validar valor fixo
-      if (tipoCalculo === "fixo" && valorFixo <= 0) {
-        toast({
-          title: "Erro",
-          description: "Informe um valor fixo maior que zero.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // 5. Checar duplicidade
-      const { data: comissaoExistente, error: comissaoError } = await supabase
-        .from("comissoes_mecanicos")
-        .select("id")
-        .eq("venda_id", finalVendaId)
-        .single();
-
-      if (comissaoError && comissaoError.code !== "PGRST116") { // PGRST116 = No rows found
-        throw new Error("Erro ao verificar duplicidade de comissão");
-      }
-
-      if (comissaoExistente) {
-        toast({
-          title: "Erro",
-          description: "Comissão desta OS já registrada.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // 6. Calcular valor final usando base recalculada
-      const valorFinalComissao = tipoCalculo === "percentual" 
-        ? (baseServicosReal * percentual) / 100
-        : valorFixo;
-
-      // 7. Operação atômica: inserir comissão + finalizar OS
-      const { error: comissaoInsertError } = await supabase
-        .from("comissoes_mecanicos")
-        .insert({
-          venda_id: finalVendaId,
-          mecanico_id: mecanicoId,
-          tipo_calculo: tipoCalculo,
+      // 4. Preparar payload para RPC
+      const payload = {
+        numeroOS: osData.numeroOS,
+        clienteId: osData.clienteSelecionado.id,
+        veiculoId: osData.veiculoSelecionado?.id || null,
+        mecanicoId: mecanicoId,
+        userId: userData.user.id,
+        valorTotal: valorTotalCalculado,
+        valorDesconto: osData.valorDesconto,
+        valorFinal: valorFinalCalculado,
+        formaPagamento: osData.formaPagamento,
+        parcelas: osData.parcelas,
+        observacoes: osData.observacoes,
+        produtos: osData.produtosSelecionados.map(produto => ({
+          id: produto.id,
+          nome: produto.nome,
+          quantidade: produto.quantidade,
+          valor: produto.valor
+        })),
+        servicos: osData.servicosSelecionados.map(servico => ({
+          id: servico.id || null,
+          nome: servico.nome,
+          valor: servico.valor
+        })),
+        comissao: {
+          tipoCalculo: tipoCalculo,
           percentual: tipoCalculo === "percentual" ? percentual : null,
-          valor_fixo: tipoCalculo === "fixo" ? valorFixo : null,
-          valor_final: valorFinalComissao,
-          base_calculo: baseServicosReal,
-          observacoes: observacoes || null,
-          user_id: (await supabase.auth.getUser()).data.user?.id || "",
-        });
+          valorFixo: tipoCalculo === "fixo" ? valorFixo : null,
+          observacoes: observacoes
+        }
+      };
 
-      if (comissaoInsertError) {
-        throw new Error("Erro ao inserir comissão");
+      console.log("🚀 Enviando payload para RPC:", payload);
+
+      // 5. Chamar edge function que executa o RPC
+      const { data: result, error: rpcError } = await supabase.functions.invoke(
+        'finalizar-os-comissao',
+        { body: { payload } }
+      );
+
+      if (rpcError) {
+        console.error("❌ Erro na edge function:", rpcError);
+        throw new Error(rpcError.message || 'Erro ao processar solicitação');
       }
 
-      // Atualizar OS para finalizada
-      const { error: osUpdateError } = await supabase
-        .from("vendas")
-        .update({ 
-          status: "finalizada",
-          finalizado_em: new Date().toISOString()
-        })
-        .eq("id", finalVendaId);
+      if (result?.error) {
+        console.error("❌ Erro no RPC:", result.error);
+        
+        // Tratar erros específicos
+        if (result.error.includes("já existe")) {
+          toast({
+            title: "OS já finalizada",
+            description: "Esta OS já foi finalizada. Recarregue a página.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        if (result.error.includes("Estoque insuficiente")) {
+          toast({
+            title: "Estoque insuficiente",
+            description: result.error.split(": ")[1] || "Verifique o estoque dos produtos.",
+            variant: "destructive",
+          });
+          return;
+        }
 
-      if (osUpdateError) {
-        throw new Error("Erro ao finalizar OS");
+        throw new Error(result.error);
       }
 
-      // 8. Sucesso
+      if (!result?.success) {
+        throw new Error("Resposta inválida do servidor");
+      }
+
+      console.log("✅ OS finalizada com sucesso:", result);
+
+      // 6. Sucesso
       toast({
-        title: "Sucesso",
-        description: "OS finalizada e comissão registrada.",
+        title: "Sucesso!",
+        description: `OS ${result.numeroOS} finalizada com comissão de R$ ${result.valorComissao.toFixed(2)}.`,
       });
 
+      // Chamar callback de finalização
       onFinalized();
 
     } catch (error) {
-      console.error("Erro ao processar comissão:", error);
+      console.error("💥 Erro ao finalizar OS:", error);
       toast({
-        title: "Erro",
-        description: "Erro ao registrar comissão. Nada foi alterado. Tente novamente.",
+        title: "Erro ao finalizar OS",
+        description: error instanceof Error ? error.message : "Erro desconhecido. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -341,23 +230,58 @@ export const ComissaoCalculatorModal = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={!isProcessing ? onClose : undefined}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Calcular Comissão - {mecanicoNome}</DialogTitle>
+          <DialogTitle>Finalizar OS com Comissão - {mecanicoNome}</DialogTitle>
           <DialogDescription>
-            Configure os parâmetros para calcular a comissão do mecânico.
+            Configure a comissão e finalize a OS atomicamente.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Resumo dos valores */}
+          {/* Resumo da OS */}
+          <Card>
+            <CardContent className="pt-4">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Badge variant="outline" className="text-lg">
+                    {osData.numeroOS}
+                  </Badge>
+                  <Badge variant="secondary">
+                    {osData.isEditing ? "Edição" : "Nova OS"}
+                  </Badge>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Cliente:</p>
+                    <p className="font-medium">{osData.clienteSelecionado?.nome}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Mecânico:</p>
+                    <p className="font-medium">{mecanicoNome}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Produtos:</p>
+                    <p className="font-medium">{osData.produtosSelecionados.length} item(s)</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Serviços:</p>
+                    <p className="font-medium">{osData.servicosSelecionados.length} item(s)</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Valores */}
           <Card>
             <CardContent className="pt-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Valor dos Serviços:</p>
-                  <p className="font-medium">R$ {valorServicos.toFixed(2)}</p>
+                  <p className="font-medium text-lg">R$ {valorServicos.toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Valor Total:</p>
@@ -365,41 +289,10 @@ export const ComissaoCalculatorModal = ({
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                * Valores serão recalculados no momento da confirmação
+                * Base da comissão: apenas serviços
               </p>
             </CardContent>
           </Card>
-
-          {/* Base de cálculo */}
-          <div className="space-y-2">
-            <Label>Base de Cálculo</Label>
-            <Select value={baseCalculo} onValueChange={(value: "servicos" | "total" | "manual") => setBaseCalculo(value)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="servicos">Apenas Serviços (R$ {valorServicos.toFixed(2)})</SelectItem>
-                <SelectItem value="total">Valor Total (R$ {valorTotal.toFixed(2)})</SelectItem>
-                <SelectItem value="manual">Valor Manual</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Valor manual */}
-          {baseCalculo === "manual" && (
-            <div className="space-y-2">
-              <Label htmlFor="valorManual">Valor Base Manual (R$)</Label>
-              <Input
-                id="valorManual"
-                type="number"
-                step="0.01"
-                min="0"
-                value={valorManual}
-                onChange={(e) => setValorManual(Number(e.target.value))}
-                placeholder="0.00"
-              />
-            </div>
-          )}
 
           {/* Tipo de cálculo */}
           <div className="space-y-2">
@@ -409,7 +302,7 @@ export const ComissaoCalculatorModal = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="percentual">Percentual</SelectItem>
+                <SelectItem value="percentual">Percentual sobre Serviços</SelectItem>
                 <SelectItem value="fixo">Valor Fixo</SelectItem>
               </SelectContent>
             </Select>
@@ -423,7 +316,7 @@ export const ComissaoCalculatorModal = ({
                 id="percentual"
                 type="number"
                 step="0.1"
-                min="0"
+                min="0.01"
                 max="100"
                 value={percentual}
                 onChange={(e) => setPercentual(Number(e.target.value))}
@@ -437,7 +330,7 @@ export const ComissaoCalculatorModal = ({
                 id="valorFixo"
                 type="number"
                 step="0.01"
-                min="0"
+                min="0.01"
                 value={valorFixo}
                 onChange={(e) => setValorFixo(Number(e.target.value))}
                 placeholder="0.00"
@@ -459,7 +352,7 @@ export const ComissaoCalculatorModal = ({
 
           <Separator />
 
-          {/* Resultado */}
+          {/* Resultado da comissão */}
           <Card>
             <CardContent className="pt-4">
               <div className="flex justify-between items-center">
@@ -470,20 +363,32 @@ export const ComissaoCalculatorModal = ({
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 {tipoCalculo === "percentual" 
-                  ? `${percentual}% sobre R$ ${getBaseCalculoValue().toFixed(2)}`
+                  ? `${percentual}% sobre R$ ${valorServicos.toFixed(2)}`
                   : `Valor fixo`
                 }
               </p>
             </CardContent>
           </Card>
+
+          {/* Aviso importante */}
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>Atenção:</strong> Esta operação irá finalizar a OS e registrar a comissão atomicamente. 
+              Não será possível desfazer esta ação.
+            </p>
+          </div>
         </div>
 
         <div className="flex justify-end gap-3 mt-6">
           <Button variant="outline" onClick={onClose} disabled={isProcessing}>
             Cancelar
           </Button>
-          <Button onClick={handleFinalizar} disabled={isProcessing}>
-            {isProcessing ? "Processando..." : "Finalizar com Comissão"}
+          <Button 
+            onClick={handleFinalizarAtomico} 
+            disabled={isProcessing}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            {isProcessing ? "Processando..." : "Finalizar OS com Comissão"}
           </Button>
         </div>
       </DialogContent>

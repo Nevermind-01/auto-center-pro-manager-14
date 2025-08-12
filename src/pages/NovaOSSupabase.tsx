@@ -831,24 +831,21 @@ const NovaOSSupabase = () => {
       return;
     }
 
-    // Validar estoque antes de finalizar
-    for (const produto of produtosSelecionados) {
-      const estoqueDisponivel = await estoqueManager.verificarEstoque(produto.id, produto.quantidade);
-      if (!estoqueDisponivel) {
+    // Validações específicas para calcular comissão
+    const temServicos = servicosSelecionados.length > 0;
+    const temMecanico = mecanicoSelecionado && mecanicoSelecionado !== "none";
+    
+    if (temServicos && temMecanico && !isEditing) {
+      // Validações adicionais para comissão
+      if (!temServicos) {
         toast({
-          title: "Estoque insuficiente",
-          description: `Não há estoque suficiente para o produto ${produto.nome}.`,
+          title: "Erro",
+          description: "É necessário ter pelo menos um serviço para calcular comissão.",
           variant: "destructive",
         });
         return;
       }
-    }
 
-    // Verificar se deve perguntar sobre comissão
-    const temServicos = servicosSelecionados.length > 0;
-    const temMecanico = mecanicoSelecionado;
-    
-    if (temServicos && temMecanico && !isEditing) {
       // Abrir modal de confirmação de comissão
       setShowComissaoConfirm(true);
       return;
@@ -999,7 +996,28 @@ const NovaOSSupabase = () => {
   const handleComissaoConfirm = () => {
     console.log("🔄 Confirmando cálculo de comissão");
     setShowComissaoConfirm(false);
-    // Finalizar OS primeiro, depois calcular comissão
+    
+    // Validar mecânico obrigatório
+    if (!mecanicoSelecionado || mecanicoSelecionado === "none") {
+      toast({
+        title: "Erro",
+        description: "Selecione um mecânico para calcular comissão.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar se há serviços
+    if (servicosSelecionados.length === 0) {
+      toast({
+        title: "Erro",
+        description: "É necessário ter pelo menos um serviço para calcular comissão.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Preparar e abrir modal de comissão
     processarFinalizacaoComComissao();
   };
 
@@ -1011,20 +1029,23 @@ const NovaOSSupabase = () => {
   };
 
   const processarFinalizacaoComComissao = async () => {
-    console.log("🚀 Preparando modal de comissão (não finalizando OS ainda)");
+    console.log("🚀 Preparando modal de comissão (finalização será atômica)");
     
     // Capturar valores para exibição no modal (apenas informativos)
     console.log("💰 Capturando valores informativos - Serviços:", valorServicos, "Total:", valorTotal);
     setValorServicosParaComissao(valorServicos);
     setValorTotalParaComissao(valorTotal);
     
-    // Definir vendaId se editando uma OS existente
+    // Para edição, definir vendaId
     if (isEditing && editingVenda?.id) {
       setVendaIdForComissao(editingVenda.id);
+    } else {
+      // Para nova OS, deixar vazio - será criada atomicamente no modal
+      setVendaIdForComissao("");
     }
     
-    // Abrir modal de comissão SEM finalizar a OS
-    console.log("📋 Abrindo modal de comissão. VendaId para edição:", isEditing ? editingVenda?.id : 'nova OS');
+    // Abrir modal de comissão para finalização atômica
+    console.log("📋 Abrindo modal de comissão para finalização atômica");
     setShowComissaoCalculator(true);
   };
 

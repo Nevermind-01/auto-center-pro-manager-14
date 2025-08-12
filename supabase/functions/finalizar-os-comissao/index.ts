@@ -30,7 +30,39 @@ serve(async (req) => {
     );
 
     // Get the request payload
-    const { payload } = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (error) {
+      console.error('❌ Erro ao parsear JSON:', error);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Payload JSON inválido',
+          success: false 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    const { payload } = requestBody;
+    
+    if (!payload) {
+      console.error('❌ Payload não fornecido');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Payload é obrigatório',
+          success: false 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     console.log('🚀 Recebida solicitação para finalizar OS com comissão');
 
     // Verify authentication using the client

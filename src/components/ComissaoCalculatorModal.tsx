@@ -320,10 +320,10 @@ export const ComissaoCalculatorModal = ({
 
         // Registrar logs
         const logs = [
-          { tipo: "OS_CRIADA", obs: `OS ${numeroOS} criada com valor total R$ ${(valorTotal - valorDesconto).toFixed(2)}` },
-          { tipo: "ESTOQUE_BAIXADO", obs: `Estoque baixado para OS ${numeroOS} - ${produtosSelecionados.length} produtos` },
-          { tipo: "OS_FINALIZADA", obs: `OS ${numeroOS} finalizada com pagamento ${formaPagamento}` },
-          { tipo: "COMISSAO_REGISTRADA", obs: `Comissão registrada. Base: R$ ${baseCalculo.toFixed(2)}, Valor: R$ ${valorComissao.toFixed(2)}` }
+          { tipo: "criacao", obs: `OS ${numeroOS} criada com valor total R$ ${(valorTotal - valorDesconto).toFixed(2)}` },
+          { tipo: "edicao", obs: `Estoque baixado para OS ${numeroOS} - ${produtosSelecionados.length} produtos` },
+          { tipo: "finalizacao", obs: `OS ${numeroOS} finalizada com pagamento ${formaPagamento}` },
+          { tipo: "edicao", obs: `Comissão registrada. Base: R$ ${baseCalculo.toFixed(2)}, Valor: R$ ${valorComissao.toFixed(2)}` }
         ];
 
         for (const log of logs) {

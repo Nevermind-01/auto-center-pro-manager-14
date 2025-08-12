@@ -849,6 +849,16 @@ const NovaOSSupabase = () => {
     const temMecanico = mecanicoSelecionado;
     
     if (temServicos && temMecanico && !isEditing) {
+      // Validar se há mecânico selecionado para calcular comissão
+      if (!mecanicoSelecionado) {
+        toast({
+          title: "Erro",
+          description: "Selecione um mecânico para calcular a comissão dos serviços.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Abrir modal de confirmação de comissão
       setShowComissaoConfirm(true);
       return;

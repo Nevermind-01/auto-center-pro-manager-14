@@ -209,6 +209,86 @@ export type Database = {
         }
         Relationships: []
       }
+      empresa_usuarios: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          empresa_id: string
+          id: string
+          role: Database["public"]["Enums"]["empresa_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id: string
+          id?: string
+          role?: Database["public"]["Enums"]["empresa_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          role?: Database["public"]["Enums"]["empresa_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresa_usuarios_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empresas: {
+        Row: {
+          ativa: boolean
+          cnpj: string | null
+          configuracoes: Json | null
+          created_at: string
+          email: string | null
+          endereco: string | null
+          id: string
+          nome: string
+          plano: string | null
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativa?: boolean
+          cnpj?: string | null
+          configuracoes?: Json | null
+          created_at?: string
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome: string
+          plano?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativa?: boolean
+          cnpj?: string | null
+          configuracoes?: Json | null
+          created_at?: string
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome?: string
+          plano?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       log_movimentacoes: {
         Row: {
           created_at: string | null
@@ -399,8 +479,10 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          empresa_atual_id: string | null
           full_name: string | null
           id: string
+          primeiro_acesso: boolean | null
           role: string | null
           updated_at: string
           user_id: string
@@ -408,8 +490,10 @@ export type Database = {
         Insert: {
           created_at?: string
           email: string
+          empresa_atual_id?: string | null
           full_name?: string | null
           id?: string
+          primeiro_acesso?: boolean | null
           role?: string | null
           updated_at?: string
           user_id: string
@@ -417,13 +501,23 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
+          empresa_atual_id?: string | null
           full_name?: string | null
           id?: string
+          primeiro_acesso?: boolean | null
           role?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_empresa_atual_id_fkey"
+            columns: ["empresa_atual_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       servicos: {
         Row: {
@@ -700,13 +794,57 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_empresa_with_owner: {
+        Args: {
+          nome_empresa: string
+          cnpj_empresa?: string
+          email_empresa?: string
+        }
+        Returns: string
+      }
+      get_current_empresa_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_masked_clientes: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          nome: string
+          email: string
+          telefone: string
+          cpf: string
+          cnpj: string
+          rg: string
+          rua: string
+          numero_residencia: string
+          bairro: string
+          cidade: string
+          estado: string
+          endereco: string
+          user_id: string
+          created_at: string
+          updated_at: string
+        }[]
+      }
       get_user_role: {
         Args: { check_user_id?: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_empresa_access: {
+        Args: { check_empresa_id: string }
+        Returns: boolean
+      }
+      has_empresa_role: {
+        Args: {
+          check_empresa_id: string
+          required_role: Database["public"]["Enums"]["empresa_role"]
+        }
+        Returns: boolean
       }
       has_role: {
         Args: {
@@ -715,6 +853,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      mask_sensitive_data: {
+        Args: { input_text: string; show_last?: number }
+        Returns: string
+      }
+      rpc_finalizar_os_com_comissao: {
+        Args: { payload: Json }
+        Returns: Json
+      }
       validate_user_exists: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -722,6 +868,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      empresa_role: "owner" | "admin"
       forma_pagamento: "dinheiro" | "cartao" | "pix" | "cheque" | "parcelado"
       movimentacao_tipo: "entrada" | "saida" | "ajuste"
       produto_status: "ativo" | "inativo"
@@ -854,6 +1001,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      empresa_role: ["owner", "admin"],
       forma_pagamento: ["dinheiro", "cartao", "pix", "cheque", "parcelado"],
       movimentacao_tipo: ["entrada", "saida", "ajuste"],
       produto_status: ["ativo", "inativo"],

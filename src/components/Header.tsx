@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { MigracaoEmpresaButton } from "@/components/MigracaoEmpresaButton";
+import { FixEmpresaButton } from "@/components/FixEmpresaButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,9 +36,12 @@ export function Header() {
             </span>
           </div>
           
-          {/* Botão de migração temporário para usuários existentes */}
+          {/* Botões de migração temporários para usuários existentes */}
           {!loadingEmpresa && !empresaAtual && (
-            <MigracaoEmpresaButton />
+            <div className="flex gap-2">
+              <FixEmpresaButton />
+              <MigracaoEmpresaButton />
+            </div>
           )}
           
           <div className="hidden md:flex items-center space-x-2 max-w-sm">

@@ -94,9 +94,9 @@ export function EmpresaProvider({ children }: { children: React.ReactNode }) {
         // Se não tem empresa atual mas tem empresas, definir a primeira como atual
         const primeiraEmpresa = empresasFormatadas[0].empresa;
         await trocarEmpresa(primeiraEmpresa.id);
-      } else if (profileData?.primeiro_acesso !== false) {
-        // Se é primeiro acesso e não tem empresas, migrar dados
-        console.log('🔄 Primeiro acesso detectado. Iniciando migração de dados...');
+      } else {
+        // Se não tem empresas, migrar dados ou criar empresa
+        console.log('🔄 Usuário sem empresa. Iniciando migração de dados...');
         await migrarDadosUsuario();
       }
 
@@ -146,6 +146,31 @@ export function EmpresaProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
 
       console.log('✅ Migração concluída:', data);
+      
+      // Garantir que o perfil tenha empresa_atual_id preenchido
+      const { data: profileCheck } = await supabase
+        .from('profiles')
+        .select('empresa_atual_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profileCheck?.empresa_atual_id) {
+        // Buscar a primeira empresa do usuário
+        const { data: empresaData } = await supabase
+          .from('empresa_usuarios')
+          .select('empresa_id')
+          .eq('user_id', user.id)
+          .eq('ativo', true)
+          .limit(1)
+          .single();
+
+        if (empresaData) {
+          await supabase
+            .from('profiles')
+            .update({ empresa_atual_id: empresaData.empresa_id })
+            .eq('user_id', user.id);
+        }
+      }
       
       // Recarregar empresas após migração
       await carregarEmpresas();

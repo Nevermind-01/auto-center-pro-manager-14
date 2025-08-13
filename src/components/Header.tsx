@@ -1,9 +1,11 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bell, Search, LogOut } from "lucide-react";
+import { Bell, Search, LogOut, Building2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import { useEmpresa } from "@/contexts/EmpresaContext";
+import { MigracaoEmpresaButton } from "@/components/MigracaoEmpresaButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +15,7 @@ import {
 
 export function Header() {
   const { user, signOut } = useAuth();
+  const { empresaAtual, loading: loadingEmpresa } = useEmpresa();
 
   const getInitials = (email: string) => {
     return email.split('@')[0].substring(0, 2).toUpperCase();
@@ -23,6 +26,20 @@ export function Header() {
       <div className="flex h-full items-center justify-between px-4">
         <div className="flex items-center space-x-4">
           <SidebarTrigger />
+          
+          {/* Indicador da Empresa Atual */}
+          <div className="flex items-center space-x-2 px-3 py-1 bg-muted/50 rounded-md">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">
+              {loadingEmpresa ? 'Carregando...' : empresaAtual?.nome || 'Nenhuma empresa'}
+            </span>
+          </div>
+          
+          {/* Botão de migração temporário para usuários existentes */}
+          {!loadingEmpresa && !empresaAtual && (
+            <MigracaoEmpresaButton />
+          )}
+          
           <div className="hidden md:flex items-center space-x-2 max-w-sm">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input 

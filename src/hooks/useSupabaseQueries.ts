@@ -81,7 +81,7 @@ export const useProdutoMutations = () => {
   const { user } = useAuth();
 
   const createProduto = useMutation({
-    mutationFn: async (produto: Omit<ProdutoInsert, 'user_id' | 'empresa_id'>) => {
+    mutationFn: async (produto: Omit<ProdutoInsert, 'user_id'>) => {
       if (!user) throw new Error('User not authenticated');
       
       const { data, error } = await supabase
@@ -153,7 +153,7 @@ export const useCategoriaMutations = () => {
   const { user } = useAuth();
 
   const createCategoria = useMutation({
-    mutationFn: async (categoria: Omit<CategoriaInsert, 'user_id' | 'empresa_id'>) => {
+    mutationFn: async (categoria: Omit<CategoriaInsert, 'user_id'>) => {
       if (!user) throw new Error('User not authenticated');
       
       const { data, error } = await supabase
@@ -197,7 +197,7 @@ export const useMovimentacaoMutations = () => {
   const { user } = useAuth();
 
   const createMovimentacao = useMutation({
-    mutationFn: async (movimentacao: Omit<MovimentacaoInsert, 'user_id' | 'empresa_id'>) => {
+    mutationFn: async (movimentacao: Omit<MovimentacaoInsert, 'user_id'>) => {
       if (!user) throw new Error('User not authenticated');
       
       const { data, error } = await supabase
@@ -256,7 +256,7 @@ export const useClienteMutations = () => {
   const { user } = useAuth();
 
   const createCliente = useMutation({
-    mutationFn: async (cliente: Omit<ClienteInsert, 'user_id' | 'empresa_id'>) => {
+    mutationFn: async (cliente: Omit<ClienteInsert, 'user_id'>) => {
       if (!user) throw new Error('User not authenticated');
       
       const { data, error } = await supabase
@@ -328,7 +328,7 @@ export const useServicoMutations = () => {
   const { user } = useAuth();
 
   const createServico = useMutation({
-    mutationFn: async (servico: Omit<ServicoInsert, 'user_id' | 'empresa_id'>) => {
+    mutationFn: async (servico: Omit<ServicoInsert, 'user_id'>) => {
       if (!user) throw new Error('User not authenticated');
       
       const { data, error } = await supabase
@@ -388,7 +388,7 @@ export const useVeiculoMutations = () => {
   const { user } = useAuth();
 
   const createVeiculo = useMutation({
-    mutationFn: async (veiculo: Omit<VeiculoInsert, 'user_id' | 'empresa_id'>) => {
+    mutationFn: async (veiculo: Omit<VeiculoInsert, 'user_id'>) => {
       if (!user) throw new Error('User not authenticated');
       
       const { data, error } = await supabase
@@ -448,7 +448,7 @@ export const useVendaMutations = () => {
   const { user } = useAuth();
 
   const createVenda = useMutation({
-    mutationFn: async (venda: Omit<VendaInsert, 'user_id' | 'empresa_id'>) => {
+    mutationFn: async (venda: Omit<VendaInsert, 'user_id'>) => {
       if (!user) throw new Error('User not authenticated');
       
       const { data, error } = await supabase

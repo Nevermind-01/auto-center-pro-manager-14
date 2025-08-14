@@ -341,7 +341,7 @@ export type Database = {
           empresa_id: string | null
           id: string
           observacoes: string | null
-          os_id: string
+          os_id: string | null
           tipo: string
           user_id: string | null
           usuario: string | null
@@ -354,7 +354,7 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           observacoes?: string | null
-          os_id: string
+          os_id?: string | null
           tipo: string
           user_id?: string | null
           usuario?: string | null
@@ -367,7 +367,7 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           observacoes?: string | null
-          os_id?: string
+          os_id?: string | null
           tipo?: string
           user_id?: string | null
           usuario?: string | null

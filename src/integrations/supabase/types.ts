@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           created_at: string
           descricao: string | null
+          empresa_id: string | null
           id: string
           nome: string
           updated_at: string
@@ -26,6 +27,7 @@ export type Database = {
         Insert: {
           created_at?: string
           descricao?: string | null
+          empresa_id?: string | null
           id?: string
           nome: string
           updated_at?: string
@@ -34,6 +36,7 @@ export type Database = {
         Update: {
           created_at?: string
           descricao?: string | null
+          empresa_id?: string | null
           id?: string
           nome?: string
           updated_at?: string
@@ -49,6 +52,7 @@ export type Database = {
           cpf: string | null
           created_at: string
           email: string | null
+          empresa_id: string | null
           endereco: string | null
           estado: string | null
           id: string
@@ -67,6 +71,7 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           email?: string | null
+          empresa_id?: string | null
           endereco?: string | null
           estado?: string | null
           id?: string
@@ -85,6 +90,7 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           email?: string | null
+          empresa_id?: string | null
           endereco?: string | null
           estado?: string | null
           id?: string
@@ -102,6 +108,7 @@ export type Database = {
         Row: {
           base_calculo: number
           created_at: string
+          empresa_id: string | null
           finalizado_em: string
           id: string
           mecanico_id: string
@@ -117,6 +124,7 @@ export type Database = {
         Insert: {
           base_calculo?: number
           created_at?: string
+          empresa_id?: string | null
           finalizado_em?: string
           id?: string
           mecanico_id: string
@@ -132,6 +140,7 @@ export type Database = {
         Update: {
           base_calculo?: number
           created_at?: string
+          empresa_id?: string | null
           finalizado_em?: string
           id?: string
           mecanico_id?: string
@@ -168,6 +177,7 @@ export type Database = {
           data_pagamento: string | null
           descricao: string | null
           empresa: string
+          empresa_id: string | null
           fixa: boolean | null
           forma_pagamento: string | null
           id: string
@@ -183,6 +193,7 @@ export type Database = {
           data_pagamento?: string | null
           descricao?: string | null
           empresa: string
+          empresa_id?: string | null
           fixa?: boolean | null
           forma_pagamento?: string | null
           id?: string
@@ -198,6 +209,7 @@ export type Database = {
           data_pagamento?: string | null
           descricao?: string | null
           empresa?: string
+          empresa_id?: string | null
           fixa?: boolean | null
           forma_pagamento?: string | null
           id?: string
@@ -215,9 +227,10 @@ export type Database = {
           dados_anteriores: Json | null
           dados_novos: Json | null
           data_hora: string | null
+          empresa_id: string | null
           id: string
           observacoes: string | null
-          os_id: string
+          os_id: string | null
           tipo: string
           user_id: string | null
           usuario: string | null
@@ -227,9 +240,10 @@ export type Database = {
           dados_anteriores?: Json | null
           dados_novos?: Json | null
           data_hora?: string | null
+          empresa_id?: string | null
           id?: string
           observacoes?: string | null
-          os_id: string
+          os_id?: string | null
           tipo: string
           user_id?: string | null
           usuario?: string | null
@@ -239,9 +253,10 @@ export type Database = {
           dados_anteriores?: Json | null
           dados_novos?: Json | null
           data_hora?: string | null
+          empresa_id?: string | null
           id?: string
           observacoes?: string | null
-          os_id?: string
+          os_id?: string | null
           tipo?: string
           user_id?: string | null
           usuario?: string | null
@@ -260,6 +275,7 @@ export type Database = {
         Row: {
           ativo: boolean | null
           created_at: string | null
+          empresa_id: string | null
           especialidade: string | null
           id: string
           nome: string
@@ -270,6 +286,7 @@ export type Database = {
         Insert: {
           ativo?: boolean | null
           created_at?: string | null
+          empresa_id?: string | null
           especialidade?: string | null
           id?: string
           nome: string
@@ -280,6 +297,7 @@ export type Database = {
         Update: {
           ativo?: boolean | null
           created_at?: string | null
+          empresa_id?: string | null
           especialidade?: string | null
           id?: string
           nome?: string
@@ -292,6 +310,7 @@ export type Database = {
       movimentacoes: {
         Row: {
           created_at: string
+          empresa_id: string | null
           id: string
           motivo: string
           os_numero: string | null
@@ -304,6 +323,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          empresa_id?: string | null
           id?: string
           motivo: string
           os_numero?: string | null
@@ -316,6 +336,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          empresa_id?: string | null
           id?: string
           motivo?: string
           os_numero?: string | null
@@ -342,6 +363,7 @@ export type Database = {
           codigo: string | null
           created_at: string
           data_entrada: string | null
+          empresa_id: string | null
           estoque_minimo: number | null
           id: string
           marca: string | null
@@ -358,6 +380,7 @@ export type Database = {
           codigo?: string | null
           created_at?: string
           data_entrada?: string | null
+          empresa_id?: string | null
           estoque_minimo?: number | null
           id?: string
           marca?: string | null
@@ -374,6 +397,7 @@ export type Database = {
           codigo?: string | null
           created_at?: string
           data_entrada?: string | null
+          empresa_id?: string | null
           estoque_minimo?: number | null
           id?: string
           marca?: string | null
@@ -399,8 +423,10 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          empresa_atual_id: string | null
           full_name: string | null
           id: string
+          primeiro_acesso: boolean | null
           role: string | null
           updated_at: string
           user_id: string
@@ -408,8 +434,10 @@ export type Database = {
         Insert: {
           created_at?: string
           email: string
+          empresa_atual_id?: string | null
           full_name?: string | null
           id?: string
+          primeiro_acesso?: boolean | null
           role?: string | null
           updated_at?: string
           user_id: string
@@ -417,8 +445,10 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
+          empresa_atual_id?: string | null
           full_name?: string | null
           id?: string
+          primeiro_acesso?: boolean | null
           role?: string | null
           updated_at?: string
           user_id?: string
@@ -429,6 +459,7 @@ export type Database = {
         Row: {
           created_at: string
           descricao: string | null
+          empresa_id: string | null
           id: string
           nome: string
           preco: number
@@ -438,6 +469,7 @@ export type Database = {
         Insert: {
           created_at?: string
           descricao?: string | null
+          empresa_id?: string | null
           id?: string
           nome: string
           preco: number
@@ -447,6 +479,7 @@ export type Database = {
         Update: {
           created_at?: string
           descricao?: string | null
+          empresa_id?: string | null
           id?: string
           nome?: string
           preco?: number
@@ -481,6 +514,7 @@ export type Database = {
           ano: string | null
           cliente_id: string
           created_at: string
+          empresa_id: string | null
           id: string
           marca: string
           modelo: string
@@ -493,6 +527,7 @@ export type Database = {
           ano?: string | null
           cliente_id: string
           created_at?: string
+          empresa_id?: string | null
           id?: string
           marca: string
           modelo: string
@@ -505,6 +540,7 @@ export type Database = {
           ano?: string | null
           cliente_id?: string
           created_at?: string
+          empresa_id?: string | null
           id?: string
           marca?: string
           modelo?: string
@@ -618,6 +654,7 @@ export type Database = {
           cliente_id: string | null
           cliente_nome: string
           created_at: string
+          empresa_id: string | null
           finalizado_em: string | null
           forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
           id: string
@@ -637,6 +674,7 @@ export type Database = {
           cliente_id?: string | null
           cliente_nome: string
           created_at?: string
+          empresa_id?: string | null
           finalizado_em?: string | null
           forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
           id?: string
@@ -656,6 +694,7 @@ export type Database = {
           cliente_id?: string | null
           cliente_nome?: string
           created_at?: string
+          empresa_id?: string | null
           finalizado_em?: string | null
           forma_pagamento?: Database["public"]["Enums"]["forma_pagamento"]
           id?: string
@@ -700,13 +739,57 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_empresa_with_owner: {
+        Args: {
+          cnpj_empresa?: string
+          email_empresa?: string
+          nome_empresa: string
+        }
+        Returns: string
+      }
+      get_current_empresa_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_masked_clientes: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          bairro: string
+          cidade: string
+          cnpj: string
+          cpf: string
+          created_at: string
+          email: string
+          endereco: string
+          estado: string
+          id: string
+          nome: string
+          numero_residencia: string
+          rg: string
+          rua: string
+          telefone: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
       get_user_role: {
         Args: { check_user_id?: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_empresa_access: {
+        Args: { check_empresa_id: string }
+        Returns: boolean
+      }
+      has_empresa_role: {
+        Args: {
+          check_empresa_id: string
+          required_role: Database["public"]["Enums"]["empresa_role"]
+        }
+        Returns: boolean
       }
       has_role: {
         Args: {
@@ -715,6 +798,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      mask_sensitive_data: {
+        Args: { input_text: string; show_last?: number }
+        Returns: string
+      }
+      migrate_user_data_to_empresa: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      rpc_finalizar_os_com_comissao: {
+        Args: { payload: Json }
+        Returns: Json
+      }
       validate_user_exists: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -722,6 +817,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      empresa_role: "owner" | "admin"
       forma_pagamento: "dinheiro" | "cartao" | "pix" | "cheque" | "parcelado"
       movimentacao_tipo: "entrada" | "saida" | "ajuste"
       produto_status: "ativo" | "inativo"
@@ -854,6 +950,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      empresa_role: ["owner", "admin"],
       forma_pagamento: ["dinheiro", "cartao", "pix", "cheque", "parcelado"],
       movimentacao_tipo: ["entrada", "saida", "ajuste"],
       produto_status: ["ativo", "inativo"],

@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -911,9 +911,9 @@ export type Database = {
     Functions: {
       create_empresa_with_owner: {
         Args: {
-          nome_empresa: string
           cnpj_empresa?: string
           email_empresa?: string
+          nome_empresa: string
         }
         Returns: string
       }
@@ -928,22 +928,22 @@ export type Database = {
       get_masked_clientes: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          nome: string
-          email: string
-          telefone: string
-          cpf: string
-          cnpj: string
-          rg: string
-          rua: string
-          numero_residencia: string
           bairro: string
           cidade: string
-          estado: string
-          endereco: string
-          user_id: string
+          cnpj: string
+          cpf: string
           created_at: string
+          email: string
+          endereco: string
+          estado: string
+          id: string
+          nome: string
+          numero_residencia: string
+          rg: string
+          rua: string
+          telefone: string
           updated_at: string
+          user_id: string
         }[]
       }
       get_user_role: {

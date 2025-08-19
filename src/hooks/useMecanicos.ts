@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface Mecanico {
   id: string;
@@ -14,12 +15,17 @@ export interface Mecanico {
 }
 
 export const useMecanicos = (ativos = true) => {
+  const { empresaId } = useAuth();
+  
   return useQuery({
-    queryKey: ['mecanicos', ativos],
+    queryKey: ['mecanicos', ativos, empresaId],
     queryFn: async (): Promise<Mecanico[]> => {
+      if (!empresaId) return [];
+      
       let query = supabase
         .from('mecanicos')
         .select('*')
+        .eq('empresa_id', empresaId)
         .order('nome', { ascending: true });
 
       if (ativos) {
@@ -31,23 +37,25 @@ export const useMecanicos = (ativos = true) => {
       if (error) throw error;
       return data || [];
     },
+    enabled: !!empresaId,
   });
 };
 
 export const useCriarMecanico = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, empresaId } = useAuth();
 
   return useMutation({
     mutationFn: async (mecanico: Omit<Mecanico, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error('Usuário não autenticado');
+      if (!user || !empresaId) throw new Error('User not authenticated or no empresa selected');
 
       const { data, error } = await supabase
         .from('mecanicos')
         .insert({
           ...mecanico,
-          user_id: userData.user.id,
+          user_id: user.id,
+          empresa_id: empresaId,
         })
         .select()
         .single();

@@ -39,27 +39,37 @@ export type VeiculoInsert = Database['public']['Tables']['veiculos']['Insert'];
 
 // Products hooks
 export const useProdutos = () => {
+  const { empresaId } = useAuth();
+  
   return useQuery({
-    queryKey: ['produtos'],
+    queryKey: ['produtos', empresaId],
     queryFn: async () => {
+      if (!empresaId) return [];
+      
       const { data, error } = await supabase
         .from('produtos')
         .select(`
           *,
           categoria:categorias(nome)
         `)
+        .eq('empresa_id', empresaId)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!empresaId,
   });
 };
 
 export const useProdutoById = (id: string) => {
+  const { empresaId } = useAuth();
+  
   return useQuery({
-    queryKey: ['produto', id],
+    queryKey: ['produto', id, empresaId],
     queryFn: async () => {
+      if (!empresaId) return null;
+      
       const { data, error } = await supabase
         .from('produtos')
         .select(`
@@ -67,26 +77,27 @@ export const useProdutoById = (id: string) => {
           categoria:categorias(nome)
         `)
         .eq('id', id)
+        .eq('empresa_id', empresaId)
         .single();
       
       if (error) throw error;
       return data;
     },
-    enabled: !!id
+    enabled: !!id && !!empresaId
   });
 };
 
 export const useProdutoMutations = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, empresaId } = useAuth();
 
   const createProduto = useMutation({
-    mutationFn: async (produto: Omit<ProdutoInsert, 'user_id'>) => {
-      if (!user) throw new Error('User not authenticated');
+    mutationFn: async (produto: Omit<ProdutoInsert, 'user_id' | 'empresa_id'>) => {
+      if (!user || !empresaId) throw new Error('User not authenticated or no empresa selected');
       
       const { data, error } = await supabase
         .from('produtos')
-        .insert({ ...produto, user_id: user.id })
+        .insert({ ...produto, user_id: user.id, empresa_id: empresaId })
         .select()
         .single();
       
@@ -94,7 +105,7 @@ export const useProdutoMutations = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      queryClient.invalidateQueries({ queryKey: ['produtos', empresaId] });
     }
   });
 
@@ -111,7 +122,7 @@ export const useProdutoMutations = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      queryClient.invalidateQueries({ queryKey: ['produtos', empresaId] });
     }
   });
 
@@ -125,7 +136,7 @@ export const useProdutoMutations = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      queryClient.invalidateQueries({ queryKey: ['produtos', empresaId] });
     }
   });
 
@@ -134,31 +145,37 @@ export const useProdutoMutations = () => {
 
 // Categories hooks
 export const useCategorias = () => {
+  const { empresaId } = useAuth();
+  
   return useQuery({
-    queryKey: ['categorias'],
+    queryKey: ['categorias', empresaId],
     queryFn: async () => {
+      if (!empresaId) return [];
+      
       const { data, error } = await supabase
         .from('categorias')
         .select('*')
+        .eq('empresa_id', empresaId)
         .order('nome');
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!empresaId,
   });
 };
 
 export const useCategoriaMutations = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, empresaId } = useAuth();
 
   const createCategoria = useMutation({
-    mutationFn: async (categoria: Omit<CategoriaInsert, 'user_id'>) => {
-      if (!user) throw new Error('User not authenticated');
+    mutationFn: async (categoria: Omit<CategoriaInsert, 'user_id' | 'empresa_id'>) => {
+      if (!user || !empresaId) throw new Error('User not authenticated or no empresa selected');
       
       const { data, error } = await supabase
         .from('categorias')
-        .insert({ ...categoria, user_id: user.id })
+        .insert({ ...categoria, user_id: user.id, empresa_id: empresaId })
         .select()
         .single();
       
@@ -166,7 +183,7 @@ export const useCategoriaMutations = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categorias'] });
+      queryClient.invalidateQueries({ queryKey: ['categorias', empresaId] });
     }
   });
 
@@ -175,34 +192,40 @@ export const useCategoriaMutations = () => {
 
 // Stock movements hooks
 export const useMovimentacoes = () => {
+  const { empresaId } = useAuth();
+  
   return useQuery({
-    queryKey: ['movimentacoes'],
+    queryKey: ['movimentacoes', empresaId],
     queryFn: async () => {
+      if (!empresaId) return [];
+      
       const { data, error } = await supabase
         .from('movimentacoes')
         .select(`
           *,
           produto:produtos(nome, marca)
         `)
+        .eq('empresa_id', empresaId)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!empresaId,
   });
 };
 
 export const useMovimentacaoMutations = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, empresaId } = useAuth();
 
   const createMovimentacao = useMutation({
-    mutationFn: async (movimentacao: Omit<MovimentacaoInsert, 'user_id'>) => {
-      if (!user) throw new Error('User not authenticated');
+    mutationFn: async (movimentacao: Omit<MovimentacaoInsert, 'user_id' | 'empresa_id'>) => {
+      if (!user || !empresaId) throw new Error('User not authenticated or no empresa selected');
       
       const { data, error } = await supabase
         .from('movimentacoes')
-        .insert({ ...movimentacao, user_id: user.id })
+        .insert({ ...movimentacao, user_id: user.id, empresa_id: empresaId })
         .select()
         .single();
       
@@ -210,8 +233,8 @@ export const useMovimentacaoMutations = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movimentacoes'] });
-      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      queryClient.invalidateQueries({ queryKey: ['movimentacoes', empresaId] });
+      queryClient.invalidateQueries({ queryKey: ['produtos', empresaId] });
     }
   });
 
@@ -220,48 +243,59 @@ export const useMovimentacaoMutations = () => {
 
 // Clients hooks
 export const useClientes = () => {
+  const { empresaId } = useAuth();
+  
   return useQuery({
-    queryKey: ['clientes'],
+    queryKey: ['clientes', empresaId],
     queryFn: async () => {
+      if (!empresaId) return [];
+      
       const { data, error } = await supabase
         .from('clientes')
         .select('*')
+        .eq('empresa_id', empresaId)
         .order('nome');
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!empresaId,
   });
 };
 
 export const useClienteById = (id: string) => {
+  const { empresaId } = useAuth();
+  
   return useQuery({
-    queryKey: ['clientes', id],
+    queryKey: ['clientes', id, empresaId],
     queryFn: async () => {
+      if (!empresaId) return null;
+      
       const { data, error } = await supabase
         .from('clientes')
         .select('*')
         .eq('id', id)
+        .eq('empresa_id', empresaId)
         .single();
       
       if (error) throw error;
       return data as Cliente;
     },
-    enabled: !!id,
+    enabled: !!id && !!empresaId,
   });
 };
 
 export const useClienteMutations = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, empresaId } = useAuth();
 
   const createCliente = useMutation({
-    mutationFn: async (cliente: Omit<ClienteInsert, 'user_id'>) => {
-      if (!user) throw new Error('User not authenticated');
+    mutationFn: async (cliente: Omit<ClienteInsert, 'user_id' | 'empresa_id'>) => {
+      if (!user || !empresaId) throw new Error('User not authenticated or no empresa selected');
       
       const { data, error } = await supabase
         .from('clientes')
-        .insert({ ...cliente, user_id: user.id })
+        .insert({ ...cliente, user_id: user.id, empresa_id: empresaId })
         .select()
         .single();
       
@@ -269,7 +303,7 @@ export const useClienteMutations = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientes'] });
+      queryClient.invalidateQueries({ queryKey: ['clientes', empresaId] });
     }
   });
 
@@ -286,7 +320,7 @@ export const useClienteMutations = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientes'] });
+      queryClient.invalidateQueries({ queryKey: ['clientes', empresaId] });
     },
   });
 
@@ -300,7 +334,7 @@ export const useClienteMutations = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientes'] });
+      queryClient.invalidateQueries({ queryKey: ['clientes', empresaId] });
     },
   });
 
@@ -309,31 +343,37 @@ export const useClienteMutations = () => {
 
 // Services hooks
 export const useServicos = () => {
+  const { empresaId } = useAuth();
+  
   return useQuery({
-    queryKey: ['servicos'],
+    queryKey: ['servicos', empresaId],
     queryFn: async () => {
+      if (!empresaId) return [];
+      
       const { data, error } = await supabase
         .from('servicos')
         .select('*')
+        .eq('empresa_id', empresaId)
         .order('nome');
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!empresaId,
   });
 };
 
 export const useServicoMutations = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, empresaId } = useAuth();
 
   const createServico = useMutation({
-    mutationFn: async (servico: Omit<ServicoInsert, 'user_id'>) => {
-      if (!user) throw new Error('User not authenticated');
+    mutationFn: async (servico: Omit<ServicoInsert, 'user_id' | 'empresa_id'>) => {
+      if (!user || !empresaId) throw new Error('User not authenticated or no empresa selected');
       
       const { data, error } = await supabase
         .from('servicos')
-        .insert({ ...servico, user_id: user.id })
+        .insert({ ...servico, user_id: user.id, empresa_id: empresaId })
         .select()
         .single();
       
@@ -341,7 +381,7 @@ export const useServicoMutations = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['servicos'] });
+      queryClient.invalidateQueries({ queryKey: ['servicos', empresaId] });
     }
   });
 
@@ -350,50 +390,59 @@ export const useServicoMutations = () => {
 
 // Vehicles hooks
 export const useVeiculos = () => {
+  const { empresaId } = useAuth();
+  
   return useQuery({
-    queryKey: ['veiculos'],
+    queryKey: ['veiculos', empresaId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('veiculos')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data;
-    }
-  });
-};
-
-export const useVeiculosByCliente = (clienteId: string | null) => {
-  return useQuery({
-    queryKey: ['veiculos', clienteId],
-    queryFn: async () => {
-      if (!clienteId) return [];
+      if (!empresaId) return [];
       
       const { data, error } = await supabase
         .from('veiculos')
         .select('*')
-        .eq('cliente_id', clienteId)
+        .eq('empresa_id', empresaId)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       return data;
     },
-    enabled: !!clienteId
+    enabled: !!empresaId,
+  });
+};
+
+export const useVeiculosByCliente = (clienteId: string | null) => {
+  const { empresaId } = useAuth();
+  
+  return useQuery({
+    queryKey: ['veiculos', clienteId, empresaId],
+    queryFn: async () => {
+      if (!clienteId || !empresaId) return [];
+      
+      const { data, error } = await supabase
+        .from('veiculos')
+        .select('*')
+        .eq('cliente_id', clienteId)
+        .eq('empresa_id', empresaId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!clienteId && !!empresaId
   });
 };
 
 export const useVeiculoMutations = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, empresaId } = useAuth();
 
   const createVeiculo = useMutation({
-    mutationFn: async (veiculo: Omit<VeiculoInsert, 'user_id'>) => {
-      if (!user) throw new Error('User not authenticated');
+    mutationFn: async (veiculo: Omit<VeiculoInsert, 'user_id' | 'empresa_id'>) => {
+      if (!user || !empresaId) throw new Error('User not authenticated or no empresa selected');
       
       const { data, error } = await supabase
         .from('veiculos')
-        .insert({ ...veiculo, user_id: user.id })
+        .insert({ ...veiculo, user_id: user.id, empresa_id: empresaId })
         .select()
         .single();
       
@@ -401,7 +450,7 @@ export const useVeiculoMutations = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['veiculos'] });
+      queryClient.invalidateQueries({ queryKey: ['veiculos', empresaId] });
     }
   });
 
@@ -415,9 +464,13 @@ interface VendasFilters {
 }
 
 export const useVendas = (filters?: VendasFilters) => {
+  const { empresaId } = useAuth();
+  
   return useQuery({
-    queryKey: ['vendas', filters],
+    queryKey: ['vendas', filters, empresaId],
     queryFn: async () => {
+      if (!empresaId) return [];
+      
       let query = supabase
         .from('vendas')
         .select(`
@@ -425,7 +478,8 @@ export const useVendas = (filters?: VendasFilters) => {
           venda_produtos(*),
           venda_servicos(*),
           veiculo:veiculos(*)
-        `);
+        `)
+        .eq('empresa_id', empresaId);
 
       if (filters?.startDate) {
         query = query.gte('created_at', filters.startDate.toISOString());
@@ -439,21 +493,22 @@ export const useVendas = (filters?: VendasFilters) => {
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!empresaId,
   });
 };
 
 export const useVendaMutations = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, empresaId } = useAuth();
 
   const createVenda = useMutation({
-    mutationFn: async (venda: Omit<VendaInsert, 'user_id'>) => {
-      if (!user) throw new Error('User not authenticated');
+    mutationFn: async (venda: Omit<VendaInsert, 'user_id' | 'empresa_id'>) => {
+      if (!user || !empresaId) throw new Error('User not authenticated or no empresa selected');
       
       const { data, error } = await supabase
         .from('vendas')
-        .insert({ ...venda, user_id: user.id })
+        .insert({ ...venda, user_id: user.id, empresa_id: empresaId })
         .select()
         .single();
       
@@ -461,7 +516,7 @@ export const useVendaMutations = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vendas'] });
+      queryClient.invalidateQueries({ queryKey: ['vendas', undefined, empresaId] });
     }
   });
 
@@ -504,8 +559,8 @@ export const useVendaMutations = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vendas'] });
-      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      queryClient.invalidateQueries({ queryKey: ['vendas', undefined, empresaId] });
+      queryClient.invalidateQueries({ queryKey: ['produtos', empresaId] });
     }
   });
 
@@ -663,34 +718,40 @@ export const useEstoqueOperations = () => {
 
 // Log movimentações hooks
 export const useLogMovimentacoes = () => {
+  const { empresaId } = useAuth();
+  
   return useQuery({
-    queryKey: ['log_movimentacoes'],
+    queryKey: ['log_movimentacoes', empresaId],
     queryFn: async () => {
+      if (!empresaId) return [];
+      
       const { data, error } = await supabase
         .from('log_movimentacoes')
         .select(`
           *,
           venda:vendas!log_movimentacoes_os_id_fkey(numero_os, cliente_nome)
         `)
+        .eq('empresa_id', empresaId)
         .order('data_hora', { ascending: false });
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!empresaId,
   });
 };
 
 export const useLogMovimentacaoMutations = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, empresaId } = useAuth();
 
   const createLog = useMutation({
-    mutationFn: async (log: Omit<LogMovimentacaoInsert, 'user_id'>) => {
-      if (!user) throw new Error('User not authenticated');
+    mutationFn: async (log: Omit<LogMovimentacaoInsert, 'user_id' | 'empresa_id'>) => {
+      if (!user || !empresaId) throw new Error('User not authenticated or no empresa selected');
       
       const { data, error } = await supabase
         .from('log_movimentacoes')
-        .insert({ ...log, user_id: user.id })
+        .insert({ ...log, user_id: user.id, empresa_id: empresaId })
         .select()
         .single();
       
@@ -698,7 +759,7 @@ export const useLogMovimentacaoMutations = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['log_movimentacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['log_movimentacoes', empresaId] });
     }
   });
 

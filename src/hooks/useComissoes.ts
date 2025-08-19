@@ -36,15 +36,18 @@ interface UseComissoesByMecanicoParams {
 }
 
 export const useComissoesByMecanico = ({ mecanicoId, startDate, endDate }: UseComissoesByMecanicoParams) => {
+  const { empresaId } = useAuth();
+  
   return useQuery({
-    queryKey: ["comissoes_mecanico", mecanicoId, startDate?.toISOString(), endDate?.toISOString()],
+    queryKey: ["comissoes_mecanico", mecanicoId, startDate?.toISOString(), endDate?.toISOString(), empresaId],
     queryFn: async () => {
-      if (!mecanicoId) return { rows: [] as Array<Comissao & { vendas?: { numero_os: string } | null }>, total: 0 };
+      if (!mecanicoId || !empresaId) return { rows: [] as Array<Comissao & { vendas?: { numero_os: string } | null }>, total: 0 };
 
       let query = supabase
         .from("comissoes_mecanicos")
         .select("*, vendas(numero_os)")
         .eq("mecanico_id", mecanicoId)
+        .eq("empresa_id", empresaId)
         .order("finalizado_em", { ascending: false });
 
       if (startDate) query = query.gte("finalizado_em", startDate.toISOString());
@@ -60,21 +63,21 @@ export const useComissoesByMecanico = ({ mecanicoId, startDate, endDate }: UseCo
       const total = (data || []).reduce((acc, r) => acc + Number((r as any).valor_final || 0), 0);
       return { rows: (data as any) || [], total };
     },
-    enabled: !!mecanicoId,
+    enabled: !!mecanicoId && !!empresaId,
   });
 };
 
 export const useComissoesMutations = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, empresaId } = useAuth();
 
   const createComissao = useMutation({
     mutationFn: async (payload: ComissaoInsert) => {
-      if (!user) throw new Error("User not authenticated");
+      if (!user || !empresaId) throw new Error("User not authenticated or no empresa selected");
 
       const { data, error } = await supabase
         .from("comissoes_mecanicos")
-        .insert({ ...payload, user_id: user.id })
+        .insert({ ...payload, user_id: user.id, empresa_id: empresaId })
         .select()
         .single();
 

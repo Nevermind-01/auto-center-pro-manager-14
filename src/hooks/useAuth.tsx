@@ -20,12 +20,10 @@ interface AuthContextType {
   empresaRole: EmpresaRole | null;
   empresas: Empresa[];
   empresaAtual: Empresa | null;
-  primeiroAcesso: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName?: string, nomeEmpresa?: string, cnpjEmpresa?: string, emailEmpresa?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   switchEmpresa: (empresaId: string) => Promise<void>;
-  completarOnboarding: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,7 +44,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [empresaRole, setEmpresaRole] = useState<EmpresaRole | null>(null);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [empresaAtual, setEmpresaAtual] = useState<Empresa | null>(null);
-  const [primeiroAcesso, setPrimeiroAcesso] = useState(false);
   const { toast } = useToast();
 
   const loadEmpresaData = async (userId: string) => {
@@ -101,17 +98,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setEmpresas(todasEmpresas);
         }
       }
-
-      // Verificar se é primeiro acesso
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('primeiro_acesso')
-        .eq('user_id', userId)
-        .single();
-
-      if (profile?.primeiro_acesso) {
-        setPrimeiroAcesso(true);
-      }
     } catch (error) {
       console.error('Erro ao carregar dados da empresa:', error);
     }
@@ -162,7 +148,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setEmpresaRole(null);
             setEmpresas([]);
             setEmpresaAtual(null);
-            setPrimeiroAcesso(false);
           }
         }
       }
@@ -288,7 +273,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setEmpresaRole(null);
     setEmpresas([]);
     setEmpresaAtual(null);
-    setPrimeiroAcesso(false);
     setLoading(false);
     
     toast({
@@ -317,10 +301,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const completarOnboarding = () => {
-    setPrimeiroAcesso(false);
-  };
-
   const value = {
     user,
     session,
@@ -329,12 +309,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     empresaRole,
     empresas,
     empresaAtual,
-    primeiroAcesso,
     signIn,
     signUp,
     signOut,
     switchEmpresa,
-    completarOnboarding,
   };
 
   return (

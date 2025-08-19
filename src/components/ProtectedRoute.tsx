@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { OnboardingModal } from '@/components/OnboardingModal';
 import { ReactNode } from 'react';
 
 interface ProtectedRouteProps {
@@ -8,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { user, loading } = useAuth();
+  const { user, loading, primeiroAcesso, completarOnboarding } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,6 +33,16 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   // Don't render children if user is not authenticated
   if (!user) {
     return null;
+  }
+
+  // Show onboarding modal if it's user's first access
+  if (primeiroAcesso) {
+    return (
+      <OnboardingModal 
+        open={primeiroAcesso}
+        onComplete={completarOnboarding}
+      />
+    );
   }
 
   return <>{children}</>;

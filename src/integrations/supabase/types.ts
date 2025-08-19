@@ -221,6 +221,68 @@ export type Database = {
         }
         Relationships: []
       }
+      empresa_usuarios: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          empresa_id: string
+          id: string
+          role: Database["public"]["Enums"]["empresa_role"]
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id: string
+          id?: string
+          role?: Database["public"]["Enums"]["empresa_role"]
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          role?: Database["public"]["Enums"]["empresa_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresa_usuarios_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empresas: {
+        Row: {
+          cnpj: string | null
+          created_at: string
+          email: string | null
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       log_movimentacoes: {
         Row: {
           created_at: string | null

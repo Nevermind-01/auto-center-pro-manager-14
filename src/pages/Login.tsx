@@ -13,6 +13,9 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [nomeEmpresa, setNomeEmpresa] = useState("");
+  const [cnpjEmpresa, setCnpjEmpresa] = useState("");
+  const [emailEmpresa, setEmailEmpresa] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -50,11 +53,20 @@ const Login = () => {
     try {
       let result;
       if (isSignUp) {
-        result = await signUp(email, password, fullName);
+        result = await signUp(
+          email, 
+          password, 
+          fullName,
+          nomeEmpresa || undefined,
+          cnpjEmpresa || undefined,
+          emailEmpresa || undefined
+        );
         if (!result.error) {
           toast({
             title: "Conta criada com sucesso!",
-            description: "Verifique seu email para confirmar a conta",
+            description: nomeEmpresa 
+              ? `Empresa "${nomeEmpresa}" criada e conta configurada!` 
+              : "Verifique seu email para confirmar a conta",
           });
           setIsSignUp(false);
         }
@@ -120,18 +132,63 @@ const Login = () => {
               )}
 
               {isSignUp && (
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Nome Completo</Label>
-                  <Input
-                    id="fullName"
-                    type="text"
-                    placeholder="Digite seu nome completo"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Nome Completo</Label>
+                    <Input
+                      id="fullName"
+                      type="text"
+                      placeholder="Digite seu nome completo"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      required
+                      className="h-11"
+                    />
+                  </div>
+
+                  <div className="space-y-4 border-t pt-4">
+                    <div className="text-sm font-medium text-foreground">
+                      Informações da Empresa
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="nomeEmpresa">Nome da Empresa *</Label>
+                      <Input
+                        id="nomeEmpresa"
+                        placeholder="Ex: Auto Center Silva"
+                        value={nomeEmpresa}
+                        onChange={(e) => setNomeEmpresa(e.target.value)}
+                        required
+                        className="h-11"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="cnpjEmpresa">CNPJ (opcional)</Label>
+                        <Input
+                          id="cnpjEmpresa"
+                          placeholder="00.000.000/0000-00"
+                          value={cnpjEmpresa}
+                          onChange={(e) => setCnpjEmpresa(e.target.value)}
+                          className="h-11"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="emailEmpresa">Email da Empresa (opcional)</Label>
+                        <Input
+                          id="emailEmpresa"
+                          type="email"
+                          placeholder="contato@empresa.com"
+                          value={emailEmpresa}
+                          onChange={(e) => setEmailEmpresa(e.target.value)}
+                          className="h-11"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
               )}
 
               <div className="space-y-2">
@@ -199,6 +256,9 @@ const Login = () => {
                   setEmail("");
                   setPassword("");
                   setFullName("");
+                  setNomeEmpresa("");
+                  setCnpjEmpresa("");
+                  setEmailEmpresa("");
                 }}
                 className="text-sm text-muted-foreground hover:text-foreground"
               >

@@ -3,13 +3,29 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+export type EmpresaRole = 'owner' | 'admin' | 'user';
+
+interface Empresa {
+  id: string;
+  nome: string;
+  cnpj?: string;
+  email?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  empresaId: string | null;
+  empresaRole: EmpresaRole | null;
+  empresas: Empresa[];
+  empresaAtual: Empresa | null;
+  primeiroAcesso: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName?: string, nomeEmpresa?: string, cnpjEmpresa?: string, emailEmpresa?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  switchEmpresa: (empresaId: string) => Promise<void>;
+  completarOnboarding: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,7 +42,80 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [empresaId, setEmpresaId] = useState<string | null>(null);
+  const [empresaRole, setEmpresaRole] = useState<EmpresaRole | null>(null);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [empresaAtual, setEmpresaAtual] = useState<Empresa | null>(null);
+  const [primeiroAcesso, setPrimeiroAcesso] = useState(false);
   const { toast } = useToast();
+
+  const loadEmpresaData = async (userId: string) => {
+    try {
+      // Buscar empresa atual do usuário
+      const { data: empresaAtualId } = await supabase.rpc('get_current_empresa_id');
+      
+      if (empresaAtualId) {
+        setEmpresaId(empresaAtualId);
+
+        // Buscar role do usuário na empresa atual
+        const { data: empresaUsuario } = await supabase
+          .from('empresa_usuarios')
+          .select('role')
+          .eq('empresa_id', empresaAtualId)
+          .eq('user_id', userId)
+          .eq('ativo', true)
+          .single();
+
+        if (empresaUsuario) {
+          setEmpresaRole(empresaUsuario.role as EmpresaRole);
+        }
+
+        // Buscar dados da empresa atual
+        const { data: empresa } = await supabase
+          .from('empresas')
+          .select('id, nome, cnpj, email')
+          .eq('id', empresaAtualId)
+          .single();
+
+        if (empresa) {
+          setEmpresaAtual(empresa);
+        }
+      }
+
+      // Buscar todas as empresas do usuário
+      const { data: empresasDoUsuario } = await supabase
+        .from('empresa_usuarios')
+        .select('empresa_id')
+        .eq('user_id', userId)
+        .eq('ativo', true);
+
+      if (empresasDoUsuario && empresasDoUsuario.length > 0) {
+        const empresaIds = empresasDoUsuario.map(eu => eu.empresa_id);
+        
+        const { data: todasEmpresas } = await supabase
+          .from('empresas')
+          .select('id, nome, cnpj, email')
+          .in('id', empresaIds);
+
+        if (todasEmpresas) {
+          setEmpresas(todasEmpresas);
+        }
+      }
+
+      // Verificar se é primeiro acesso
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('primeiro_acesso')
+        .eq('user_id', userId)
+        .single();
+
+      if (profile?.primeiro_acesso) {
+        setPrimeiroAcesso(true);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados da empresa:', error);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -42,7 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(session?.user ?? null);
           setLoading(false);
           
-          // Defer user validation with setTimeout to prevent deadlock
+          // Defer user validation and empresa data loading
           if (event === 'SIGNED_IN' && session?.user) {
             setTimeout(async () => {
               try {
@@ -57,6 +146,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     description: "Sua conta foi removida. Faça login novamente.",
                     variant: "destructive",
                   });
+                } else {
+                  // Carregar dados da empresa após validação
+                  await loadEmpresaData(session.user.id);
                 }
               } catch (err) {
                 console.error('Error validating user:', err);
@@ -64,6 +156,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 localStorage.clear();
               }
             }, 0);
+          } else if (event === 'SIGNED_OUT') {
+            // Limpar dados da empresa
+            setEmpresaId(null);
+            setEmpresaRole(null);
+            setEmpresas([]);
+            setEmpresaAtual(null);
+            setPrimeiroAcesso(false);
           }
         }
       }
@@ -84,11 +183,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               if (validationError || !isValid) {
                 console.warn('Cached user validation failed, clearing session');
                 await supabase.auth.signOut();
-                localStorage.clear(); // Clear all localStorage data
+                localStorage.clear();
                 setSession(null);
                 setUser(null);
                 setLoading(false);
                 return;
+              } else {
+                // Carregar dados da empresa para sessão existente
+                await loadEmpresaData(session.user.id);
               }
             } catch (err) {
               console.error('Error validating cached user:', err);
@@ -131,22 +233,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
+  const signUp = async (email: string, password: string, fullName?: string, nomeEmpresa?: string, cnpjEmpresa?: string, emailEmpresa?: string) => {
     setLoading(true);
     const redirectUrl = `${window.location.origin}/`;
     
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName || email,
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: fullName || email,
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      // Se o usuário foi criado e tem empresa para criar
+      if (data.user && nomeEmpresa) {
+        try {
+          const { error: empresaError } = await supabase.rpc('create_empresa_with_owner', {
+            nome_empresa: nomeEmpresa,
+            cnpj_empresa: cnpjEmpresa || null,
+            email_empresa: emailEmpresa || null,
+          });
+
+          if (empresaError) {
+            console.error('Erro ao criar empresa:', empresaError);
+          }
+        } catch (empresaErr) {
+          console.error('Erro ao criar empresa:', empresaErr);
         }
       }
-    });
-    setLoading(false);
-    return { error };
+
+      setLoading(false);
+      return { error: null };
+    } catch (error) {
+      setLoading(false);
+      return { error };
+    }
   };
 
   const signOut = async () => {
@@ -157,6 +284,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.clear();
     setUser(null);
     setSession(null);
+    setEmpresaId(null);
+    setEmpresaRole(null);
+    setEmpresas([]);
+    setEmpresaAtual(null);
+    setPrimeiroAcesso(false);
     setLoading(false);
     
     toast({
@@ -165,13 +297,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const switchEmpresa = async (novaEmpresaId: string) => {
+    if (!user) return;
+
+    try {
+      // Atualizar empresa atual no perfil
+      const { error } = await supabase
+        .from('profiles')
+        .update({ empresa_atual_id: novaEmpresaId })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // Recarregar dados da empresa
+      await loadEmpresaData(user.id);
+    } catch (error) {
+      console.error('Erro ao trocar empresa:', error);
+      throw error;
+    }
+  };
+
+  const completarOnboarding = () => {
+    setPrimeiroAcesso(false);
+  };
+
   const value = {
     user,
     session,
     loading,
+    empresaId,
+    empresaRole,
+    empresas,
+    empresaAtual,
+    primeiroAcesso,
     signIn,
     signUp,
     signOut,
+    switchEmpresa,
+    completarOnboarding,
   };
 
   return (

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useEmpresaContext } from '@/hooks/useEmpresaContext';
 
 export interface Mecanico {
   id: string;
@@ -15,7 +16,7 @@ export interface Mecanico {
 }
 
 export const useMecanicos = (ativos = true) => {
-  const { empresaId } = useAuth();
+  const { empresaId } = useEmpresaContext();
   
   return useQuery({
     queryKey: ['mecanicos', ativos, empresaId],
@@ -44,7 +45,8 @@ export const useMecanicos = (ativos = true) => {
 export const useCriarMecanico = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user, empresaId } = useAuth();
+  const { user } = useAuth();
+  const { empresaId } = useEmpresaContext();
 
   return useMutation({
     mutationFn: async (mecanico: Omit<Mecanico, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {

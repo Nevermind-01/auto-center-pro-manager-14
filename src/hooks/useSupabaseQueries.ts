@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEmpresaContext } from '@/hooks/useEmpresaContext';
 import { Database } from '@/integrations/supabase/types';
 
 // Types
@@ -39,7 +40,7 @@ export type VeiculoInsert = Database['public']['Tables']['veiculos']['Insert'];
 
 // Products hooks
 export const useProdutos = () => {
-  const { empresaId } = useAuth();
+  const { empresaId } = useEmpresaContext();
   
   return useQuery({
     queryKey: ['produtos', empresaId],
@@ -63,7 +64,7 @@ export const useProdutos = () => {
 };
 
 export const useProdutoById = (id: string) => {
-  const { empresaId } = useAuth();
+  const { empresaId } = useEmpresaContext();
   
   return useQuery({
     queryKey: ['produto', id, empresaId],
@@ -89,7 +90,8 @@ export const useProdutoById = (id: string) => {
 
 export const useProdutoMutations = () => {
   const queryClient = useQueryClient();
-  const { user, empresaId } = useAuth();
+  const { user } = useAuth();
+  const { empresaId } = useEmpresaContext();
 
   const createProduto = useMutation({
     mutationFn: async (produto: Omit<ProdutoInsert, 'user_id' | 'empresa_id'>) => {
@@ -145,7 +147,7 @@ export const useProdutoMutations = () => {
 
 // Categories hooks
 export const useCategorias = () => {
-  const { empresaId } = useAuth();
+  const { empresaId } = useEmpresaContext();
   
   return useQuery({
     queryKey: ['categorias', empresaId],
@@ -167,7 +169,8 @@ export const useCategorias = () => {
 
 export const useCategoriaMutations = () => {
   const queryClient = useQueryClient();
-  const { user, empresaId } = useAuth();
+  const { user } = useAuth();
+  const { empresaId } = useEmpresaContext();
 
   const createCategoria = useMutation({
     mutationFn: async (categoria: Omit<CategoriaInsert, 'user_id' | 'empresa_id'>) => {
@@ -192,7 +195,7 @@ export const useCategoriaMutations = () => {
 
 // Stock movements hooks
 export const useMovimentacoes = () => {
-  const { empresaId } = useAuth();
+  const { empresaId } = useEmpresaContext();
   
   return useQuery({
     queryKey: ['movimentacoes', empresaId],
@@ -217,7 +220,8 @@ export const useMovimentacoes = () => {
 
 export const useMovimentacaoMutations = () => {
   const queryClient = useQueryClient();
-  const { user, empresaId } = useAuth();
+  const { user } = useAuth();
+  const { empresaId } = useEmpresaContext();
 
   const createMovimentacao = useMutation({
     mutationFn: async (movimentacao: Omit<MovimentacaoInsert, 'user_id' | 'empresa_id'>) => {
@@ -243,7 +247,7 @@ export const useMovimentacaoMutations = () => {
 
 // Clients hooks
 export const useClientes = () => {
-  const { empresaId } = useAuth();
+  const { empresaId } = useEmpresaContext();
   
   return useQuery({
     queryKey: ['clientes', empresaId],
@@ -264,7 +268,7 @@ export const useClientes = () => {
 };
 
 export const useClienteById = (id: string) => {
-  const { empresaId } = useAuth();
+  const { empresaId } = useEmpresaContext();
   
   return useQuery({
     queryKey: ['clientes', id, empresaId],
@@ -287,7 +291,8 @@ export const useClienteById = (id: string) => {
 
 export const useClienteMutations = () => {
   const queryClient = useQueryClient();
-  const { user, empresaId } = useAuth();
+  const { user } = useAuth();
+  const { empresaId } = useEmpresaContext();
 
   const createCliente = useMutation({
     mutationFn: async (cliente: Omit<ClienteInsert, 'user_id' | 'empresa_id'>) => {
@@ -343,7 +348,7 @@ export const useClienteMutations = () => {
 
 // Services hooks
 export const useServicos = () => {
-  const { empresaId } = useAuth();
+  const { empresaId } = useEmpresaContext();
   
   return useQuery({
     queryKey: ['servicos', empresaId],
@@ -365,7 +370,8 @@ export const useServicos = () => {
 
 export const useServicoMutations = () => {
   const queryClient = useQueryClient();
-  const { user, empresaId } = useAuth();
+  const { user } = useAuth();
+  const { empresaId } = useEmpresaContext();
 
   const createServico = useMutation({
     mutationFn: async (servico: Omit<ServicoInsert, 'user_id' | 'empresa_id'>) => {
@@ -390,7 +396,7 @@ export const useServicoMutations = () => {
 
 // Vehicles hooks
 export const useVeiculos = () => {
-  const { empresaId } = useAuth();
+  const { empresaId } = useEmpresaContext();
   
   return useQuery({
     queryKey: ['veiculos', empresaId],
@@ -411,7 +417,7 @@ export const useVeiculos = () => {
 };
 
 export const useVeiculosByCliente = (clienteId: string | null) => {
-  const { empresaId } = useAuth();
+  const { empresaId } = useEmpresaContext();
   
   return useQuery({
     queryKey: ['veiculos', clienteId, empresaId],
@@ -434,7 +440,8 @@ export const useVeiculosByCliente = (clienteId: string | null) => {
 
 export const useVeiculoMutations = () => {
   const queryClient = useQueryClient();
-  const { user, empresaId } = useAuth();
+  const { user } = useAuth();
+  const { empresaId } = useEmpresaContext();
 
   const createVeiculo = useMutation({
     mutationFn: async (veiculo: Omit<VeiculoInsert, 'user_id' | 'empresa_id'>) => {
@@ -464,7 +471,7 @@ interface VendasFilters {
 }
 
 export const useVendas = (filters?: VendasFilters) => {
-  const { empresaId } = useAuth();
+  const { empresaId } = useEmpresaContext();
   
   return useQuery({
     queryKey: ['vendas', filters, empresaId],
@@ -500,7 +507,8 @@ export const useVendas = (filters?: VendasFilters) => {
 
 export const useVendaMutations = () => {
   const queryClient = useQueryClient();
-  const { user, empresaId } = useAuth();
+  const { user } = useAuth();
+  const { empresaId } = useEmpresaContext();
 
   const createVenda = useMutation({
     mutationFn: async (venda: Omit<VendaInsert, 'user_id' | 'empresa_id'>) => {
@@ -718,7 +726,7 @@ export const useEstoqueOperations = () => {
 
 // Log movimentações hooks
 export const useLogMovimentacoes = () => {
-  const { empresaId } = useAuth();
+  const { empresaId } = useEmpresaContext();
   
   return useQuery({
     queryKey: ['log_movimentacoes', empresaId],
@@ -743,7 +751,8 @@ export const useLogMovimentacoes = () => {
 
 export const useLogMovimentacaoMutations = () => {
   const queryClient = useQueryClient();
-  const { user, empresaId } = useAuth();
+  const { user } = useAuth();
+  const { empresaId } = useEmpresaContext();
 
   const createLog = useMutation({
     mutationFn: async (log: Omit<LogMovimentacaoInsert, 'user_id' | 'empresa_id'>) => {

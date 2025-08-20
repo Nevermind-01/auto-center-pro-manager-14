@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useEmpresaContext } from "@/hooks/useEmpresaContext";
 
 export type Comissao = {
   id: string;
@@ -36,7 +37,7 @@ interface UseComissoesByMecanicoParams {
 }
 
 export const useComissoesByMecanico = ({ mecanicoId, startDate, endDate }: UseComissoesByMecanicoParams) => {
-  const { empresaId } = useAuth();
+  const { empresaId } = useEmpresaContext();
   
   return useQuery({
     queryKey: ["comissoes_mecanico", mecanicoId, startDate?.toISOString(), endDate?.toISOString(), empresaId],
@@ -69,7 +70,8 @@ export const useComissoesByMecanico = ({ mecanicoId, startDate, endDate }: UseCo
 
 export const useComissoesMutations = () => {
   const queryClient = useQueryClient();
-  const { user, empresaId } = useAuth();
+  const { user } = useAuth();
+  const { empresaId } = useEmpresaContext();
 
   const createComissao = useMutation({
     mutationFn: async (payload: ComissaoInsert) => {

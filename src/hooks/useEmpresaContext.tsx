@@ -33,12 +33,24 @@ export const useEmpresaContext = (): EmpresaContextType => {
 };
 
 export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [empresaId, setEmpresaId] = useState<string | null>(null);
   const [empresaRole, setEmpresaRole] = useState<EmpresaRole | null>(null);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [empresaAtual, setEmpresaAtual] = useState<Empresa | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Don't provide context if auth is still loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando empresa...</p>
+        </div>
+      </div>
+    );
+  }
 
   const loadEmpresaData = async () => {
     if (!user) {
@@ -136,8 +148,10 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    loadEmpresaData();
-  }, [user]);
+    if (!authLoading) {
+      loadEmpresaData();
+    }
+  }, [user, authLoading]);
 
   const value = {
     empresaId,

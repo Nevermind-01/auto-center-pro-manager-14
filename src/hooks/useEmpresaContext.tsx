@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { logger } from '@/lib/logger';
 
 export type EmpresaRole = 'owner' | 'admin' | 'user';
 
@@ -54,7 +55,7 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
 
       // Buscar empresa atual do usuário
       const empresaAtualId = await supabase.rpc('get_current_empresa_id');
-      console.log('Empresa atual ID:', empresaAtualId);
+      logger.debug('Empresa atual ID:', empresaAtualId.data);
 
       if (empresaAtualId.data) {
         setEmpresaId(empresaAtualId.data);
@@ -104,7 +105,7 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     } catch (error) {
-      console.error('Erro ao carregar dados da empresa:', error);
+      logger.error('Erro ao carregar dados da empresa:', error);
     } finally {
       setLoading(false);
     }
@@ -125,7 +126,7 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
       // Recarregar dados
       await loadEmpresaData();
     } catch (error) {
-      console.error('Erro ao trocar empresa:', error);
+      logger.error('Erro ao trocar empresa:', error);
       throw error;
     }
   };

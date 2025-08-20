@@ -456,8 +456,13 @@ export const useVeiculoMutations = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Invalidar queries gerais de veículos
       queryClient.invalidateQueries({ queryKey: ['veiculos', empresaId] });
+      // Invalidar query específica por cliente para atualizar imediatamente
+      if (data.cliente_id) {
+        queryClient.invalidateQueries({ queryKey: ['veiculos', data.cliente_id, empresaId] });
+      }
     }
   });
 

@@ -27,6 +27,8 @@ import { ComissaoConfirmModal } from "@/components/ComissaoConfirmModal";
 import { ComissaoCalculatorModal } from "@/components/ComissaoCalculatorModal";
 import { useSupabaseEstoque, ProdutoComCategoria } from "@/lib/supabaseEstoque";
 import { supabase } from "@/integrations/supabase/client";
+import { useClienteValidation } from "@/hooks/useClienteValidation";
+import { sanitizeClienteData } from "@/lib/inputSanitizer";
 import { 
   Plus, 
   Search, 
@@ -87,6 +89,9 @@ const NovaOSSupabase = () => {
   const { createVenda, createVendaProduto, createVendaServico, updateVenda, deleteVendaProdutos, deleteVendaServicos } = useVendaMutations();
   const { createVeiculo } = useVeiculoMutations();
   const { createLog } = useLogMovimentacaoMutations();
+  
+  // Validation
+  const { validateClienteData } = useClienteValidation();
   
   // Estoque
   const estoqueManager = useSupabaseEstoque();
@@ -400,17 +405,34 @@ const NovaOSSupabase = () => {
   };
 
   const adicionarNovoCliente = async () => {
-    if (!novoCliente.nome || !novoCliente.telefone) {
+    // Validação básica - apenas nome é obrigatório
+    if (!novoCliente.nome.trim()) {
       toast({
         title: "Erro",
-        description: "Nome e telefone são obrigatórios.",
+        description: "Nome é obrigatório.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Sanitizar dados antes da validação
+    const clienteSanitizado = sanitizeClienteData(novoCliente);
+    
+    // Validar dados usando o hook de validação
+    if (!validateClienteData(clienteSanitizado)) {
+      toast({
+        title: "Dados inválidos",
+        description: "Verifique os dados informados (CPF, CNPJ, email ou telefone).",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      const cliente = await createCliente.mutateAsync(novoCliente);
+      const cliente = await createCliente.mutateAsync({
+        ...novoCliente,
+        ...clienteSanitizado
+      });
       setClienteSelecionado(cliente);
       setNovoCliente({
         nome: "",

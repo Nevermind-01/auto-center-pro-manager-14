@@ -707,7 +707,8 @@ const NovaOSSupabase = () => {
             produto_nome: produto.nome,
             quantidade: produto.quantidade,
             preco_unitario: produto.valor,
-            preco_total: produto.valor * produto.quantidade
+            preco_total: produto.valor * produto.quantidade,
+            empresa_id: '00000000-0000-0000-0000-000000000000' // Será definido pelo trigger
           });
         }
 
@@ -717,7 +718,8 @@ const NovaOSSupabase = () => {
             venda_id: editingVenda.id,
             servico_id: servico.id || null,
             servico_nome: servico.nome,
-            preco: servico.valor
+            preco: servico.valor,
+            empresa_id: '00000000-0000-0000-0000-000000000000' // Será definido pelo trigger
           });
         }
 
@@ -763,7 +765,8 @@ const NovaOSSupabase = () => {
             produto_nome: produto.nome,
             quantidade: produto.quantidade,
             preco_unitario: produto.valor,
-            preco_total: produto.valor * produto.quantidade
+            preco_total: produto.valor * produto.quantidade,
+            empresa_id: '00000000-0000-0000-0000-000000000000' // Será definido pelo trigger
           });
         }
 
@@ -773,7 +776,8 @@ const NovaOSSupabase = () => {
             venda_id: venda.id,
             servico_id: servico.id || null,
             servico_nome: servico.nome,
-            preco: servico.valor
+            preco: servico.valor,
+            empresa_id: '00000000-0000-0000-0000-000000000000' // Será definido pelo trigger
           });
         }
 
@@ -938,7 +942,8 @@ const NovaOSSupabase = () => {
           produto_nome: produto.nome,
           quantidade: produto.quantidade,
           preco_unitario: produto.valor,
-          preco_total: produto.valor * produto.quantidade
+          preco_total: produto.valor * produto.quantidade,
+          empresa_id: '00000000-0000-0000-0000-000000000000' // Será definido pelo trigger
         });
       }
 
@@ -948,7 +953,8 @@ const NovaOSSupabase = () => {
           venda_id: vendaId,
           servico_id: servico.id || null,
           servico_nome: servico.nome,
-          preco: servico.valor
+          preco: servico.valor,
+          empresa_id: '00000000-0000-0000-0000-000000000000' // Será definido pelo trigger
         });
       }
 

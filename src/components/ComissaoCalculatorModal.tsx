@@ -126,12 +126,13 @@ export const ComissaoCalculatorModal = ({
         throw new Error("Valor fixo deve ser maior que zero");
       }
 
-      // Preparar payload para o RPC
+      // Obter usuário autenticado
       const user = await supabase.auth.getUser();
       if (!user.data.user) {
         throw new Error("Usuário não autenticado");
       }
 
+      // Preparar payload para o RPC
       const payload = {
         numeroOS,
         clienteId: clienteSelecionado.id,
@@ -163,192 +164,27 @@ export const ComissaoCalculatorModal = ({
         }
       };
 
-      // Verificar se a OS já existe
-      const { data: osExistente, error: osExistenteError } = await supabase
-        .from('vendas')
-        .select('id')
-        .eq('numero_os', numeroOS)
-        .maybeSingle();
+      // Usar RPC para finalizar OS com comissão (integração completa e atômica)
+      const { data: resultado, error: rpcError } = await supabase.rpc(
+        'rpc_finalizar_os_com_comissao',
+        { payload }
+      );
 
-      if (osExistenteError) {
-        throw new Error("Erro ao verificar OS existente");
+      if (rpcError) {
+        console.error("Erro no RPC:", rpcError);
+        throw new Error(rpcError.message || "Erro ao finalizar OS");
       }
 
-      if (osExistente) {
-        throw new Error("Esta OS já foi criada. Use o modo de edição.");
+      const resultadoData = resultado as any;
+      if (!resultadoData?.success) {
+        throw new Error("Falha ao processar finalização da OS");
       }
 
-      // Verificar autenticação
-      const response = await supabase.auth.getSession();
-      if (!response.data.session) {
-        throw new Error("Sessão expirada");
-      }
-
-      // Criar a venda primeiro
-      const { data: vendaCriada, error: vendaError } = await supabase
-        .from("vendas")
-        .insert({
-          numero_os: numeroOS,
-          cliente_id: clienteSelecionado.id,
-          cliente_nome: clienteSelecionado.nome,
-          veiculo_id: veiculoSelecionado?.id || null,
-          mecanico_id: mecanicoId,
-          forma_pagamento: formaPagamento as any,
-          parcelas,
-          valor_total: valorTotal,
-          valor_desconto: valorDesconto,
-          valor_final: valorTotal - valorDesconto,
-          observacoes: observacoes || "",
-          status: "finalizada",
-          finalizado_em: new Date().toISOString(),
-          user_id: user.data.user.id,
-        })
-        .select()
-        .single();
-
-      if (vendaError) {
-        console.error("Erro ao criar venda:", vendaError);
-        throw new Error("Erro ao criar OS: " + vendaError.message);
-      }
-
-      const novaVendaId = vendaCriada.id;
-
-      try {
-        // Inserir produtos e baixar estoque
-        for (const produto of produtosSelecionados) {
-          // Verificar estoque
-          const { data: produtoEstoque, error: estoqueError } = await supabase
-            .from("produtos")
-            .select("quantidade")
-            .eq("id", produto.id)
-            .single();
-
-          if (estoqueError || !produtoEstoque) {
-            throw new Error(`Produto ${produto.nome} não encontrado`);
-          }
-
-          if (produtoEstoque.quantidade < produto.quantidade) {
-            throw new Error(`Estoque insuficiente para ${produto.nome}. Disponível: ${produtoEstoque.quantidade}`);
-          }
-
-          // Inserir venda_produto
-          const { error: vendaProdutoError } = await supabase
-            .from("venda_produtos")
-            .insert({
-              venda_id: novaVendaId,
-              produto_id: produto.id,
-              produto_nome: produto.nome,
-              quantidade: produto.quantidade,
-              preco_unitario: produto.valor,
-              preco_total: produto.valor * produto.quantidade,
-            });
-
-          if (vendaProdutoError) {
-            throw new Error(`Erro ao inserir produto ${produto.nome}`);
-          }
-
-          // Baixar estoque
-          const { error: updateEstoqueError } = await supabase
-            .from("produtos")
-            .update({
-              quantidade: produtoEstoque.quantidade - produto.quantidade
-            })
-            .eq("id", produto.id);
-
-          if (updateEstoqueError) {
-            throw new Error(`Erro ao baixar estoque de ${produto.nome}`);
-          }
-
-          // Registrar movimentação
-          const { error: movimentacaoError } = await supabase
-            .from("movimentacoes")
-            .insert({
-              produto_id: produto.id,
-              tipo: "saida",
-              quantidade: produto.quantidade,
-              quantidade_anterior: produtoEstoque.quantidade,
-              motivo: `Venda - OS ${numeroOS}`,
-              os_numero: numeroOS,
-              valor_unitario: produto.valor,
-              user_id: user.data.user.id,
-            });
-
-          if (movimentacaoError) {
-            console.error("Erro ao registrar movimentação:", movimentacaoError);
-          }
-        }
-
-        // Inserir serviços
-        for (const servico of servicosSelecionados) {
-          const { error: vendaServicoError } = await supabase
-            .from("venda_servicos")
-            .insert({
-              venda_id: novaVendaId,
-              servico_id: servico.id,
-              servico_nome: servico.nome,
-              preco: servico.valor,
-            });
-
-          if (vendaServicoError) {
-            throw new Error(`Erro ao inserir serviço ${servico.nome}`);
-          }
-        }
-
-        // Calcular e inserir comissão
-        const baseCalculo = servicosSelecionados.reduce((total, s) => total + s.valor, 0);
-        const valorComissao = tipoCalculo === "percentual" 
-          ? (baseCalculo * percentual) / 100
-          : valorFixo;
-
-        const { error: comissaoError } = await supabase
-          .from("comissoes_mecanicos")
-          .insert({
-            venda_id: novaVendaId,
-            mecanico_id: mecanicoId,
-            tipo_calculo: tipoCalculo,
-            percentual: tipoCalculo === "percentual" ? percentual : null,
-            valor_fixo: tipoCalculo === "fixo" ? valorFixo : null,
-            valor_final: valorComissao,
-            base_calculo: baseCalculo,
-            observacoes: observacoes || null,
-            user_id: user.data.user.id,
-          });
-
-        if (comissaoError) {
-          throw new Error("Erro ao registrar comissão");
-        }
-
-        // Registrar logs
-        const logs = [
-          { tipo: "criacao", obs: `OS ${numeroOS} criada com valor total R$ ${(valorTotal - valorDesconto).toFixed(2)}` },
-          { tipo: "edicao", obs: `Estoque baixado para OS ${numeroOS} - ${produtosSelecionados.length} produtos` },
-          { tipo: "finalizacao", obs: `OS ${numeroOS} finalizada com pagamento ${formaPagamento}` },
-          { tipo: "edicao", obs: `Comissão registrada. Base: R$ ${baseCalculo.toFixed(2)}, Valor: R$ ${valorComissao.toFixed(2)}` }
-        ];
-
-        for (const log of logs) {
-          await supabase
-            .from("log_movimentacoes")
-            .insert({
-              os_id: novaVendaId,
-              tipo: log.tipo,
-              usuario: "Sistema",
-              observacoes: log.obs,
-              user_id: user.data.user.id,
-            });
-        }
-
-        // Sucesso
-        toast({
-          title: "Sucesso",
-          description: `OS ${numeroOS} finalizada com comissão de R$ ${valorComissao.toFixed(2)}`,
-        });
-
-      } catch (innerError) {
-        // Em caso de erro, tentar deletar a venda criada
-        await supabase.from("vendas").delete().eq("id", novaVendaId);
-        throw innerError;
-      }
+      // Sucesso
+      toast({
+        title: "Sucesso",
+        description: `OS ${numeroOS} finalizada com comissão de R$ ${resultadoData.valorComissao?.toFixed(2) || '0.00'}`,
+      });
 
       onFinalized();
 
@@ -367,6 +203,8 @@ export const ComissaoCalculatorModal = ({
         errorMessage = "Esta OS já foi finalizada";
       } else if (errorMessage.includes("não encontrado")) {
         errorMessage = "Dados não encontrados no sistema";
+      } else if (errorMessage.includes("row-level security")) {
+        errorMessage = "Erro de permissão. Verifique se você tem acesso aos dados da empresa";
       }
 
       toast({

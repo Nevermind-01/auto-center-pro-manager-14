@@ -624,6 +624,7 @@ export type Database = {
       venda_produtos: {
         Row: {
           created_at: string
+          empresa_id: string
           id: string
           preco_total: number
           preco_unitario: number
@@ -634,6 +635,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          empresa_id: string
           id?: string
           preco_total: number
           preco_unitario: number
@@ -644,6 +646,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          empresa_id?: string
           id?: string
           preco_total?: number
           preco_unitario?: number
@@ -672,6 +675,7 @@ export type Database = {
       venda_servicos: {
         Row: {
           created_at: string
+          empresa_id: string
           id: string
           preco: number
           servico_id: string | null
@@ -680,6 +684,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          empresa_id: string
           id?: string
           preco: number
           servico_id?: string | null
@@ -688,6 +693,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          empresa_id?: string
           id?: string
           preco?: number
           servico_id?: string | null

@@ -866,6 +866,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_empresa_owner_or_admin: {
+        Args: { check_empresa_id: string }
+        Returns: boolean
+      }
       mask_sensitive_data: {
         Args: { input_text: string; show_last?: number }
         Returns: string

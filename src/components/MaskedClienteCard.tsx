@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash2, Eye, EyeOff, Shield } from 'lucide-react';
 import { Cliente } from '@/hooks/useSupabaseQueries';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuditLog } from '@/hooks/useAuditLog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MaskedClienteCardProps {
   cliente: Cliente;
@@ -13,10 +14,25 @@ interface MaskedClienteCardProps {
 
 export function MaskedClienteCard({ cliente, onEdit, onDelete }: MaskedClienteCardProps) {
   const [showSensitive, setShowSensitive] = useState(false);
-  const { user } = useAuth();
-  
-  // Check if user has admin role - for now we'll assume they don't unless explicitly granted
-  const isAdmin = false; // This would be checked against user roles in a real implementation
+  const [isAdmin, setIsAdmin] = useState(false);
+  const { logAction } = useAuditLog();
+
+  // Check if user has admin role in current empresa
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      try {
+        const { data, error } = await supabase.rpc('is_current_empresa_admin');
+        if (!error) {
+          setIsAdmin(data || false);
+        }
+      } catch (error) {
+        console.warn('Failed to check admin role:', error);
+        setIsAdmin(false);
+      }
+    };
+
+    checkAdminRole();
+  }, []);
   
   const maskData = (data: string | null, showLast: number = 4): string => {
     if (!data || data.length <= showLast) return data || '';
@@ -24,8 +40,24 @@ export function MaskedClienteCard({ cliente, onEdit, onDelete }: MaskedClienteCa
     return '*'.repeat(data.length - showLast) + data.slice(-showLast);
   };
 
-  const toggleSensitiveData = () => {
-    setShowSensitive(!showSensitive);
+  const toggleSensitiveData = async () => {
+    const newShowState = !showSensitive;
+    setShowSensitive(newShowState);
+    
+    // Log PII access for audit purposes
+    if (newShowState) {
+      await logAction({
+        action: 'PII_ACCESS',
+        resource_type: 'cliente',
+        resource_id: cliente.id,
+        details: {
+          cliente_nome: cliente.nome,
+          accessed_fields: ['email', 'telefone', 'cpf', 'cnpj', 'rg'].filter(field => 
+            cliente[field as keyof Cliente]
+          )
+        }
+      });
+    }
   };
 
   return (

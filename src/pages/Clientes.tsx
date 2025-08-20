@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useClientes, useClienteMutations, Cliente } from '@/hooks/useSupabaseQueries';
 import { MaskedClienteCard } from '@/components/MaskedClienteCard';
 import { useClienteValidation } from '@/hooks/useClienteValidation';
+import { sanitizeClienteData } from '@/lib/inputSanitizer';
 import { Search, Plus, Shield, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -36,7 +37,7 @@ export default function Clientes() {
     
     const formData = new FormData(e.currentTarget);
     
-    const clienteData = {
+    const rawClienteData = {
       nome: formData.get('nome') as string,
       email: formData.get('email') as string || null,
       telefone: formData.get('telefone') as string || null,
@@ -49,6 +50,25 @@ export default function Clientes() {
       cidade: formData.get('cidade') as string || null,
       estado: formData.get('estado') as string || null,
       endereco: null, // Legacy field, keeping as null
+    };
+
+    // Sanitize all input data to prevent XSS and injection attacks
+    const sanitizedData = sanitizeClienteData(rawClienteData);
+    
+    // Ensure required fields are present and properly typed
+    const clienteData = {
+      nome: sanitizedData.nome || '',
+      email: sanitizedData.email || null,
+      telefone: sanitizedData.telefone || null,
+      cpf: sanitizedData.cpf || null,
+      cnpj: sanitizedData.cnpj || null,
+      rg: sanitizedData.rg || null,
+      rua: sanitizedData.rua || null,
+      numero_residencia: sanitizedData.numero_residencia || null,
+      bairro: sanitizedData.bairro || null,
+      cidade: sanitizedData.cidade || null,
+      estado: sanitizedData.estado || null,
+      endereco: null as null, // Legacy field, keeping as null
     };
 
     // Validate sensitive data

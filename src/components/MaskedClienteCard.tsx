@@ -5,6 +5,7 @@ import { Edit, Trash2, Eye, EyeOff, Shield } from 'lucide-react';
 import { Cliente } from '@/hooks/useSupabaseQueries';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
 
 interface MaskedClienteCardProps {
   cliente: Cliente;
@@ -26,7 +27,7 @@ export function MaskedClienteCard({ cliente, onEdit, onDelete }: MaskedClienteCa
           setIsAdmin(data || false);
         }
       } catch (error) {
-        console.warn('Failed to check admin role:', error);
+        logger.warn('Failed to check admin role:', error);
         setIsAdmin(false);
       }
     };

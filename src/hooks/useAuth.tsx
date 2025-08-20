@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { logger } from '@/lib/logger';
 
 export type EmpresaRole = 'owner' | 'admin' | 'user';
 
@@ -99,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     } catch (error) {
-      console.error('Erro ao carregar dados da empresa:', error);
+      logger.error('Erro ao carregar dados da empresa:', error);
     }
   };
 
@@ -109,7 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state changed:', event, session);
+        logger.info('Auth state changed:', event, session?.user?.id || 'no user');
         
         if (mounted) {
           // Only synchronous state updates here
@@ -124,7 +125,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 const { data: isValid, error } = await supabase.rpc('validate_user_exists');
                 
                 if (error || !isValid) {
-                  console.warn('User validation failed, signing out');
+                  logger.warn('User validation failed, signing out');
                   await supabase.auth.signOut();
                   localStorage.clear();
                   toast({
@@ -137,7 +138,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   await loadEmpresaData(session.user.id);
                 }
               } catch (err) {
-                console.error('Error validating user:', err);
+                logger.error('Error validating user:', err);
                 await supabase.auth.signOut();
                 localStorage.clear();
               }
@@ -157,7 +158,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const initializeAuth = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
-        console.log('Initial session:', session, error);
+        logger.info('Initial session:', session?.user?.id || 'no user');
         
         if (mounted) {
           // If there's a cached session, validate the user still exists
@@ -166,7 +167,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               const { data: isValid, error: validationError } = await supabase.rpc('validate_user_exists');
               
               if (validationError || !isValid) {
-                console.warn('Cached user validation failed, clearing session');
+                logger.warn('Cached user validation failed, clearing session');
                 await supabase.auth.signOut();
                 localStorage.clear();
                 setSession(null);
@@ -178,7 +179,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 await loadEmpresaData(session.user.id);
               }
             } catch (err) {
-              console.error('Error validating cached user:', err);
+              logger.error('Error validating cached user:', err);
               await supabase.auth.signOut();
               localStorage.clear();
               setSession(null);
@@ -193,7 +194,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setLoading(false);
         }
       } catch (error) {
-        console.error('Error getting session:', error);
+        logger.error('Error getting session:', error);
         if (mounted) {
           setLoading(false);
         }
@@ -246,10 +247,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           });
 
           if (empresaError) {
-            console.error('Erro ao criar empresa:', empresaError);
+            logger.error('Erro ao criar empresa:', empresaError);
           }
         } catch (empresaErr) {
-          console.error('Erro ao criar empresa:', empresaErr);
+          logger.error('Erro ao criar empresa:', empresaErr);
         }
       }
 
@@ -296,7 +297,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Recarregar dados da empresa
       await loadEmpresaData(user.id);
     } catch (error) {
-      console.error('Erro ao trocar empresa:', error);
+      logger.error('Erro ao trocar empresa:', error);
       throw error;
     }
   };

@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresaContext } from './useEmpresaContext';
 import { useAuth } from './useAuth';
+import { logger } from '@/lib/logger';
 
 interface AuditLogEntry {
   action: string;
@@ -33,7 +34,7 @@ export const useAuditLog = () => {
         });
     } catch (error) {
       // Silently fail - don't break user experience for audit logging
-      console.warn('Failed to log audit entry:', error);
+      logger.warn('Failed to log audit entry:', error);
     }
   };
 

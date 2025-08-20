@@ -276,9 +276,9 @@ const Login = () => {
               </Button>
             </div>
 
-            {!isSignUp && (
+            {!isSignUp && import.meta.env.DEV && (
               <div className="mt-4 text-center text-sm text-muted-foreground">
-                <p>Credenciais de teste:</p>
+                <p>Credenciais de teste (dev):</p>
                 <p className="font-mono text-xs mt-1">
                   admin@autocenter.com / admin123
                 </p>

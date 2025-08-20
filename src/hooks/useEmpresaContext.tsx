@@ -40,18 +40,6 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
   const [empresaAtual, setEmpresaAtual] = useState<Empresa | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Don't provide context if auth is still loading
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Carregando empresa...</p>
-        </div>
-      </div>
-    );
-  }
-
   const loadEmpresaData = useCallback(async () => {
     if (!user) {
       setEmpresaId(null);
@@ -123,7 +111,7 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
-  const switchEmpresa = async (novaEmpresaId: string) => {
+  const switchEmpresa = useCallback(async (novaEmpresaId: string) => {
     if (!user) return;
 
     try {
@@ -141,11 +129,11 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
       logger.error('Erro ao trocar empresa:', error);
       throw error;
     }
-  };
+  }, [user, loadEmpresaData]);
 
-  const refreshEmpresas = async () => {
+  const refreshEmpresas = useCallback(async () => {
     await loadEmpresaData();
-  };
+  }, [loadEmpresaData]);
 
   useEffect(() => {
     if (!authLoading) {
@@ -162,6 +150,18 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
     switchEmpresa,
     refreshEmpresas,
   };
+
+  // Don't provide context if auth is still loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando empresa...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <EmpresaContext.Provider value={value}>

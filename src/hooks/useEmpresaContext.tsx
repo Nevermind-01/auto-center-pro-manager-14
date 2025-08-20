@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/logger';
@@ -52,7 +52,7 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
     );
   }
 
-  const loadEmpresaData = async () => {
+  const loadEmpresaData = useCallback(async () => {
     if (!user) {
       setEmpresaId(null);
       setEmpresaRole(null);
@@ -121,7 +121,7 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   const switchEmpresa = async (novaEmpresaId: string) => {
     if (!user) return;
@@ -151,7 +151,7 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
     if (!authLoading) {
       loadEmpresaData();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, loadEmpresaData]);
 
   const value = {
     empresaId,

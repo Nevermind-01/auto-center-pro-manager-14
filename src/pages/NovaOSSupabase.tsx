@@ -418,8 +418,14 @@ const NovaOSSupabase = () => {
     // Sanitizar dados antes da validação
     const clienteSanitizado = sanitizeClienteData(novoCliente);
     
+    // Converter para Record<string, string> para validação
+    const clienteParaValidacao: Record<string, string> = {};
+    Object.entries(clienteSanitizado).forEach(([key, value]) => {
+      clienteParaValidacao[key] = String(value || '');
+    });
+    
     // Validar dados usando o hook de validação
-    if (!validateClienteData(clienteSanitizado)) {
+    if (!validateClienteData(clienteParaValidacao)) {
       toast({
         title: "Dados inválidos",
         description: "Verifique os dados informados (CPF, CNPJ, email ou telefone).",
@@ -429,10 +435,23 @@ const NovaOSSupabase = () => {
     }
 
     try {
-      const cliente = await createCliente.mutateAsync({
-        ...novoCliente,
-        ...clienteSanitizado
-      });
+      // Garantir que os dados estão no formato correto
+      const clienteParaCriar = {
+        nome: clienteSanitizado.nome || novoCliente.nome,
+        telefone: clienteSanitizado.telefone || novoCliente.telefone || null,
+        endereco: clienteSanitizado.endereco || novoCliente.endereco || null,
+        email: clienteSanitizado.email || novoCliente.email || null,
+        cpf: clienteSanitizado.cpf || novoCliente.cpf || null,
+        cnpj: clienteSanitizado.cnpj || novoCliente.cnpj || null,
+        rg: clienteSanitizado.rg || novoCliente.rg || null,
+        rua: clienteSanitizado.rua || novoCliente.rua || null,
+        numero_residencia: clienteSanitizado.numero_residencia || novoCliente.numero_residencia || null,
+        bairro: clienteSanitizado.bairro || novoCliente.bairro || null,
+        cidade: clienteSanitizado.cidade || novoCliente.cidade || null,
+        estado: clienteSanitizado.estado || novoCliente.estado || null
+      };
+      
+      const cliente = await createCliente.mutateAsync(clienteParaCriar);
       setClienteSelecionado(cliente);
       setNovoCliente({
         nome: "",

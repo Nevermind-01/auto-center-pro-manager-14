@@ -321,7 +321,7 @@ const Dashboard = () => {
                 <Button 
                   variant="outline" 
                   className="w-full mt-4"
-                  onClick={() => navigate('/sales')}
+                  onClick={() => navigate('/history')}
                 >
                   Ver Todas as Vendas
                 </Button>

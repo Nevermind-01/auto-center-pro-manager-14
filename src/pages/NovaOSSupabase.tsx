@@ -244,6 +244,24 @@ const NovaOSSupabase = () => {
         const vendaParaEditar = vendas.find(v => v.id === editingId);
         
         if (vendaParaEditar) {
+          // Verificar se a OS pode ser editada
+          if (vendaParaEditar.status !== 'pendente') {
+            const statusDescriptions = {
+              'finalizada': 'finalizada',
+              'cancelada': 'cancelada'
+            };
+            
+            toast({
+              title: "Ação não permitida",
+              description: `Não é possível editar uma OS ${statusDescriptions[vendaParaEditar.status as keyof typeof statusDescriptions] || vendaParaEditar.status}.`,
+              variant: "destructive",
+            });
+            
+            // Redirecionar para histórico
+            navigate('/history');
+            return;
+          }
+          
           setIsEditing(true);
           setEditingVenda(vendaParaEditar);
           setOriginalData(JSON.parse(JSON.stringify(vendaParaEditar))); // Deep copy
@@ -721,6 +739,24 @@ const NovaOSSupabase = () => {
 
     try {
       if (isEditing && editingVenda) {
+        // Verificar novamente se a OS pode ser editada
+        if (editingVenda.status !== 'pendente') {
+          const statusDescriptions = {
+            'finalizada': 'finalizada',
+            'cancelada': 'cancelada'
+          };
+          
+          toast({
+            title: "Ação não permitida",
+            description: `Não é possível editar uma OS ${statusDescriptions[editingVenda.status as keyof typeof statusDescriptions] || editingVenda.status}.`,
+            variant: "destructive",
+          });
+          
+          // Redirecionar para histórico
+          navigate('/history');
+          return;
+        }
+        
         // Deletar produtos e serviços antigos
         await deleteVendaProdutos.mutateAsync(editingVenda.id);
         await deleteVendaServicos.mutateAsync(editingVenda.id);

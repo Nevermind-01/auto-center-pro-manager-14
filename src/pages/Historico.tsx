@@ -106,6 +106,15 @@ const Historico = () => {
       return;
     }
     
+    if (venda.status === 'cancelada') {
+      toast({
+        title: "Ação não permitida",
+        description: "Não é possível editar uma OS cancelada.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Navigate to edit page - this would need to be implemented
     navigate(`/nova-os?edit=${venda.id}`);
   };
@@ -333,7 +342,7 @@ const Historico = () => {
                             Ver
                           </Button>
                           
-                          {venda.status !== 'finalizada' && (
+                          {venda.status === 'pendente' && (
                             <Button
                               variant="outline"
                               size="sm"

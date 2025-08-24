@@ -254,14 +254,16 @@ export const useClientes = () => {
     queryFn: async () => {
       if (!empresaId) return [];
       
-      const { data, error } = await supabase
-        .from('clientes')
-        .select('*')
-        .eq('empresa_id', empresaId)
-        .order('nome');
+      // Use secure masked function that automatically masks sensitive data based on user role
+      const { data, error } = await supabase.rpc('get_masked_clientes');
       
       if (error) throw error;
-      return data;
+      
+      // Filter by empresa_id (RLS already handles this, but being explicit for security)
+      const filteredData = data?.filter(cliente => cliente.empresa_id === empresaId) || [];
+      
+      // Sort by name
+      return filteredData.sort((a, b) => a.nome.localeCompare(b.nome));
     },
     enabled: !!empresaId,
   });

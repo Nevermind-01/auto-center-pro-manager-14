@@ -868,6 +868,7 @@ export type Database = {
           cpf: string
           created_at: string
           email: string
+          empresa_id: string
           endereco: string
           estado: string
           id: string

@@ -254,16 +254,13 @@ export const useClientes = () => {
     queryFn: async () => {
       if (!empresaId) return [];
       
-      // Use secure masked function that automatically masks sensitive data based on user role
+      // Use secure masked function that automatically filters by empresa and masks PII
       const { data, error } = await supabase.rpc('get_masked_clientes');
       
       if (error) throw error;
       
-      // Filter by empresa_id (RLS already handles this, but being explicit for security)
-      const filteredData = data?.filter(cliente => cliente.empresa_id === empresaId) || [];
-      
-      // Sort by name
-      return filteredData.sort((a, b) => a.nome.localeCompare(b.nome));
+      // Data is already filtered by empresa_id and sorted in the RPC function
+      return data || [];
     },
     enabled: !!empresaId,
   });

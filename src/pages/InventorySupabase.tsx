@@ -38,7 +38,18 @@ const InventorySupabase = () => {
   const [showNewCategoryModal, setShowNewCategoryModal] = useState(false);
   const [showMovementModal, setShowMovementModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showEditProductModal, setShowEditProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProdutoComCategoria | null>(null);
+  const [editProduct, setEditProduct] = useState({
+    nome: '',
+    marca: '',
+    codigo: '',
+    categoria_id: '',
+    preco_custo: '',
+    preco_venda: '',
+    quantidade: '',
+    estoque_minimo: ''
+  });
 
   // Estados para formulários
   const [newProduct, setNewProduct] = useState({
@@ -141,6 +152,48 @@ const InventorySupabase = () => {
       toast({
         title: "Erro",
         description: "Erro ao adicionar categoria.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditProduct = async () => {
+    if (!selectedProduct) return;
+
+    try {
+      await updateProduto.mutateAsync({
+        id: selectedProduct.id,
+        nome: editProduct.nome,
+        marca: editProduct.marca || null,
+        codigo: editProduct.codigo || null,
+        categoria_id: editProduct.categoria_id || null,
+        preco_custo: parseFloat(editProduct.preco_custo) || 0,
+        preco_venda: parseFloat(editProduct.preco_venda),
+        quantidade: parseInt(editProduct.quantidade) || 0,
+        estoque_minimo: parseInt(editProduct.estoque_minimo) || 5
+      });
+
+      toast({
+        title: "Produto atualizado",
+        description: `${editProduct.nome} foi atualizado com sucesso.`,
+      });
+
+      setEditProduct({
+        nome: '',
+        marca: '',
+        codigo: '',
+        categoria_id: '',
+        preco_custo: '',
+        preco_venda: '',
+        quantidade: '',
+        estoque_minimo: ''
+      });
+      setSelectedProduct(null);
+      setShowEditProductModal(false);
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar produto.",
         variant: "destructive",
       });
     }
@@ -508,7 +561,26 @@ const InventorySupabase = () => {
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="bg-background border z-50">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedProduct(produto);
+                              setEditProduct({
+                                nome: produto.nome,
+                                marca: produto.marca || '',
+                                codigo: produto.codigo || '',
+                                categoria_id: produto.categoria_id || '',
+                                preco_custo: produto.preco_custo?.toString() || '',
+                                preco_venda: produto.preco_venda?.toString() || '',
+                                quantidade: produto.quantidade?.toString() || '',
+                                estoque_minimo: produto.estoque_minimo?.toString() || ''
+                              });
+                              setShowEditProductModal(true);
+                            }}
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Editar Produto
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => {
                               setSelectedProduct(produto);
@@ -594,6 +666,108 @@ const InventorySupabase = () => {
           </div>
           <DialogFooter>
             <Button onClick={handleStockMovement}>Registrar Movimentação</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Product Modal */}
+      <Dialog open={showEditProductModal} onOpenChange={setShowEditProductModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar Produto</DialogTitle>
+            <DialogDescription>Edite as informações do produto selecionado.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="edit-product-name">Nome do Produto</Label>
+              <Input
+                id="edit-product-name"
+                value={editProduct.nome}
+                onChange={(e) => setEditProduct({ ...editProduct, nome: e.target.value })}
+                placeholder="Nome do produto"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-product-brand">Marca</Label>
+              <Input
+                id="edit-product-brand"
+                value={editProduct.marca}
+                onChange={(e) => setEditProduct({ ...editProduct, marca: e.target.value })}
+                placeholder="Marca do produto"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-product-code">Código</Label>
+              <Input
+                id="edit-product-code"
+                value={editProduct.codigo}
+                onChange={(e) => setEditProduct({ ...editProduct, codigo: e.target.value })}
+                placeholder="Código do produto"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-product-category">Categoria</Label>
+              <Select value={editProduct.categoria_id} onValueChange={(value) => setEditProduct({ ...editProduct, categoria_id: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categorias.map((categoria) => (
+                    <SelectItem key={categoria.id} value={categoria.id}>
+                      {categoria.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="edit-product-cost">Preço de Custo</Label>
+              <Input
+                id="edit-product-cost"
+                type="number"
+                step="0.01"
+                value={editProduct.preco_custo}
+                onChange={(e) => setEditProduct({ ...editProduct, preco_custo: e.target.value })}
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-product-price">Preço de Venda</Label>
+              <Input
+                id="edit-product-price"
+                type="number"
+                step="0.01"
+                value={editProduct.preco_venda}
+                onChange={(e) => setEditProduct({ ...editProduct, preco_venda: e.target.value })}
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-product-quantity">Quantidade</Label>
+              <Input
+                id="edit-product-quantity"
+                type="number"
+                value={editProduct.quantidade}
+                onChange={(e) => setEditProduct({ ...editProduct, quantidade: e.target.value })}
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-product-min-stock">Estoque Mínimo</Label>
+              <Input
+                id="edit-product-min-stock"
+                type="number"
+                value={editProduct.estoque_minimo}
+                onChange={(e) => setEditProduct({ ...editProduct, estoque_minimo: e.target.value })}
+                placeholder="5"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditProductModal(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleEditProduct}>Salvar Alterações</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

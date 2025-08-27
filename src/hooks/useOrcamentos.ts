@@ -37,6 +37,7 @@ export interface Orcamento {
   } | null;
   orcamento_produtos: Array<{
     id: string;
+    produto_id: string;
     produto_nome: string;
     quantidade: number;
     preco_unitario: number;
@@ -44,6 +45,7 @@ export interface Orcamento {
   }>;
   orcamento_servicos: Array<{
     id: string;
+    servico_id?: string;
     servico_nome: string;
     preco: number;
   }>;
@@ -181,7 +183,7 @@ export const useOrcamentoDetails = (orcamentoId: string | null) => {
       // Buscar produtos
       const { data: produtosData, error: produtosError } = await supabase
         .from('orcamento_produtos')
-        .select('id, produto_nome, quantidade, preco_unitario, preco_total')
+        .select('id, produto_id, produto_nome, quantidade, preco_unitario, preco_total')
         .eq('orcamento_id', orcamentoId);
 
       if (produtosError) throw produtosError;
@@ -189,7 +191,7 @@ export const useOrcamentoDetails = (orcamentoId: string | null) => {
       // Buscar serviços
       const { data: servicosData, error: servicosError } = await supabase
         .from('orcamento_servicos')
-        .select('id, servico_nome, preco')
+        .select('id, servico_id, servico_nome, preco')
         .eq('orcamento_id', orcamentoId);
 
       if (servicosError) throw servicosError;
@@ -373,7 +375,7 @@ export const useOrcamentoMutations = () => {
       if (orcamento.orcamento_produtos.length > 0) {
         const produtosInsert = orcamento.orcamento_produtos.map(produto => ({
           venda_id: venda.id,
-          produto_id: produto.id,
+          produto_id: produto.produto_id,
           produto_nome: produto.produto_nome,
           quantidade: produto.quantidade,
           preco_unitario: produto.preco_unitario,
@@ -392,7 +394,7 @@ export const useOrcamentoMutations = () => {
       if (orcamento.orcamento_servicos.length > 0) {
         const servicosInsert = orcamento.orcamento_servicos.map(servico => ({
           venda_id: venda.id,
-          servico_id: servico.id || null,
+          servico_id: servico.servico_id || null,
           servico_nome: servico.servico_nome,
           preco: servico.preco,
           empresa_id: empresaId, // Adicionar empresa_id explicitamente

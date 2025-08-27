@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useEmpresaContext } from './useEmpresaContext';
 import { useToast } from './use-toast';
+import { generateUniqueOSNumber } from '@/lib/utils';
 
 export interface Orcamento {
   id: string;
@@ -347,7 +348,7 @@ export const useOrcamentoMutations = () => {
       if (orcamento.status !== 'aprovado') throw new Error('Apenas orçamentos aprovados podem ser convertidos');
 
       // Gerar número da OS
-      const numeroOS = `OS-${Date.now()}`;
+      const numeroOS = await generateUniqueOSNumber();
 
       // Criar a OS
       const { data: venda, error: vendaError } = await supabase

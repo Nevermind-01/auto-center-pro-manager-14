@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useEstoque, estoqueManager, ProdutoEstoque } from "@/lib/estoque";
+import { generateUniqueOSNumber } from "@/lib/utils";
 import { 
   Plus, 
   Search, 
@@ -420,7 +421,7 @@ const NovaOS = () => {
     });
   };
 
-  const finalizarOS = () => {
+  const finalizarOS = async () => {
     if (!clienteSelecionado) {
       toast({
         title: "Erro",
@@ -449,7 +450,19 @@ const NovaOS = () => {
     }
 
     const total = calcularTotal();
-    const numeroOS = `OS${String(Date.now()).slice(-6)}`;
+    let numeroOS: string;
+    
+    try {
+      numeroOS = await generateUniqueOSNumber();
+    } catch (error) {
+      console.error('Erro ao gerar número da OS:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao gerar número da OS. Tente novamente.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     // Verificar estoque antes de finalizar
     for (const produto of produtosSelecionados) {

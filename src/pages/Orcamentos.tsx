@@ -233,6 +233,7 @@ export default function Orcamentos() {
                                 mecanico: orcamento.mecanicos || null,
                                 orcamento_produtos: [],
                                 orcamento_servicos: [],
+                                creator: null,
                               });
                               setShowVisualizarModal(true);
                             }}
@@ -273,6 +274,7 @@ export default function Orcamentos() {
                                   mecanico: orcamento.mecanicos || null,
                                   orcamento_produtos: [],
                                   orcamento_servicos: [],
+                                  creator: null,
                                 });
                                 setShowConversaoModal(true);
                               }}

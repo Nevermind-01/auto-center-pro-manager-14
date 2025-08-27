@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useEmpresaContext } from './useEmpresaContext';
 import { useToast } from './use-toast';
 
 export interface Orcamento {
@@ -46,6 +47,10 @@ export interface Orcamento {
     servico_nome: string;
     preco: number;
   }>;
+  creator: {
+    email?: string;
+    full_name?: string;
+  } | null;
 }
 
 export interface CreateOrcamentoData {
@@ -98,6 +103,7 @@ export const useOrcamentos = () => {
           observacoes,
           observacoes_internas,
           os_id,
+          user_id,
           created_at,
           updated_at,
           clientes!orcamentos_cliente_id_fkey (
@@ -148,6 +154,7 @@ export const useOrcamentoDetails = (orcamentoId: string | null) => {
           observacoes,
           observacoes_internas,
           os_id,
+          user_id,
           created_at,
           updated_at,
           clientes!orcamentos_cliente_id_fkey (
@@ -187,6 +194,18 @@ export const useOrcamentoDetails = (orcamentoId: string | null) => {
 
       if (servicosError) throw servicosError;
 
+      // Buscar criador do orçamento se user_id existir
+      let creatorData = null;
+      if (orcamentoData.user_id) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('email, full_name')
+          .eq('user_id', orcamentoData.user_id)
+          .single();
+        
+        creatorData = profileData;
+      }
+
       return {
         ...orcamentoData,
         cliente: orcamentoData.clientes || null,
@@ -194,6 +213,7 @@ export const useOrcamentoDetails = (orcamentoId: string | null) => {
         mecanico: orcamentoData.mecanicos || null,
         orcamento_produtos: produtosData || [],
         orcamento_servicos: servicosData || [],
+        creator: creatorData
       };
     },
     enabled: !!orcamentoId,
@@ -204,10 +224,12 @@ export const useOrcamentoMutations = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { empresaId } = useEmpresaContext();
 
   const createOrcamento = useMutation({
     mutationFn: async (data: CreateOrcamentoData) => {
       if (!user) throw new Error('Usuário não autenticado');
+      if (!empresaId) throw new Error('Empresa não selecionada');
 
       // Criar o orçamento
       const { data: orcamento, error: orcamentoError } = await supabase
@@ -240,6 +262,7 @@ export const useOrcamentoMutations = () => {
           quantidade: produto.quantidade,
           preco_unitario: produto.valor,
           preco_total: produto.valor * produto.quantidade,
+          empresa_id: empresaId, // Adicionar empresa_id explicitamente
         }));
         
         const { error: produtosError } = await supabase
@@ -256,6 +279,7 @@ export const useOrcamentoMutations = () => {
           servico_id: servico.id || null,
           servico_nome: servico.nome,
           preco: servico.valor,
+          empresa_id: empresaId, // Adicionar empresa_id explicitamente
         }));
         
         const { error: servicosError } = await supabase
@@ -310,6 +334,8 @@ export const useOrcamentoMutations = () => {
 
   const convertToOS = useMutation({
     mutationFn: async (orcamentoId: string) => {
+      if (!empresaId) throw new Error('Empresa não selecionada');
+      
       // Buscar orçamento completo
       const orcamento = await queryClient.fetchQuery({
         queryKey: ['orcamento-details', orcamentoId],
@@ -345,34 +371,36 @@ export const useOrcamentoMutations = () => {
 
       // Copiar produtos
       if (orcamento.orcamento_produtos.length > 0) {
+        const produtosInsert = orcamento.orcamento_produtos.map(produto => ({
+          venda_id: venda.id,
+          produto_id: produto.id,
+          produto_nome: produto.produto_nome,
+          quantidade: produto.quantidade,
+          preco_unitario: produto.preco_unitario,
+          preco_total: produto.preco_total,
+          empresa_id: empresaId, // Adicionar empresa_id explicitamente
+        }));
+        
         const { error: produtosError } = await supabase
           .from('venda_produtos')
-          .insert(
-            orcamento.orcamento_produtos.map(produto => ({
-              venda_id: venda.id,
-              produto_id: produto.id,
-              produto_nome: produto.produto_nome,
-              quantidade: produto.quantidade,
-              preco_unitario: produto.preco_unitario,
-              preco_total: produto.preco_total,
-            }))
-          );
+          .insert(produtosInsert);
 
         if (produtosError) throw produtosError;
       }
 
       // Copiar serviços
       if (orcamento.orcamento_servicos.length > 0) {
+        const servicosInsert = orcamento.orcamento_servicos.map(servico => ({
+          venda_id: venda.id,
+          servico_id: servico.id || null,
+          servico_nome: servico.servico_nome,
+          preco: servico.preco,
+          empresa_id: empresaId, // Adicionar empresa_id explicitamente
+        }));
+        
         const { error: servicosError } = await supabase
           .from('venda_servicos')
-          .insert(
-            orcamento.orcamento_servicos.map(servico => ({
-              venda_id: venda.id,
-              servico_id: servico.id || null,
-              servico_nome: servico.servico_nome,
-              preco: servico.preco,
-            }))
-          );
+          .insert(servicosInsert);
 
         if (servicosError) throw servicosError;
       }

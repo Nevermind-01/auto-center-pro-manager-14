@@ -33,6 +33,7 @@ const menuItems = [
   { title: "NOVA OS", url: "/nova-os", icon: Plus },
   { title: "Estoque", url: "/inventory", icon: Package },
   { title: "Clientes", url: "/clientes", icon: Users },
+  { title: "Orçamentos", url: "/orcamentos", icon: FileText },
   { title: "Contas a Pagar", url: "/contas-pagar", icon: CreditCard },
   { title: "Ordens de Serviço", url: "/history", icon: FileText },
   { title: "Histórico de Movimentações", url: "/log-movimentacoes", icon: History },

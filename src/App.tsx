@@ -13,6 +13,7 @@ import NovaOSSupabase from "./pages/NovaOSSupabase";
 import InventorySupabase from "./pages/InventorySupabase";
 import Clientes from "./pages/Clientes";
 import ContasPagar from "./pages/ContasPagar";
+import Orcamentos from "./pages/Orcamentos";
 import Historico from "./pages/Historico";
 import HistoricoMovimentacoes from "./pages/HistoricoMovimentacoes";
 import ConfiguracoesMecanicos from "./pages/ConfiguracoesMecanicos";
@@ -53,6 +54,11 @@ const App = () => (
             <Route path="/contas-pagar" element={
               <ProtectedRoute>
                 <Layout><ContasPagar /></Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/orcamentos" element={
+              <ProtectedRoute>
+                <Layout><Orcamentos /></Layout>
               </ProtectedRoute>
             } />
             <Route path="/history" element={

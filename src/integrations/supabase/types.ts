@@ -458,6 +458,194 @@ export type Database = {
           },
         ]
       }
+      orcamento_produtos: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          orcamento_id: string
+          preco_total: number
+          preco_unitario: number
+          produto_id: string
+          produto_nome: string
+          quantidade: number
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          orcamento_id: string
+          preco_total: number
+          preco_unitario: number
+          produto_id: string
+          produto_nome: string
+          quantidade: number
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          orcamento_id?: string
+          preco_total?: number
+          preco_unitario?: number
+          produto_id?: string
+          produto_nome?: string
+          quantidade?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_produtos_orcamento_id_fkey"
+            columns: ["orcamento_id"]
+            isOneToOne: false
+            referencedRelation: "orcamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_produtos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orcamento_servicos: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          orcamento_id: string
+          preco: number
+          servico_id: string | null
+          servico_nome: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          orcamento_id: string
+          preco: number
+          servico_id?: string | null
+          servico_nome: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          orcamento_id?: string
+          preco?: number
+          servico_id?: string | null
+          servico_nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_servicos_orcamento_id_fkey"
+            columns: ["orcamento_id"]
+            isOneToOne: false
+            referencedRelation: "orcamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_servicos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orcamentos: {
+        Row: {
+          cliente_id: string | null
+          cliente_nome: string
+          created_at: string
+          empresa_id: string | null
+          id: string
+          mecanico_id: string | null
+          numero_orcamento: string
+          observacoes: string | null
+          observacoes_internas: string | null
+          os_id: string | null
+          status: Database["public"]["Enums"]["orcamento_status"] | null
+          updated_at: string
+          user_id: string | null
+          validade: string
+          valor_desconto: number | null
+          valor_final: number
+          valor_total: number
+          veiculo_id: string | null
+        }
+        Insert: {
+          cliente_id?: string | null
+          cliente_nome: string
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          mecanico_id?: string | null
+          numero_orcamento: string
+          observacoes?: string | null
+          observacoes_internas?: string | null
+          os_id?: string | null
+          status?: Database["public"]["Enums"]["orcamento_status"] | null
+          updated_at?: string
+          user_id?: string | null
+          validade: string
+          valor_desconto?: number | null
+          valor_final?: number
+          valor_total?: number
+          veiculo_id?: string | null
+        }
+        Update: {
+          cliente_id?: string | null
+          cliente_nome?: string
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          mecanico_id?: string | null
+          numero_orcamento?: string
+          observacoes?: string | null
+          observacoes_internas?: string | null
+          os_id?: string | null
+          status?: Database["public"]["Enums"]["orcamento_status"] | null
+          updated_at?: string
+          user_id?: string | null
+          validade?: string
+          valor_desconto?: number | null
+          valor_final?: number
+          valor_total?: number
+          veiculo_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamentos_mecanico_id_fkey"
+            columns: ["mecanico_id"]
+            isOneToOne: false
+            referencedRelation: "mecanicos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamentos_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamentos_veiculo_id_fkey"
+            columns: ["veiculo_id"]
+            isOneToOne: false
+            referencedRelation: "veiculos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       produtos: {
         Row: {
           categoria_id: string | null
@@ -933,6 +1121,7 @@ export type Database = {
       empresa_role: "owner" | "admin" | "user"
       forma_pagamento: "dinheiro" | "cartao" | "pix" | "cheque" | "parcelado"
       movimentacao_tipo: "entrada" | "saida" | "ajuste"
+      orcamento_status: "pendente" | "aprovado" | "rejeitado" | "convertido_os"
       produto_status: "ativo" | "inativo"
       venda_status: "pendente" | "finalizada" | "cancelada"
     }
@@ -1066,6 +1255,7 @@ export const Constants = {
       empresa_role: ["owner", "admin", "user"],
       forma_pagamento: ["dinheiro", "cartao", "pix", "cheque", "parcelado"],
       movimentacao_tipo: ["entrada", "saida", "ajuste"],
+      orcamento_status: ["pendente", "aprovado", "rejeitado", "convertido_os"],
       produto_status: ["ativo", "inativo"],
       venda_status: ["pendente", "finalizada", "cancelada"],
     },

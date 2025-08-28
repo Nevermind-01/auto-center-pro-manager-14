@@ -29,6 +29,7 @@ import { useSupabaseEstoque, ProdutoComCategoria } from "@/lib/supabaseEstoque";
 import { useClienteValidation } from "@/hooks/useClienteValidation";
 import { sanitizeClienteData } from "@/lib/inputSanitizer";
 import { generateUniqueOSNumber, createOSWithRetry } from "@/lib/utils";
+import { useMultipleAsyncActions } from "@/hooks/useAsyncAction";
 import { 
   Plus, 
   Search, 
@@ -374,6 +375,15 @@ const NovaOSSupabase = () => {
     }
   }, [editingId, isEditing, editDataLoaded]);
 
+  // Configurar ações assíncronas com proteção contra múltiplos cliques
+  const { actions, isLoading } = useMultipleAsyncActions({
+    salvarOS: salvarOS,
+    finalizarOS: finalizarOS,
+    adicionarCliente: adicionarNovoCliente,
+    adicionarVeiculo: adicionarNovoVeiculo,
+    adicionarServico: adicionarNovoServico
+  });
+
   // Handlers
   const selecionarCliente = (cliente: any) => {
     setClienteSelecionado(cliente);
@@ -381,7 +391,7 @@ const NovaOSSupabase = () => {
     setVeiculoSelecionado(null); // Reset veículo quando trocar cliente
   };
 
-  const adicionarNovoCliente = async () => {
+  async function adicionarNovoCliente() {
     // Validação básica - apenas nome é obrigatório
     if (!novoCliente.nome.trim()) {
       toast({
@@ -525,7 +535,7 @@ const NovaOSSupabase = () => {
     );
   };
 
-  const adicionarNovoServico = async () => {
+  async function adicionarNovoServico() {
     if (!novoServico.nome || novoServico.valor <= 0) {
       toast({
         title: "Erro",
@@ -625,7 +635,7 @@ const NovaOSSupabase = () => {
   };
 
   // Handlers para veículos
-  const adicionarNovoVeiculo = async () => {
+  async function adicionarNovoVeiculo() {
     if (!novoVeiculo.marca || !novoVeiculo.modelo || !novoVeiculo.placa) {
       toast({
         title: "Erro",
@@ -677,7 +687,7 @@ const NovaOSSupabase = () => {
     }
   };
 
-  const salvarOS = async () => {
+  async function salvarOS() {
     if (!clienteSelecionado) {
       toast({
         title: "Erro",
@@ -851,7 +861,7 @@ const NovaOSSupabase = () => {
     }
   };
 
-  const finalizarOS = async () => {
+  async function finalizarOS() {
     if (!clienteSelecionado) {
       toast({
         title: "Erro",
@@ -1325,8 +1335,11 @@ const NovaOSSupabase = () => {
                         <Button variant="outline" onClick={() => setShowClienteModal(false)}>
                           Cancelar
                         </Button>
-                        <Button onClick={adicionarNovoCliente}>
-                          Adicionar Cliente
+                        <Button 
+                          onClick={actions.adicionarCliente} 
+                          disabled={isLoading('adicionarCliente')}
+                        >
+                          {isLoading('adicionarCliente') ? "Adicionando..." : "Adicionar Cliente"}
                         </Button>
                       </div>
                     </DialogContent>
@@ -1514,8 +1527,11 @@ const NovaOSSupabase = () => {
                     <Button variant="outline" onClick={() => setShowVeiculoModal(false)}>
                       Cancelar
                     </Button>
-                    <Button onClick={adicionarNovoVeiculo}>
-                      Adicionar Veículo
+                    <Button 
+                      onClick={actions.adicionarVeiculo} 
+                      disabled={isLoading('adicionarVeiculo')}
+                    >
+                      {isLoading('adicionarVeiculo') ? "Adicionando..." : "Adicionar Veículo"}
                     </Button>
                   </div>
                 </DialogContent>
@@ -1727,8 +1743,14 @@ const NovaOSSupabase = () => {
                       }}>
                         Cancelar
                       </Button>
-                      <Button onClick={adicionarNovoServico}>
-                        {editandoServico ? "Atualizar" : "Adicionar"}
+                      <Button 
+                        onClick={actions.adicionarServico} 
+                        disabled={isLoading('adicionarServico')}
+                      >
+                        {isLoading('adicionarServico') 
+                          ? (editandoServico ? "Atualizando..." : "Adicionando...")
+                          : (editandoServico ? "Atualizar" : "Adicionar")
+                        }
                       </Button>
                     </div>
                   </DialogContent>
@@ -1920,28 +1942,32 @@ const NovaOSSupabase = () => {
             {/* Botões de ação */}
             <div className="flex gap-2">
               {isEditing ? (
-                <Button onClick={salvarOS} className="flex-1">
+                <Button 
+                  onClick={actions.salvarOS} 
+                  className="flex-1"
+                  disabled={isLoading('salvarOS')}
+                >
                   <FileText className="mr-2 h-4 w-4" />
-                  Salvar OS
+                  {isLoading('salvarOS') ? "Salvando..." : "Salvar OS"}
                 </Button>
               ) : (
                 <>
                   <Button 
                     variant="outline" 
-                    onClick={salvarOS} 
+                    onClick={actions.salvarOS} 
                     className="flex-1"
-                    disabled={!clienteSelecionado || (produtosSelecionados.length === 0 && servicosSelecionados.length === 0)}
+                    disabled={isLoading('salvarOS') || !clienteSelecionado || (produtosSelecionados.length === 0 && servicosSelecionados.length === 0)}
                   >
                     <FileText className="mr-2 h-4 w-4" />
-                    Salvar OS
+                    {isLoading('salvarOS') ? "Salvando..." : "Salvar OS"}
                   </Button>
                   <Button 
-                    onClick={finalizarOS} 
+                    onClick={actions.finalizarOS} 
                     className="flex-1"
-                    disabled={!clienteSelecionado || !formaPagamento || (produtosSelecionados.length === 0 && servicosSelecionados.length === 0)}
+                    disabled={isLoading('finalizarOS') || !clienteSelecionado || !formaPagamento || (produtosSelecionados.length === 0 && servicosSelecionados.length === 0)}
                   >
                     <ShoppingCart className="mr-2 h-4 w-4" />
-                    Finalizar OS
+                    {isLoading('finalizarOS') ? "Finalizando..." : "Finalizar OS"}
                   </Button>
                 </>
               )}

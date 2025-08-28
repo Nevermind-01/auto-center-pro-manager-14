@@ -15,6 +15,7 @@ import { useProdutos, useProdutoMutations, useCategorias, useCategoriaMutations,
 import { useEstoqueOperations } from '@/hooks/useSupabaseQueries';
 import { ProdutoComCategoria } from '@/lib/supabaseEstoque';
 import MovementHistoryModal from '@/components/MovementHistoryModal';
+import { useMultipleAsyncActions } from '@/hooks/useAsyncAction';
 
 const InventorySupabase = () => {
   const { toast } = useToast();
@@ -95,8 +96,16 @@ const InventorySupabase = () => {
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
+  // Configurar ações assíncronas com proteção contra múltiplos cliques
+  const { actions, isLoading } = useMultipleAsyncActions({
+    addProduct: handleAddProduct,
+    addCategory: handleAddCategory,
+    editProduct: handleEditProduct,
+    stockMovement: handleStockMovement
+  });
+
   // Handlers
-  const handleAddProduct = async () => {
+  async function handleAddProduct() {
     try {
       await createProduto.mutateAsync({
         nome: newProduct.nome,
@@ -134,7 +143,7 @@ const InventorySupabase = () => {
     }
   };
 
-  const handleAddCategory = async () => {
+  async function handleAddCategory() {
     try {
       await createCategoria.mutateAsync({
         nome: newCategory.nome,
@@ -157,7 +166,7 @@ const InventorySupabase = () => {
     }
   };
 
-  const handleEditProduct = async () => {
+  async function handleEditProduct() {
     if (!selectedProduct) return;
 
     try {
@@ -199,7 +208,7 @@ const InventorySupabase = () => {
     }
   };
 
-  const handleStockMovement = async () => {
+  async function handleStockMovement() {
     if (!selectedProduct) return;
 
     try {
@@ -313,7 +322,12 @@ const InventorySupabase = () => {
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddCategory}>Adicionar Categoria</Button>
+                <Button 
+                  onClick={actions.addCategory} 
+                  disabled={isLoading('addCategory')}
+                >
+                  {isLoading('addCategory') ? "Adicionando..." : "Adicionar Categoria"}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -417,7 +431,12 @@ const InventorySupabase = () => {
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddProduct}>Adicionar Produto</Button>
+                <Button 
+                  onClick={actions.addProduct} 
+                  disabled={isLoading('addProduct')}
+                >
+                  {isLoading('addProduct') ? "Adicionando..." : "Adicionar Produto"}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -665,7 +684,12 @@ const InventorySupabase = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleStockMovement}>Registrar Movimentação</Button>
+            <Button 
+              onClick={actions.stockMovement} 
+              disabled={isLoading('stockMovement')}
+            >
+              {isLoading('stockMovement') ? "Processando..." : "Registrar Movimentação"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -767,7 +791,12 @@ const InventorySupabase = () => {
             <Button variant="outline" onClick={() => setShowEditProductModal(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleEditProduct}>Salvar Alterações</Button>
+            <Button 
+              onClick={actions.editProduct} 
+              disabled={isLoading('editProduct')}
+            >
+              {isLoading('editProduct') ? "Salvando..." : "Salvar Alterações"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

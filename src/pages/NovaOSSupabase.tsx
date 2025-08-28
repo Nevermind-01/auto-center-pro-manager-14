@@ -976,21 +976,57 @@ const NovaOSSupabase = () => {
           dados_novos: vendaAtualizada
         });
       } else {
-        // Modo criação - criar nova venda
-        const venda = await createVenda.mutateAsync({
-          numero_os: numeroOS,
-          cliente_id: clienteSelecionado.id,
-          cliente_nome: clienteSelecionado.nome,
-          veiculo_id: veiculoSelecionado?.id || null,
-          mecanico_id: mecanicoSelecionado === "none" ? null : mecanicoSelecionado || null,
-          valor_total: valorTotal,
-          valor_desconto: valorDesconto,
-          valor_final: valorFinal,
-          forma_pagamento: formaPagamento as any,
-          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
-          observacoes: observacoes || null,
-          status: 'finalizada'
-        });
+        // Modo criação - criar nova venda com retry para concorrência
+        let venda: any = null;
+        let tentativas = 0;
+        const maxTentativas = 5;
+        
+        while (tentativas < maxTentativas) {
+          try {
+            // Gerar novo número da OS a cada tentativa para evitar conflitos
+            const numeroOSAtual = tentativas > 0 ? await gerarNovoNumeroOS() : numeroOS;
+            
+            venda = await createVenda.mutateAsync({
+              numero_os: numeroOSAtual,
+              cliente_id: clienteSelecionado.id,
+              cliente_nome: clienteSelecionado.nome,
+              veiculo_id: veiculoSelecionado?.id || null,
+              mecanico_id: mecanicoSelecionado === "none" ? null : mecanicoSelecionado || null,
+              valor_total: valorTotal,
+              valor_desconto: valorDesconto,
+              valor_final: valorFinal,
+              forma_pagamento: formaPagamento as any,
+              parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+              observacoes: observacoes || null,
+              status: 'finalizada'
+            });
+
+            // Se chegou até aqui, a venda foi criada com sucesso
+            setNumeroOS(numeroOSAtual); // Atualizar o número no estado se foi alterado
+            break;
+            
+          } catch (error: any) {
+            // Verificar se é erro de constraint unique (concorrência)
+            if (error?.message?.includes('numero_os') && error?.message?.includes('already exists') || 
+                error?.code === '23505') {
+              tentativas++;
+              console.log(`Conflito de numeração OS na finalização (tentativa ${tentativas}/${maxTentativas}), tentando novamente...`);
+              
+              if (tentativas < maxTentativas) {
+                // Aguardar um tempo aleatório antes de tentar novamente (entre 100-500ms)
+                const delay = Math.random() * 400 + 100;
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+              }
+            }
+            // Para outros erros ou se esgotaram as tentativas, lança o erro
+            throw error;
+          }
+        }
+        
+        if (!venda) {
+          throw new Error(`Não foi possível finalizar OS após ${maxTentativas} tentativas devido à concorrência`);
+        }
 
         vendaId = venda.id;
 

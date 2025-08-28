@@ -347,30 +347,72 @@ export const useOrcamentoMutations = () => {
       if (!orcamento) throw new Error('Orçamento não encontrado');
       if (orcamento.status !== 'aprovado') throw new Error('Apenas orçamentos aprovados podem ser convertidos');
 
-      // Gerar número da OS
-      const numeroOS = await generateUniqueOSNumber();
+      // Implementar retry para concorrência de números de OS
+      let tentativas = 0;
+      let venda: any = null;
+      const maxTentativas = 5;
 
-      // Criar a OS
-      const { data: venda, error: vendaError } = await supabase
-        .from('vendas')
-        .insert({
-          numero_os: numeroOS,
-          cliente_id: orcamento.cliente_id,
-          cliente_nome: orcamento.cliente_nome,
-          veiculo_id: orcamento.veiculo_id,
-          mecanico_id: orcamento.mecanico_id,
-          valor_total: orcamento.valor_total,
-          valor_desconto: orcamento.valor_desconto,
-          valor_final: orcamento.valor_final,
-          forma_pagamento: 'dinheiro',
-          observacoes: orcamento.observacoes,
-          status: 'pendente',
-          user_id: user?.id,
-        })
-        .select()
-        .single();
+      while (tentativas < maxTentativas) {
+        try {
+          // Gerar novo número da OS a cada tentativa
+          const numeroOS = await generateUniqueOSNumber();
 
-      if (vendaError) throw vendaError;
+          // Criar a OS
+          const { data: vendaData, error: vendaError } = await supabase
+            .from('vendas')
+            .insert({
+              numero_os: numeroOS,
+              cliente_id: orcamento.cliente_id,
+              cliente_nome: orcamento.cliente_nome,
+              veiculo_id: orcamento.veiculo_id,
+              mecanico_id: orcamento.mecanico_id,
+              valor_total: orcamento.valor_total,
+              valor_desconto: orcamento.valor_desconto,
+              valor_final: orcamento.valor_final,
+              forma_pagamento: 'dinheiro',
+              observacoes: orcamento.observacoes,
+              status: 'pendente',
+              user_id: user?.id,
+            })
+            .select()
+            .single();
+
+          if (vendaError) {
+            // Verificar se é erro de constraint unique (concorrência)
+            if (vendaError.code === '23505' && vendaError.message?.includes('numero_os')) {
+              tentativas++;
+              console.log(`Conflito de numeração OS (tentativa ${tentativas}/${maxTentativas}), tentando novamente...`);
+              
+              if (tentativas < maxTentativas) {
+                // Aguardar um tempo aleatório antes de tentar novamente (entre 100-500ms)
+                const delay = Math.random() * 400 + 100;
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+              }
+            }
+            throw vendaError;
+          }
+
+          // Se chegou até aqui, a venda foi criada com sucesso
+          venda = vendaData;
+          break;
+          
+        } catch (error: any) {
+          // Se é erro de concorrência e ainda temos tentativas, continua
+          if (error?.code === '23505' && error?.message?.includes('numero_os') && tentativas < maxTentativas - 1) {
+            tentativas++;
+            const delay = Math.random() * 400 + 100;
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          }
+          // Para outros erros ou se esgotaram as tentativas, lança o erro
+          throw error;
+        }
+      }
+
+      if (!venda) {
+        throw new Error(`Não foi possível criar OS após ${maxTentativas} tentativas devido à concorrência`);
+      }
 
       // Copiar produtos
       if (orcamento.orcamento_produtos.length > 0) {
@@ -419,7 +461,7 @@ export const useOrcamentoMutations = () => {
 
       if (updateError) throw updateError;
 
-      return { venda, numeroOS };
+      return { venda, numeroOS: venda.numero_os };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['orcamentos'] });

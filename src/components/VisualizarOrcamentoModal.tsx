@@ -1,4 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -6,6 +7,9 @@ import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useOrcamentoDetails, type Orcamento } from '@/hooks/useOrcamentos';
+import { usePDFGenerator } from '@/hooks/usePDFGenerator';
+import { useAsyncAction } from '@/hooks/useAsyncAction';
+import { FileText } from 'lucide-react';
 
 interface VisualizarOrcamentoModalProps {
   open: boolean;
@@ -15,6 +19,38 @@ interface VisualizarOrcamentoModalProps {
 
 export function VisualizarOrcamentoModal({ open, onClose, orcamento }: VisualizarOrcamentoModalProps) {
   const { data: orcamentoDetails } = useOrcamentoDetails(orcamento?.id || null);
+  const { generateOrcamentoPDF } = usePDFGenerator();
+  
+  const { execute: handleGeneratePDF, isLoading: isGeneratingPDF } = useAsyncAction(async () => {
+    if (!orcamentoDetails) return;
+    
+    await generateOrcamentoPDF({
+      numero_orcamento: orcamentoDetails.numero_orcamento,
+      cliente_nome: orcamentoDetails.cliente_nome,
+      cliente_telefone: orcamentoDetails.cliente?.telefone,
+      cliente_email: undefined, // Email não disponível no tipo de cliente
+      veiculo_marca: orcamentoDetails.veiculo?.marca,
+      veiculo_modelo: orcamentoDetails.veiculo?.modelo,
+      veiculo_placa: orcamentoDetails.veiculo?.placa,
+      mecanico_nome: orcamentoDetails.mecanico?.nome,
+      created_at: orcamentoDetails.created_at,
+      validade: orcamentoDetails.validade,
+      valor_total: orcamentoDetails.valor_total,
+      valor_desconto: orcamentoDetails.valor_desconto || 0,
+      valor_final: orcamentoDetails.valor_final,
+      observacoes: orcamentoDetails.observacoes,
+      produtos: orcamentoDetails.orcamento_produtos?.map(p => ({
+        produto_nome: p.produto_nome,
+        quantidade: p.quantidade,
+        preco_unitario: p.preco_unitario,
+        preco_total: p.preco_total,
+      })) || [],
+      servicos: orcamentoDetails.orcamento_servicos?.map(s => ({
+        servico_nome: s.servico_nome,
+        preco: s.preco,
+      })) || [],
+    });
+  });
 
   if (!orcamentoDetails) return null;
 
@@ -36,7 +72,19 @@ export function VisualizarOrcamentoModal({ open, onClose, orcamento }: Visualiza
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>Visualizar Orçamento</DialogTitle>
-            {getStatusBadge(orcamentoDetails.status)}
+            <div className="flex items-center gap-2">
+              {getStatusBadge(orcamentoDetails.status)}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGeneratePDF}
+                disabled={isGeneratingPDF}
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                {isGeneratingPDF ? "Gerando PDF..." : "Gerar PDF"}
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 

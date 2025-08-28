@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useOSDetails } from "@/hooks/useOSDetails";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { usePDFGenerator } from "@/hooks/usePDFGenerator";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { 
   User, 
   Car, 
@@ -62,6 +64,41 @@ const formatCurrency = (value: number) => {
 
 export const VisualizarOSModal = ({ open, onOpenChange, osId }: VisualizarOSModalProps) => {
   const { data: osDetails, isLoading } = useOSDetails(osId);
+  const { generateOSPDF } = usePDFGenerator();
+  
+  const { execute: handleGeneratePDF, isLoading: isGeneratingPDF } = useAsyncAction(async () => {
+    if (!osDetails) return;
+    
+    await generateOSPDF({
+      numero_os: osDetails.numero_os,
+      cliente_nome: osDetails.cliente?.nome || osDetails.cliente_nome,
+      cliente_telefone: osDetails.cliente?.telefone,
+      cliente_email: undefined, // Email não disponível no tipo de cliente
+      veiculo_marca: osDetails.veiculo?.marca,
+      veiculo_modelo: osDetails.veiculo?.modelo,
+      veiculo_placa: osDetails.veiculo?.placa,
+      mecanico_nome: osDetails.mecanico?.nome,
+      created_at: osDetails.created_at,
+      finalizado_em: osDetails.finalizado_em,
+      status: osDetails.status,
+      forma_pagamento: osDetails.forma_pagamento,
+      parcelas: osDetails.parcelas,
+      valor_total: osDetails.valor_total,
+      valor_desconto: osDetails.valor_desconto || 0,
+      valor_final: osDetails.valor_final,
+      observacoes: osDetails.observacoes,
+      produtos: osDetails.venda_produtos?.map(p => ({
+        produto_nome: p.produto_nome,
+        quantidade: p.quantidade,
+        preco_unitario: p.preco_unitario,
+        preco_total: p.preco_total,
+      })) || [],
+      servicos: osDetails.venda_servicos?.map(s => ({
+        servico_nome: s.servico_nome,
+        preco: s.preco,
+      })) || [],
+    });
+  });
 
   const LoadingSkeleton = () => (
     <div className="space-y-6">
@@ -84,14 +121,28 @@ export const VisualizarOSModal = ({ open, onOpenChange, osId }: VisualizarOSModa
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            {isLoading ? (
-              <Skeleton className="h-6 w-48" />
-            ) : (
-              `Detalhes da OS ${osDetails?.numero_os}`
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {isLoading ? (
+                <Skeleton className="h-6 w-48" />
+              ) : (
+                `Detalhes da OS ${osDetails?.numero_os}`
+              )}
+            </DialogTitle>
+            {!isLoading && osDetails && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGeneratePDF}
+                disabled={isGeneratingPDF}
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                {isGeneratingPDF ? "Gerando PDF..." : "Gerar PDF"}
+              </Button>
             )}
-          </DialogTitle>
+          </div>
         </DialogHeader>
 
         {isLoading ? (

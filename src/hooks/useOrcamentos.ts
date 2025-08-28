@@ -347,7 +347,7 @@ export const useOrcamentoMutations = () => {
           *,
           orcamento_produtos (
             *,
-            produtos (nome, preco_venda)
+            produtos (nome, preco_venda, categorias (nome))
           ),
           orcamento_servicos (*)
         `)
@@ -442,6 +442,7 @@ export const useOrcamentoMutations = () => {
           quantidade: produto.quantidade,
           preco_unitario: produto.preco_unitario,
           preco_total: produto.preco_total,
+          categoria_nome: produto.produtos?.categorias?.nome || null,
           empresa_id: empresaId, // Adicionar empresa_id explicitamente
         }));
         

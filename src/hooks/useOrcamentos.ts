@@ -336,16 +336,35 @@ export const useOrcamentoMutations = () => {
   });
 
   const convertToOS = useMutation({
+    mutationKey: ['convertToOS'],
     mutationFn: async (orcamentoId: string) => {
       if (!empresaId) throw new Error('Empresa não selecionada');
       
-      // Buscar orçamento completo
-      const orcamento = await queryClient.fetchQuery({
-        queryKey: ['orcamento-details', orcamentoId],
-      }) as Orcamento;
+      // Buscar orçamento completo diretamente do banco para garantir dados atualizados
+      const { data: orcamento, error: fetchError } = await supabase
+        .from('orcamentos')
+        .select(`
+          *,
+          orcamento_produtos (
+            *,
+            produtos (nome, categoria, preco_venda)
+          ),
+          orcamento_servicos (*)
+        `)
+        .eq('id', orcamentoId)
+        .single();
 
+      if (fetchError) throw fetchError;
       if (!orcamento) throw new Error('Orçamento não encontrado');
-      if (orcamento.status !== 'aprovado') throw new Error('Apenas orçamentos aprovados podem ser convertidos');
+      
+      // Verificar se já foi convertido (proteção contra dupla conversão)
+      if (orcamento.status === 'convertido_os') {
+        throw new Error('Este orçamento já foi convertido para OS');
+      }
+      
+      if (orcamento.status !== 'aprovado') {
+        throw new Error('Apenas orçamentos aprovados podem ser convertidos');
+      }
 
       // Implementar retry para concorrência de números de OS
       let tentativas = 0;

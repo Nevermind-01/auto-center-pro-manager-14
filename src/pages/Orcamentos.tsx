@@ -279,8 +279,9 @@ export default function Orcamentos() {
                                 setShowConversaoModal(true);
                               }}
                               className="text-blue-600 hover:text-blue-700"
+                              disabled={convertToOS.isPending}
                             >
-                              <RefreshCw className="h-4 w-4" />
+                              <RefreshCw className={`h-4 w-4 ${convertToOS.isPending ? 'animate-spin' : ''}`} />
                             </Button>
                           )}
                         </div>
@@ -316,6 +317,7 @@ export default function Orcamentos() {
           }}
           orcamento={selectedOrcamento}
           onConfirm={() => selectedOrcamento && handleConvertToOS(selectedOrcamento.id)}
+          isLoading={convertToOS.isPending}
         />
       </div>
     </div>

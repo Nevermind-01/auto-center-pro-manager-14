@@ -10,9 +10,10 @@ interface ConversaoOSModalProps {
   onClose: () => void;
   orcamento: Orcamento | null;
   onConfirm: () => void;
+  isLoading?: boolean;
 }
 
-export function ConversaoOSModal({ open, onClose, orcamento, onConfirm }: ConversaoOSModalProps) {
+export function ConversaoOSModal({ open, onClose, orcamento, onConfirm, isLoading = false }: ConversaoOSModalProps) {
   if (!orcamento) return null;
 
   const valorTotalProdutos = orcamento.orcamento_produtos?.reduce((total, produto) => 
@@ -158,11 +159,11 @@ export function ConversaoOSModal({ open, onClose, orcamento, onConfirm }: Conver
 
           {/* Botões */}
           <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={onClose} disabled={isLoading}>
               Cancelar
             </Button>
-            <Button onClick={onConfirm} className="bg-green-600 hover:bg-green-700">
-              Confirmar Conversão
+            <Button onClick={onConfirm} className="bg-green-600 hover:bg-green-700" disabled={isLoading}>
+              {isLoading ? 'Convertendo...' : 'Confirmar Conversão'}
             </Button>
           </div>
         </div>

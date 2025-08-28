@@ -26,9 +26,9 @@ import { useMecanicos } from "@/hooks/useMecanicos";
 import { ComissaoConfirmModal } from "@/components/ComissaoConfirmModal";
 import { ComissaoCalculatorModal } from "@/components/ComissaoCalculatorModal";
 import { useSupabaseEstoque, ProdutoComCategoria } from "@/lib/supabaseEstoque";
-import { supabase } from "@/integrations/supabase/client";
 import { useClienteValidation } from "@/hooks/useClienteValidation";
 import { sanitizeClienteData } from "@/lib/inputSanitizer";
+import { generateUniqueOSNumber, createOSWithRetry } from "@/lib/utils";
 import { 
   Plus, 
   Search, 
@@ -164,55 +164,14 @@ const NovaOSSupabase = () => {
   const [valorServicosParaComissao, setValorServicosParaComissao] = useState<number>(0);
   const [valorTotalParaComissao, setValorTotalParaComissao] = useState<number>(0);
 
-  // Função para gerar novo número de OS único
-  const gerarNovoNumeroOS = async () => {
-    let numeroValido = false;
-    let novoNumero = "";
-    let tentativas = 0;
-    
-    while (!numeroValido && tentativas < 100) {
-      const agora = new Date();
-      const ano = agora.getFullYear();
-      const mes = String(agora.getMonth() + 1).padStart(2, '0');
-      const dia = String(agora.getDate()).padStart(2, '0');
-      const hora = String(agora.getHours()).padStart(2, '0');
-      const minuto = String(agora.getMinutes()).padStart(2, '0');
-      const segundo = String(agora.getSeconds()).padStart(2, '0');
-      
-      // Adicionar segundos se houver tentativas anteriores
-      novoNumero = tentativas > 0 
-        ? `OS${ano}${mes}${dia}${hora}${minuto}${segundo}${tentativas}`
-        : `OS${ano}${mes}${dia}${hora}${minuto}`;
-      
-      // Verificar se o número já existe
-      const { data: existeOS } = await supabase
-        .from('vendas')
-        .select('id')
-        .eq('numero_os', novoNumero)
-        .maybeSingle();
-      
-      if (!existeOS) {
-        numeroValido = true;
-      } else {
-        tentativas++;
-        // Aguardar 100ms antes da próxima tentativa
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-    }
-    
-    if (!numeroValido) {
-      throw new Error("Não foi possível gerar um número de OS único");
-    }
-    
-    return novoNumero;
-  };
+  // Função para gerar novo número de OS único - removida (agora usa generateUniqueOSNumber do utils)
 
   // Gerar número da OS automaticamente
   useEffect(() => {
     if (!editingId && !isEditing && !numeroOS) {
       const inicializarNumeroOS = async () => {
         try {
-          const novoNumero = await gerarNovoNumeroOS();
+          const novoNumero = await generateUniqueOSNumber();
           setNumeroOS(novoNumero);
         } catch (error) {
           console.error('Erro ao gerar número inicial da OS:', error);
@@ -396,7 +355,7 @@ const NovaOSSupabase = () => {
     
     // Gerar novo número de OS único
     try {
-      const novoNumero = await gerarNovoNumeroOS();
+      const novoNumero = await generateUniqueOSNumber();
       setNumeroOS(novoNumero);
     } catch (error) {
       console.error('Erro ao gerar novo número de OS:', error);
@@ -818,21 +777,29 @@ const NovaOSSupabase = () => {
         // Voltar para histórico
         navigate('/history');
       } else {
-        // Criar nova venda
-        const venda = await createVenda.mutateAsync({
-          numero_os: numeroOS,
-          cliente_id: clienteSelecionado.id,
-          cliente_nome: clienteSelecionado.nome,
-          veiculo_id: veiculoSelecionado?.id || null,
-          mecanico_id: mecanicoSelecionado === "none" ? null : mecanicoSelecionado || null,
-          valor_total: valorTotal,
-          valor_desconto: valorDesconto,
-          valor_final: valorFinal,
-          forma_pagamento: (formaPagamento || 'dinheiro') as any,
-          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
-          observacoes: observacoes || null,
-          status: 'pendente'
-        });
+        // Criar nova venda com retry para lidar com concorrência
+        const osCreationResult = await createOSWithRetry(async (numeroOSAtual) => {
+          return await createVenda.mutateAsync({
+            numero_os: numeroOSAtual,
+            cliente_id: clienteSelecionado.id,
+            cliente_nome: clienteSelecionado.nome,
+            veiculo_id: veiculoSelecionado?.id || null,
+            mecanico_id: mecanicoSelecionado === "none" ? null : mecanicoSelecionado || null,
+            valor_total: valorTotal,
+            valor_desconto: valorDesconto,
+            valor_final: valorFinal,
+            forma_pagamento: (formaPagamento || 'dinheiro') as any,
+            parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+            observacoes: observacoes || null,
+            status: 'pendente'
+          });
+        }, 5);
+
+        const venda = osCreationResult.result;
+        const numeroOSFinal = osCreationResult.numeroOS;
+        
+        // Atualizar o estado com o número final usado
+        setNumeroOS(numeroOSFinal);
 
         // Adicionar produtos da venda
         for (const produto of produtosSelecionados) {
@@ -863,12 +830,12 @@ const NovaOSSupabase = () => {
           os_id: venda.id,
           tipo: 'criacao',
           usuario: 'Admin',
-          observacoes: `OS ${numeroOS} criada como pendente`
+          observacoes: `OS ${numeroOSFinal} criada como pendente`
         });
 
         toast({
           title: "OS salva",
-          description: `OS ${numeroOS} foi salva com sucesso como pendente.`,
+          description: `OS ${numeroOSFinal} foi salva com sucesso como pendente.`,
         });
 
         // Limpar formulário e gerar novo número de OS
@@ -976,58 +943,29 @@ const NovaOSSupabase = () => {
           dados_novos: vendaAtualizada
         });
       } else {
-        // Modo criação - criar nova venda com retry para concorrência
-        let venda: any = null;
-        let tentativas = 0;
-        const maxTentativas = 5;
-        
-        while (tentativas < maxTentativas) {
-          try {
-            // Gerar novo número da OS a cada tentativa para evitar conflitos
-            const numeroOSAtual = tentativas > 0 ? await gerarNovoNumeroOS() : numeroOS;
-            
-            venda = await createVenda.mutateAsync({
-              numero_os: numeroOSAtual,
-              cliente_id: clienteSelecionado.id,
-              cliente_nome: clienteSelecionado.nome,
-              veiculo_id: veiculoSelecionado?.id || null,
-              mecanico_id: mecanicoSelecionado === "none" ? null : mecanicoSelecionado || null,
-              valor_total: valorTotal,
-              valor_desconto: valorDesconto,
-              valor_final: valorFinal,
-              forma_pagamento: formaPagamento as any,
-              parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
-              observacoes: observacoes || null,
-              status: 'finalizada'
-            });
+        // Modo criação - usar createOSWithRetry para lidar com concorrência automaticamente
+        const osCreationResult = await createOSWithRetry(async (numeroOSAtual) => {
+          return await createVenda.mutateAsync({
+            numero_os: numeroOSAtual,
+            cliente_id: clienteSelecionado.id,
+            cliente_nome: clienteSelecionado.nome,
+            veiculo_id: veiculoSelecionado?.id || null,
+            mecanico_id: mecanicoSelecionado === "none" ? null : mecanicoSelecionado || null,
+            valor_total: valorTotal,
+            valor_desconto: valorDesconto,
+            valor_final: valorFinal,
+            forma_pagamento: formaPagamento as any,
+            parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+            observacoes: observacoes || null,
+            status: 'finalizada'
+          });
+        }, 5);
 
-            // Se chegou até aqui, a venda foi criada com sucesso
-            setNumeroOS(numeroOSAtual); // Atualizar o número no estado se foi alterado
-            break;
-            
-          } catch (error: any) {
-            // Verificar se é erro de constraint unique (concorrência)
-            if (error?.message?.includes('numero_os') && error?.message?.includes('already exists') || 
-                error?.code === '23505') {
-              tentativas++;
-              console.log(`Conflito de numeração OS na finalização (tentativa ${tentativas}/${maxTentativas}), tentando novamente...`);
-              
-              if (tentativas < maxTentativas) {
-                // Aguardar um tempo aleatório antes de tentar novamente (entre 100-500ms)
-                const delay = Math.random() * 400 + 100;
-                await new Promise(resolve => setTimeout(resolve, delay));
-                continue;
-              }
-            }
-            // Para outros erros ou se esgotaram as tentativas, lança o erro
-            throw error;
-          }
-        }
+        const venda = osCreationResult.result;
+        const numeroOSFinal = osCreationResult.numeroOS;
         
-        if (!venda) {
-          throw new Error(`Não foi possível finalizar OS após ${maxTentativas} tentativas devido à concorrência`);
-        }
-
+        // Atualizar o estado com o número final usado
+        setNumeroOS(numeroOSFinal);
         vendaId = venda.id;
 
         // Registrar log de criação
@@ -1035,7 +973,7 @@ const NovaOSSupabase = () => {
           os_id: venda.id,
           tipo: 'criacao',
           usuario: 'Admin',
-          observacoes: `OS ${numeroOS} criada`
+          observacoes: `OS ${numeroOSFinal} criada`
         });
 
         // Registrar log de finalização separadamente
@@ -1043,7 +981,7 @@ const NovaOSSupabase = () => {
           os_id: venda.id,
           tipo: 'finalizacao',
           usuario: 'Admin',
-          observacoes: `OS ${numeroOS} finalizada`
+          observacoes: `OS ${numeroOSFinal} finalizada`
         });
       }
 
@@ -1080,7 +1018,7 @@ const NovaOSSupabase = () => {
           valor: p.valor,
           quantidade: p.quantidade
         })),
-        numeroOS
+        numeroOS  // Use o número atual do estado
       );
 
       toast({

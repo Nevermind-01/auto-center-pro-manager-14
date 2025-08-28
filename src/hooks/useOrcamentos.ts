@@ -347,7 +347,7 @@ export const useOrcamentoMutations = () => {
           *,
           orcamento_produtos (
             *,
-            produtos (nome, categoria, preco_venda)
+            produtos (nome, preco_venda)
           ),
           orcamento_servicos (*)
         `)

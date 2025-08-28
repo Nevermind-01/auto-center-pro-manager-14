@@ -847,6 +847,7 @@ export type Database = {
       }
       venda_produtos: {
         Row: {
+          categoria_nome: string | null
           created_at: string
           empresa_id: string
           id: string
@@ -858,6 +859,7 @@ export type Database = {
           venda_id: string
         }
         Insert: {
+          categoria_nome?: string | null
           created_at?: string
           empresa_id: string
           id?: string
@@ -869,6 +871,7 @@ export type Database = {
           venda_id: string
         }
         Update: {
+          categoria_nome?: string | null
           created_at?: string
           empresa_id?: string
           id?: string

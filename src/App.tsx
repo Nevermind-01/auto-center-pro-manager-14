@@ -17,6 +17,7 @@ import Orcamentos from "./pages/Orcamentos";
 import Historico from "./pages/Historico";
 import HistoricoMovimentacoes from "./pages/HistoricoMovimentacoes";
 import ConfiguracoesMecanicos from "./pages/ConfiguracoesMecanicos";
+import Empresas from "./pages/Empresas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -74,6 +75,11 @@ const App = () => (
             <Route path="/configuracoes/mecanicos" element={
               <ProtectedRoute>
                 <Layout><ConfiguracoesMecanicos /></Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/configuracoes/empresa" element={
+              <ProtectedRoute>
+                <Layout><Empresas /></Layout>
               </ProtectedRoute>
             } />
             <Route path="/settings" element={

@@ -297,28 +297,130 @@ export type Database = {
       }
       empresas: {
         Row: {
+          aliquota_iss: number | null
+          ambiente_fiscal: string | null
+          bairro: string | null
+          cep: string | null
+          certificado_url: string | null
+          cnae_principal: string | null
           cnpj: string | null
+          codigo_regime_tributario: string | null
+          complemento: string | null
           created_at: string
+          csc_token: string | null
+          data_fundacao: string | null
           email: string | null
+          email_comercial: string | null
+          email_fiscal: string | null
+          facebook: string | null
           id: string
+          inscricao_estadual: string | null
+          inscricao_municipal: string | null
+          instagram: string | null
+          logo_url: string | null
+          logradouro: string | null
+          municipio: string | null
+          municipio_iss: string | null
+          natureza_operacao: string | null
           nome: string
+          nome_fantasia: string | null
+          numero: string | null
+          pais: string | null
+          politica_privacidade_url: string | null
+          razao_social: string | null
+          regime_tributario: string | null
+          responsavel_tecnico: string | null
+          serie_nfe: string | null
+          site: string | null
+          telefone_principal: string | null
+          telefone_secundario: string | null
+          uf: string | null
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
+          aliquota_iss?: number | null
+          ambiente_fiscal?: string | null
+          bairro?: string | null
+          cep?: string | null
+          certificado_url?: string | null
+          cnae_principal?: string | null
           cnpj?: string | null
+          codigo_regime_tributario?: string | null
+          complemento?: string | null
           created_at?: string
+          csc_token?: string | null
+          data_fundacao?: string | null
           email?: string | null
+          email_comercial?: string | null
+          email_fiscal?: string | null
+          facebook?: string | null
           id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          instagram?: string | null
+          logo_url?: string | null
+          logradouro?: string | null
+          municipio?: string | null
+          municipio_iss?: string | null
+          natureza_operacao?: string | null
           nome: string
+          nome_fantasia?: string | null
+          numero?: string | null
+          pais?: string | null
+          politica_privacidade_url?: string | null
+          razao_social?: string | null
+          regime_tributario?: string | null
+          responsavel_tecnico?: string | null
+          serie_nfe?: string | null
+          site?: string | null
+          telefone_principal?: string | null
+          telefone_secundario?: string | null
+          uf?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
+          aliquota_iss?: number | null
+          ambiente_fiscal?: string | null
+          bairro?: string | null
+          cep?: string | null
+          certificado_url?: string | null
+          cnae_principal?: string | null
           cnpj?: string | null
+          codigo_regime_tributario?: string | null
+          complemento?: string | null
           created_at?: string
+          csc_token?: string | null
+          data_fundacao?: string | null
           email?: string | null
+          email_comercial?: string | null
+          email_fiscal?: string | null
+          facebook?: string | null
           id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          instagram?: string | null
+          logo_url?: string | null
+          logradouro?: string | null
+          municipio?: string | null
+          municipio_iss?: string | null
+          natureza_operacao?: string | null
           nome?: string
+          nome_fantasia?: string | null
+          numero?: string | null
+          pais?: string | null
+          politica_privacidade_url?: string | null
+          razao_social?: string | null
+          regime_tributario?: string | null
+          responsavel_tecnico?: string | null
+          serie_nfe?: string | null
+          site?: string | null
+          telefone_principal?: string | null
+          telefone_secundario?: string | null
+          uf?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }

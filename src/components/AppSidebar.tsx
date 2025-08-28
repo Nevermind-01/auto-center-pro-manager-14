@@ -9,7 +9,8 @@ import {
   Plus,
   History,
   CreditCard,
-  Wrench
+  Wrench,
+  Building2
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -40,6 +41,7 @@ const menuItems = [
 ];
 
 const configItems = [
+  { title: "Empresa", url: "/configuracoes/empresa", icon: Building2 },
   { title: "Mecânicos", url: "/configuracoes/mecanicos", icon: Wrench },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];

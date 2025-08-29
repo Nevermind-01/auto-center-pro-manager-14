@@ -75,8 +75,8 @@ export const VisualizarOSModal = ({ open, onOpenChange, osId }: VisualizarOSModa
   // Determinar o tipo de impressão baseado no status
   const printType = osDetails?.status === 'finalizada' ? 'os_finalizada' : 'os';
   const printTitle = osDetails?.status === 'finalizada' 
-    ? `Fatura de OS ${osDetails.numero_os}` 
-    : `Ordem de Serviço ${osDetails.numero_os}`;
+    ? `Fatura de OS ${osDetails?.numero_os || ''}` 
+    : `Ordem de Serviço ${osDetails?.numero_os || ''}`;
 
   const LoadingSkeleton = () => (
     <div className="space-y-6">

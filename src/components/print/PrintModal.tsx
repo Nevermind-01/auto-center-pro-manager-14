@@ -40,8 +40,8 @@ export function PrintModal({ open, onClose, type, data, title }: PrintModalProps
   };
 
   const handlePDF = async () => {
-    if (printRef.current) {
-      const filename = `${type}-${data.numero_orcamento || data.numero_os}-${new Date().toISOString().split('T')[0]}.pdf`;
+    if (printRef.current && data) {
+      const filename = `${type}-${data.numero_orcamento || data.numero_os || 'documento'}-${new Date().toISOString().split('T')[0]}.pdf`;
       await generatePDFFromElement(printRef.current, filename);
     }
   };
@@ -53,7 +53,7 @@ export function PrintModal({ open, onClose, type, data, title }: PrintModalProps
   };
 
   const renderPrintComponent = () => {
-    if (!empresa) return null;
+    if (!empresa || !data) return null;
 
     switch (type) {
       case 'orcamento':
@@ -85,6 +85,7 @@ export function PrintModal({ open, onClose, type, data, title }: PrintModalProps
                 variant="outline"
                 size="sm"
                 onClick={handlePreview}
+                disabled={!data || !empresa}
                 className="flex items-center gap-2"
               >
                 <Eye className="h-4 w-4" />
@@ -94,6 +95,7 @@ export function PrintModal({ open, onClose, type, data, title }: PrintModalProps
                 variant="outline"
                 size="sm"
                 onClick={handlePrint}
+                disabled={!data || !empresa}
                 className="flex items-center gap-2"
               >
                 <Printer className="h-4 w-4" />
@@ -103,7 +105,7 @@ export function PrintModal({ open, onClose, type, data, title }: PrintModalProps
                 variant="default"
                 size="sm"
                 onClick={handlePDF}
-                disabled={loading}
+                disabled={loading || !data || !empresa}
                 className="flex items-center gap-2"
               >
                 <FileText className="h-4 w-4" />
@@ -118,7 +120,17 @@ export function PrintModal({ open, onClose, type, data, title }: PrintModalProps
           <div className="flex-1 overflow-auto p-4 bg-gray-100">
             <div className="mx-auto bg-white shadow-lg" style={{ width: '21cm', minHeight: '29.7cm' }}>
               <div ref={printRef} className="w-full">
-                {renderPrintComponent()}
+                {!data ? (
+                  <div className="flex items-center justify-center h-64 text-muted-foreground">
+                    <p>Carregando dados para impressão...</p>
+                  </div>
+                ) : !empresa ? (
+                  <div className="flex items-center justify-center h-64 text-muted-foreground">
+                    <p>Carregando dados da empresa...</p>
+                  </div>
+                ) : (
+                  renderPrintComponent()
+                )}
               </div>
             </div>
           </div>

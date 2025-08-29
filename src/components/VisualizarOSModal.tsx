@@ -8,8 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useOSDetails } from "@/hooks/useOSDetails";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { usePDFGenerator } from "@/hooks/usePDFGenerator";
-import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { usePrintGenerator } from "@/hooks/usePrintGenerator";
+import { PrintModal } from "@/components/print/PrintModal";
+import { useState } from "react";
 import { 
   User, 
   Car, 
@@ -64,41 +65,18 @@ const formatCurrency = (value: number) => {
 
 export const VisualizarOSModal = ({ open, onOpenChange, osId }: VisualizarOSModalProps) => {
   const { data: osDetails, isLoading } = useOSDetails(osId);
-  const { generateOSPDF } = usePDFGenerator();
-  
-  const { execute: handleGeneratePDF, isLoading: isGeneratingPDF } = useAsyncAction(async () => {
+  const [showPrintModal, setShowPrintModal] = useState(false);
+
+  const handlePrint = () => {
     if (!osDetails) return;
-    
-    await generateOSPDF({
-      numero_os: osDetails.numero_os,
-      cliente_nome: osDetails.cliente?.nome || osDetails.cliente_nome,
-      cliente_telefone: osDetails.cliente?.telefone,
-      cliente_email: undefined, // Email não disponível no tipo de cliente
-      veiculo_marca: osDetails.veiculo?.marca,
-      veiculo_modelo: osDetails.veiculo?.modelo,
-      veiculo_placa: osDetails.veiculo?.placa,
-      mecanico_nome: osDetails.mecanico?.nome,
-      created_at: osDetails.created_at,
-      finalizado_em: osDetails.finalizado_em,
-      status: osDetails.status,
-      forma_pagamento: osDetails.forma_pagamento,
-      parcelas: osDetails.parcelas,
-      valor_total: osDetails.valor_total,
-      valor_desconto: osDetails.valor_desconto || 0,
-      valor_final: osDetails.valor_final,
-      observacoes: osDetails.observacoes,
-      produtos: osDetails.venda_produtos?.map(p => ({
-        produto_nome: p.produto_nome,
-        quantidade: p.quantidade,
-        preco_unitario: p.preco_unitario,
-        preco_total: p.preco_total,
-      })) || [],
-      servicos: osDetails.venda_servicos?.map(s => ({
-        servico_nome: s.servico_nome,
-        preco: s.preco,
-      })) || [],
-    });
-  });
+    setShowPrintModal(true);
+  };
+
+  // Determinar o tipo de impressão baseado no status
+  const printType = osDetails?.status === 'finalizada' ? 'os_finalizada' : 'os';
+  const printTitle = osDetails?.status === 'finalizada' 
+    ? `Fatura de OS ${osDetails.numero_os}` 
+    : `Ordem de Serviço ${osDetails.numero_os}`;
 
   const LoadingSkeleton = () => (
     <div className="space-y-6">
@@ -134,12 +112,11 @@ export const VisualizarOSModal = ({ open, onOpenChange, osId }: VisualizarOSModa
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleGeneratePDF}
-                disabled={isGeneratingPDF}
+                onClick={handlePrint}
                 className="flex items-center gap-2"
               >
                 <FileText className="h-4 w-4" />
-                {isGeneratingPDF ? "Gerando PDF..." : "Gerar PDF"}
+                Imprimir
               </Button>
             )}
           </div>
@@ -434,6 +411,15 @@ export const VisualizarOSModal = ({ open, onOpenChange, osId }: VisualizarOSModa
             <p className="text-muted-foreground">Dados da OS não encontrados.</p>
           </div>
         )}
+
+        {/* Print Modal */}
+        <PrintModal
+          open={showPrintModal}
+          onClose={() => setShowPrintModal(false)}
+          type={printType}
+          data={osDetails}
+          title={printTitle}
+        />
       </DialogContent>
     </Dialog>
   );

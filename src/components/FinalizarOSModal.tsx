@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { useComissoesMutations } from "@/hooks/useComissoes";
 import { useMecanicos } from "@/hooks/useMecanicos";
 import { supabase } from "@/integrations/supabase/client";
+import { PrintModal } from "@/components/print/PrintModal";
 
 interface FinalizarOSModalProps {
   open: boolean;
@@ -45,6 +46,11 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
   const [valorPercentual, setValorPercentual] = useState<number | ''>('');
   const [valorFixo, setValorFixo] = useState<number | ''>('');
   const [obsComissao, setObsComissao] = useState("");
+
+  // Estados para impressão
+  const [imprimirAposFinalizacao, setImprimirAposFinalizacao] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [osFinalizadaData, setOsFinalizadaData] = useState(null);
 
   // Resetar valores quando a modal abrir/fechar ou venda mudar
   useEffect(() => {
@@ -269,6 +275,23 @@ const valorFinal = valorTotal - valorDesconto;
         title: "Sucesso",
         description: successMessage,
       });
+
+      // Preparar dados da OS finalizada para impressão
+      if (imprimirAposFinalizacao) {
+        const osData = {
+          ...venda,
+          valor_total: valorTotal,
+          valor_desconto: valorDesconto,
+          valor_final: valorFinal,
+          forma_pagamento: formaPagamento,
+          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+          observacoes: observacoes || null,
+          status: 'finalizada',
+          finalizado_em: new Date().toISOString()
+        };
+        setOsFinalizadaData(osData);
+        setShowPrintModal(true);
+      }
 
       onOpenChange(false);
 
@@ -595,6 +618,20 @@ const valorFinal = valorTotal - valorDesconto;
                 />
               </div>
 
+              {/* Opção de imprimir após finalização */}
+              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="imprimir-finalizacao"
+                  checked={imprimirAposFinalizacao}
+                  onChange={(e) => setImprimirAposFinalizacao(e.target.checked)}
+                  className="rounded"
+                />
+                <Label htmlFor="imprimir-finalizacao" className="text-sm cursor-pointer">
+                  🖨️ Abrir impressão da fatura após finalizar
+                </Label>
+              </div>
+
               {/* Alertas */}
               {!formaPagamento && (
                 <div className="flex items-center gap-2 p-3 bg-yellow-50 text-yellow-800 rounded-lg text-sm">
@@ -618,6 +655,15 @@ const valorFinal = valorTotal - valorDesconto;
             {isLoading ? "Finalizando..." : (registrarComissao && tipoCalculo ? "Finalizar OS e Registrar Comissão" : "Finalizar OS")}
           </Button>
         </div>
+
+        {/* Print Modal */}
+        <PrintModal
+          open={showPrintModal}
+          onClose={() => setShowPrintModal(false)}
+          type="os_finalizada"
+          data={osFinalizadaData}
+          title={`Fatura de OS ${venda?.numero_os}`}
+        />
       </DialogContent>
     </Dialog>
   );

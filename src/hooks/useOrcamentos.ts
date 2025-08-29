@@ -501,8 +501,104 @@ export const useOrcamentoMutations = () => {
     },
   });
 
+  const updateOrcamento = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: CreateOrcamentoData }) => {
+      if (!user) throw new Error('Usuário não autenticado');
+      if (!empresaId) throw new Error('Empresa não selecionada');
+
+      // Atualizar o orçamento principal
+      const { error: orcamentoError } = await supabase
+        .from('orcamentos')
+        .update({
+          cliente_id: data.clienteId,
+          cliente_nome: data.clienteNome,
+          veiculo_id: data.veiculoId,
+          mecanico_id: data.mecanicoId,
+          valor_total: data.valorTotal,
+          valor_desconto: data.valorDesconto,
+          valor_final: data.valorFinal,
+          validade: data.validade,
+          observacoes: data.observacoes,
+          observacoes_internas: data.observacoesInternas,
+        })
+        .eq('id', id);
+
+      if (orcamentoError) throw orcamentoError;
+
+      // Remover produtos existentes
+      const { error: deleteProdutosError } = await supabase
+        .from('orcamento_produtos')
+        .delete()
+        .eq('orcamento_id', id);
+
+      if (deleteProdutosError) throw deleteProdutosError;
+
+      // Remover serviços existentes
+      const { error: deleteServicosError } = await supabase
+        .from('orcamento_servicos')
+        .delete()
+        .eq('orcamento_id', id);
+
+      if (deleteServicosError) throw deleteServicosError;
+
+      // Inserir novos produtos
+      if (data.produtos.length > 0) {
+        const produtosInsert = data.produtos.map(produto => ({
+          orcamento_id: id,
+          produto_id: produto.id,
+          produto_nome: produto.nome,
+          quantidade: produto.quantidade,
+          preco_unitario: produto.valor,
+          preco_total: produto.valor * produto.quantidade,
+          empresa_id: empresaId,
+        }));
+        
+        const { error: produtosError } = await supabase
+          .from('orcamento_produtos')
+          .insert(produtosInsert);
+
+        if (produtosError) throw produtosError;
+      }
+
+      // Inserir novos serviços
+      if (data.servicos.length > 0) {
+        const servicosInsert = data.servicos.map(servico => ({
+          orcamento_id: id,
+          servico_id: servico.id || null,
+          servico_nome: servico.nome,
+          preco: servico.valor,
+          empresa_id: empresaId,
+        }));
+        
+        const { error: servicosError } = await supabase
+          .from('orcamento_servicos')
+          .insert(servicosInsert);
+
+        if (servicosError) throw servicosError;
+      }
+
+      return { id };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['orcamento-details'] });
+      toast({
+        title: "Orçamento atualizado com sucesso!",
+        description: "As alterações foram salvas.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao atualizar orçamento",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     createOrcamento,
+    updateOrcamento,
     updateOrcamentoStatus,
     convertToOS,
   };

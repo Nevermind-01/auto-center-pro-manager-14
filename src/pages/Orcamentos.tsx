@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FileText, Plus, Eye, Edit, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useOrcamentos, useOrcamentoMutations, type Orcamento } from '@/hooks/useOrcamentos';
+import { useOrcamentos, useOrcamentoMutations, useOrcamentoDetails, type Orcamento } from '@/hooks/useOrcamentos';
 import { CriarOrcamentoModal } from '@/components/CriarOrcamentoModal';
 import { VisualizarOrcamentoModal } from '@/components/VisualizarOrcamentoModal';
 import { ConversaoOSModal } from '@/components/ConversaoOSModal';
@@ -23,9 +23,11 @@ export default function Orcamentos() {
   const [selectedOrcamento, setSelectedOrcamento] = useState<Orcamento | null>(null);
   const [showVisualizarModal, setShowVisualizarModal] = useState(false);
   const [showConversaoModal, setShowConversaoModal] = useState(false);
+  const [orcamentoParaEditar, setOrcamentoParaEditar] = useState<any | null>(null);
 
   const { data: orcamentos = [], isLoading } = useOrcamentos();
   const { updateOrcamentoStatus, convertToOS } = useOrcamentoMutations();
+  const { data: orcamentoDetails } = useOrcamentoDetails(orcamentoParaEditar?.id || null);
 
   const getStatusBadge = (status: Orcamento['status']) => {
     const variants = {
@@ -51,6 +53,16 @@ export default function Orcamentos() {
 
   const handleStatusChange = async (orcamentoId: string, newStatus: Orcamento['status']) => {
     await updateOrcamentoStatus.mutateAsync({ id: orcamentoId, status: newStatus });
+  };
+
+  const handleEditOrcamento = (orcamento: any) => {
+    setOrcamentoParaEditar(orcamento);
+    setShowCriarModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setShowCriarModal(false);
+    setOrcamentoParaEditar(null);
   };
 
   const handleConvertToOS = async (orcamentoId: string) => {
@@ -241,26 +253,34 @@ export default function Orcamentos() {
                             <Eye className="h-4 w-4" />
                           </Button>
                           
-                          {orcamento.status === 'pendente' && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleStatusChange(orcamento.id, 'aprovado')}
-                                className="text-green-600 hover:text-green-700"
-                              >
-                                <CheckCircle className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleStatusChange(orcamento.id, 'rejeitado')}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <XCircle className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
+                           {orcamento.status === 'pendente' && (
+                             <>
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 onClick={() => handleEditOrcamento(orcamento)}
+                                 className="text-blue-600 hover:text-blue-700"
+                               >
+                                 <Edit className="h-4 w-4" />
+                               </Button>
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 onClick={() => handleStatusChange(orcamento.id, 'aprovado')}
+                                 className="text-green-600 hover:text-green-700"
+                               >
+                                 <CheckCircle className="h-4 w-4" />
+                               </Button>
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 onClick={() => handleStatusChange(orcamento.id, 'rejeitado')}
+                                 className="text-red-600 hover:text-red-700"
+                               >
+                                 <XCircle className="h-4 w-4" />
+                               </Button>
+                             </>
+                           )}
 
                           {orcamento.status === 'aprovado' && (
                             <Button
@@ -297,7 +317,8 @@ export default function Orcamentos() {
         {/* Modals */}
         <CriarOrcamentoModal 
           open={showCriarModal} 
-          onClose={() => setShowCriarModal(false)} 
+          onClose={handleCloseEditModal}
+          orcamentoParaEditar={orcamentoDetails}
         />
 
         <VisualizarOrcamentoModal

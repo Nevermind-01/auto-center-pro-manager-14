@@ -18,15 +18,16 @@ import { useAuth } from '@/hooks/useAuth';
 interface CriarOrcamentoModalProps {
   open: boolean;
   onClose: () => void;
+  orcamentoParaEditar?: any | null;
 }
 
-export function CriarOrcamentoModal({ open, onClose }: CriarOrcamentoModalProps) {
+export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: CriarOrcamentoModalProps) {
   const { user } = useAuth();
   const { data: clientes = [] } = useSupabaseQueries.useClientes();
   const { data: produtos = [] } = useSupabaseQueries.useProdutos();
   const { data: servicos = [] } = useSupabaseQueries.useServicos();
   const { data: mecanicos = [] } = useMecanicos();
-  const { createOrcamento } = useOrcamentoMutations();
+  const { createOrcamento, updateOrcamento } = useOrcamentoMutations();
 
   const [formData, setFormData] = useState({
     numeroOrcamento: '',
@@ -58,13 +59,48 @@ export function CriarOrcamentoModal({ open, onClose }: CriarOrcamentoModalProps)
   const [showProdutoSearch, setShowProdutoSearch] = useState(false);
   const [showServicoSearch, setShowServicoSearch] = useState(false);
 
-  // Gerar número do orçamento automaticamente
+  // Gerar número do orçamento automaticamente ou carregar dados para edição
   useEffect(() => {
     if (open) {
-      const numeroOrcamento = `ORC-${Date.now()}`;
-      setFormData(prev => ({ ...prev, numeroOrcamento }));
+      if (orcamentoParaEditar) {
+        // Modo edição - carregar dados existentes
+        setFormData({
+          numeroOrcamento: orcamentoParaEditar.numero_orcamento,
+          clienteId: orcamentoParaEditar.cliente_id,
+          clienteNome: orcamentoParaEditar.cliente_nome,
+          veiculoId: orcamentoParaEditar.veiculo_id || '',
+          mecanicoId: orcamentoParaEditar.mecanico_id || '',
+          validade: orcamentoParaEditar.validade.split('T')[0], // Apenas a data
+          observacoes: orcamentoParaEditar.observacoes || '',
+          observacoesInternas: orcamentoParaEditar.observacoes_internas || '',
+          valorDesconto: orcamentoParaEditar.valor_desconto || 0,
+        });
+        
+        // Carregar produtos
+        if (orcamentoParaEditar.orcamento_produtos?.length > 0) {
+          setProdutosSelecionados(orcamentoParaEditar.orcamento_produtos.map((p: any) => ({
+            id: p.produto_id,
+            nome: p.produto_nome,
+            quantidade: p.quantidade,
+            valor: p.preco_unitario,
+          })));
+        }
+        
+        // Carregar serviços
+        if (orcamentoParaEditar.orcamento_servicos?.length > 0) {
+          setServicosSelecionados(orcamentoParaEditar.orcamento_servicos.map((s: any) => ({
+            id: s.servico_id,
+            nome: s.servico_nome,
+            valor: s.preco,
+          })));
+        }
+      } else {
+        // Modo criação - gerar número novo
+        const numeroOrcamento = `ORC-${Date.now()}`;
+        setFormData(prev => ({ ...prev, numeroOrcamento }));
+      }
     }
-  }, [open]);
+  }, [open, orcamentoParaEditar]);
 
   // Buscar veículos do cliente selecionado
   const { data: veiculos = [] } = useSupabaseQueries.useVeiculosByCliente(formData.clienteId || '');
@@ -169,7 +205,14 @@ export function CriarOrcamentoModal({ open, onClose }: CriarOrcamentoModalProps)
       servicos: servicosSelecionados,
     };
 
-    await createOrcamento.mutateAsync(data);
+    if (orcamentoParaEditar) {
+      // Modo edição
+      await updateOrcamento.mutateAsync({ id: orcamentoParaEditar.id, data });
+    } else {
+      // Modo criação
+      await createOrcamento.mutateAsync(data);
+    }
+    
     handleClose();
   };
 
@@ -208,7 +251,7 @@ export function CriarOrcamentoModal({ open, onClose }: CriarOrcamentoModalProps)
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Criar Novo Orçamento</DialogTitle>
+          <DialogTitle>{orcamentoParaEditar ? 'Editar Orçamento' : 'Criar Novo Orçamento'}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -582,9 +625,10 @@ export function CriarOrcamentoModal({ open, onClose }: CriarOrcamentoModalProps)
             </Button>
             <Button 
               onClick={handleSubmit}
-              disabled={createOrcamento.isPending}
+              disabled={createOrcamento.isPending || updateOrcamento.isPending}
             >
-              {createOrcamento.isPending ? 'Salvando...' : 'Salvar Orçamento'}
+              {(createOrcamento.isPending || updateOrcamento.isPending) ? 'Salvando...' : 
+               orcamentoParaEditar ? 'Atualizar Orçamento' : 'Salvar Orçamento'}
             </Button>
           </div>
         </div>

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useClientes, useClienteMutations, Cliente } from '@/hooks/useSupabaseQueries';
 import { MaskedClienteCard } from '@/components/MaskedClienteCard';
+import { VeiculosClienteModal } from '@/components/VeiculosClienteModal';
 import { useClienteValidation } from '@/hooks/useClienteValidation';
 import { sanitizeClienteData } from '@/lib/inputSanitizer';
 import { Search, Plus, Shield, AlertTriangle } from 'lucide-react';
@@ -17,6 +18,8 @@ export default function Clientes() {
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isVeiculosModalOpen, setIsVeiculosModalOpen] = useState(false);
+  const [selectedClienteVeiculos, setSelectedClienteVeiculos] = useState<Cliente | null>(null);
   
   const { data: clientes = [], isLoading } = useClientes();
   const { createCliente, updateCliente, deleteCliente } = useClienteMutations();
@@ -125,6 +128,11 @@ export default function Clientes() {
         });
       }
     }
+  };
+
+  const handleViewVeiculos = (cliente: Cliente) => {
+    setSelectedClienteVeiculos(cliente);
+    setIsVeiculosModalOpen(true);
   };
 
   const openNewClienteDialog = () => {
@@ -327,12 +335,13 @@ export default function Clientes() {
 
       <div className="grid gap-4">
         {filteredClientes.map((cliente) => (
-          <MaskedClienteCard
-            key={cliente.id}
-            cliente={cliente}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
+           <MaskedClienteCard
+             key={cliente.id}
+             cliente={cliente}
+             onEdit={handleEdit}
+             onDelete={handleDelete}
+             onViewVeiculos={handleViewVeiculos}
+           />
         ))}
       </div>
 
@@ -343,6 +352,12 @@ export default function Clientes() {
           </CardContent>
         </Card>
       )}
+
+      <VeiculosClienteModal
+        cliente={selectedClienteVeiculos}
+        open={isVeiculosModalOpen}
+        onOpenChange={setIsVeiculosModalOpen}
+      />
     </div>
   );
 }

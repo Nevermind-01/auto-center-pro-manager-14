@@ -456,16 +456,65 @@ export const useVeiculoMutations = () => {
       return data;
     },
     onSuccess: (data) => {
-      // Invalidar queries gerais de veículos
       queryClient.invalidateQueries({ queryKey: ['veiculos', empresaId] });
-      // Invalidar query específica por cliente para atualizar imediatamente
       if (data.cliente_id) {
         queryClient.invalidateQueries({ queryKey: ['veiculos', data.cliente_id, empresaId] });
       }
     }
   });
 
-  return { createVeiculo };
+  const updateVeiculo = useMutation({
+    mutationFn: async ({ id, ...veiculo }: { id: string } & Partial<Omit<VeiculoInsert, 'user_id' | 'empresa_id'>>) => {
+      if (!user || !empresaId) throw new Error('User not authenticated or no empresa selected');
+      
+      const { data, error } = await supabase
+        .from('veiculos')
+        .update(veiculo)
+        .eq('id', id)
+        .eq('empresa_id', empresaId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['veiculos', empresaId] });
+      if (data.cliente_id) {
+        queryClient.invalidateQueries({ queryKey: ['veiculos', data.cliente_id, empresaId] });
+      }
+    }
+  });
+
+  const deleteVeiculo = useMutation({
+    mutationFn: async (id: string) => {
+      if (!empresaId) throw new Error('Empresa não selecionada');
+      
+      const { data: veiculo } = await supabase
+        .from('veiculos')
+        .select('cliente_id')
+        .eq('id', id)
+        .eq('empresa_id', empresaId)
+        .single();
+      
+      const { error } = await supabase
+        .from('veiculos')
+        .delete()
+        .eq('id', id)
+        .eq('empresa_id', empresaId);
+      
+      if (error) throw error;
+      return { id, cliente_id: veiculo?.cliente_id };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['veiculos', empresaId] });
+      if (data.cliente_id) {
+        queryClient.invalidateQueries({ queryKey: ['veiculos', data.cliente_id, empresaId] });
+      }
+    }
+  });
+
+  return { createVeiculo, updateVeiculo, deleteVeiculo };
 };
 
 // Sales hooks

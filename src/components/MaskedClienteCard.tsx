@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Eye, EyeOff, Shield } from 'lucide-react';
+import { Edit, Trash2, Eye, EyeOff, Shield, Car } from 'lucide-react';
 import { Cliente } from '@/hooks/useSupabaseQueries';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,9 +11,10 @@ interface MaskedClienteCardProps {
   cliente: Cliente;
   onEdit: (cliente: Cliente) => void;
   onDelete: (id: string) => void;
+  onViewVeiculos: (cliente: Cliente) => void;
 }
 
-export function MaskedClienteCard({ cliente, onEdit, onDelete }: MaskedClienteCardProps) {
+export function MaskedClienteCard({ cliente, onEdit, onDelete, onViewVeiculos }: MaskedClienteCardProps) {
   const [showSensitive, setShowSensitive] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const { logAction } = useAuditLog();
@@ -144,6 +145,14 @@ export function MaskedClienteCard({ cliente, onEdit, onDelete }: MaskedClienteCa
           </div>
           
           <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onViewVeiculos(cliente)}
+              title="Visualizar veículos"
+            >
+              <Car className="w-4 h-4" />
+            </Button>
             <Button
               variant="outline"
               size="sm"

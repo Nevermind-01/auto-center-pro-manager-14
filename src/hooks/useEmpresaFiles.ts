@@ -131,11 +131,30 @@ export const useEmpresaFiles = () => {
     return publicUrl;
   }, []);
 
+  const convertImageToBase64 = useCallback(async (imageUrl: string): Promise<string | null> => {
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error('Falha ao carregar imagem');
+      
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error('Erro ao converter imagem para base64:', error);
+      return null;
+    }
+  }, []);
+
   return {
     uploading,
     uploadFile,
     deleteFile,
     getFileUrl,
     validateFile,
+    convertImageToBase64,
   };
 };

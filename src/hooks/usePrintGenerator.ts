@@ -8,6 +8,66 @@ export const usePrintGenerator = () => {
   const [loading, setLoading] = useState(false);
   const { fetchEmpresaData } = useEmpresaData();
 
+  const convertImageToBase64 = async (url: string): Promise<string> => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.warn('Erro ao converter imagem para base64:', error);
+      return '';
+    }
+  };
+
+  const prepareElementForPrint = async (element: HTMLElement): Promise<void> => {
+    // Converter imagens externas para base64
+    const images = element.querySelectorAll('img[src^="http"]');
+    for (const img of Array.from(images)) {
+      const imgElement = img as HTMLImageElement;
+      if (imgElement.src.includes('supabase')) {
+        try {
+          const base64 = await convertImageToBase64(imgElement.src);
+          if (base64) {
+            imgElement.src = base64;
+          }
+        } catch (error) {
+          console.warn('Falha ao converter imagem, usando placeholder:', error);
+          // Adicionar classe para ignorar na impressão se necessário
+          imgElement.style.display = 'none';
+        }
+      }
+    }
+  };
+
+  const generateCanvasWithTimeout = async (element: HTMLElement, timeoutMs: number = 15000) => {
+    const canvasPromise = html2canvas(element, {
+      scale: 2,
+      useCORS: false, // Desabilitar CORS para evitar conflitos
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      width: element.scrollWidth,
+      height: element.scrollHeight,
+      logging: false, // Desabilitar logs
+      removeContainer: true,
+      imageTimeout: 5000, // Timeout para carregar imagens
+      ignoreElements: (element: Element) => {
+        // Ignorar elementos que podem causar problemas
+        return element.classList?.contains('ignore-print') || false;
+      }
+    });
+
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Timeout na geração do canvas')), timeoutMs)
+    );
+
+    return Promise.race([canvasPromise, timeoutPromise]);
+  };
+
   const generatePDFFromElement = async (element: HTMLElement, filename: string): Promise<void> => {
     try {
       setLoading(true);
@@ -16,15 +76,11 @@ export const usePrintGenerator = () => {
       const originalDisplay = element.style.display;
       element.style.display = 'block';
       
-      // Gerar canvas da página
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: element.scrollWidth,
-        height: element.scrollHeight,
-      });
+      // Preparar elemento (converter imagens)
+      await prepareElementForPrint(element);
+      
+      // Gerar canvas com timeout
+      const canvas = await generateCanvasWithTimeout(element);
 
       // Restaurar display original
       element.style.display = originalDisplay;
@@ -65,11 +121,75 @@ export const usePrintGenerator = () => {
       });
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
-      toast({
-        title: "Erro ao gerar PDF",
-        description: "Não foi possível gerar o documento PDF.",
-        variant: "destructive"
-      });
+      
+      // Tentar gerar PDF simples sem imagens em caso de erro
+      try {
+        console.log('Tentando gerar PDF sem imagens...');
+        
+        // Esconder todas as imagens temporariamente
+        const images = element.querySelectorAll('img');
+        const originalDisplays: string[] = [];
+        images.forEach((img, index) => {
+          originalDisplays[index] = img.style.display;
+          img.style.display = 'none';
+        });
+        
+        // Tentar novamente sem imagens
+        const canvas = await generateCanvasWithTimeout(element, 10000);
+        
+        // Restaurar imagens
+        images.forEach((img, index) => {
+          img.style.display = originalDisplays[index];
+        });
+        
+        // Criar PDF
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = 210;
+        const pageHeight = 295;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+
+        pdf.save(filename);
+        
+        toast({
+          title: "PDF gerado com sucesso!",
+          description: `O arquivo ${filename} foi baixado (sem imagens).`,
+        });
+      } catch (fallbackError) {
+        console.error('Erro no fallback:', fallbackError);
+        
+        let errorMessage = "Não foi possível gerar o documento PDF.";
+        if (error instanceof Error) {
+          if (error.message.includes('Timeout')) {
+            errorMessage = "Tempo limite excedido. Tente novamente com um documento menor.";
+          } else if (error.message.includes('CORS')) {
+            errorMessage = "Problema com imagens. Tente gerar sem logo da empresa.";
+          }
+        }
+        
+        toast({
+          title: "Erro ao gerar PDF",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }

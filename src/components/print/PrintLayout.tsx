@@ -43,6 +43,12 @@ export function PrintLayout({
                   src={empresa.logo_url} 
                   alt="Logo da empresa"
                   className="max-h-20 max-w-32 object-contain"
+                  onError={(e) => {
+                    // Em caso de erro na logo, esconder o elemento
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                  loading="eager"
                 />
               </div>
             )}

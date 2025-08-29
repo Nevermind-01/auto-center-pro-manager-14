@@ -7,9 +7,9 @@ import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useOrcamentoDetails, type Orcamento } from '@/hooks/useOrcamentos';
-import { usePDFGenerator } from '@/hooks/usePDFGenerator';
-import { useAsyncAction } from '@/hooks/useAsyncAction';
+import { useState } from 'react';
 import { FileText } from 'lucide-react';
+import { PrintModal } from './print/PrintModal';
 
 interface VisualizarOrcamentoModalProps {
   open: boolean;
@@ -19,20 +19,34 @@ interface VisualizarOrcamentoModalProps {
 
 export function VisualizarOrcamentoModal({ open, onClose, orcamento }: VisualizarOrcamentoModalProps) {
   const { data: orcamentoDetails } = useOrcamentoDetails(orcamento?.id || null);
-  const { generateOrcamentoPDF } = usePDFGenerator();
-  
-  const { execute: handleGeneratePDF, isLoading: isGeneratingPDF } = useAsyncAction(async () => {
-    if (!orcamentoDetails) return;
-    
-    await generateOrcamentoPDF({
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+
+  const handleOpenPrint = () => {
+    setPrintModalOpen(true);
+  };
+
+  const formatOrcamentoForPrint = () => {
+    if (!orcamentoDetails) return null;
+
+    return {
       numero_orcamento: orcamentoDetails.numero_orcamento,
       cliente_nome: orcamentoDetails.cliente_nome,
-      cliente_telefone: orcamentoDetails.cliente?.telefone,
-      cliente_email: undefined, // Email não disponível no tipo de cliente
-      veiculo_marca: orcamentoDetails.veiculo?.marca,
-      veiculo_modelo: orcamentoDetails.veiculo?.modelo,
-      veiculo_placa: orcamentoDetails.veiculo?.placa,
-      mecanico_nome: orcamentoDetails.mecanico?.nome,
+      cliente: orcamentoDetails.cliente ? {
+        cpf: orcamentoDetails.cliente.cpf,
+        cnpj: undefined, // CNPJ não está disponível no tipo cliente
+        telefone: orcamentoDetails.cliente.telefone,
+        email: undefined, // Email não está disponível no tipo cliente
+        endereco: undefined, // Endereço não está disponível no tipo cliente
+      } : undefined,
+      veiculo: orcamentoDetails.veiculo ? {
+        marca: orcamentoDetails.veiculo.marca,
+        modelo: orcamentoDetails.veiculo.modelo,
+        ano: undefined, // Ano não está disponível no tipo veiculo
+        placa: orcamentoDetails.veiculo.placa,
+      } : undefined,
+      mecanico: orcamentoDetails.mecanico ? {
+        nome: orcamentoDetails.mecanico.nome,
+      } : undefined,
       created_at: orcamentoDetails.created_at,
       validade: orcamentoDetails.validade,
       valor_total: orcamentoDetails.valor_total,
@@ -49,8 +63,8 @@ export function VisualizarOrcamentoModal({ open, onClose, orcamento }: Visualiza
         servico_nome: s.servico_nome,
         preco: s.preco,
       })) || [],
-    });
-  });
+    };
+  };
 
   if (!orcamentoDetails) return null;
 
@@ -77,12 +91,11 @@ export function VisualizarOrcamentoModal({ open, onClose, orcamento }: Visualiza
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleGeneratePDF}
-                disabled={isGeneratingPDF}
+                onClick={handleOpenPrint}
                 className="flex items-center gap-2"
               >
                 <FileText className="h-4 w-4" />
-                {isGeneratingPDF ? "Gerando PDF..." : "Gerar PDF"}
+                Imprimir / PDF
               </Button>
             </div>
           </div>
@@ -310,6 +323,15 @@ export function VisualizarOrcamentoModal({ open, onClose, orcamento }: Visualiza
           )}
         </div>
       </DialogContent>
+
+      {/* Print Modal */}
+      <PrintModal
+        open={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        type="orcamento"
+        data={formatOrcamentoForPrint()}
+        title={`Imprimir Orçamento ${orcamentoDetails?.numero_orcamento || ''}`}
+      />
     </Dialog>
   );
 }

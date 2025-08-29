@@ -57,6 +57,26 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
       const empresaAtualId = await supabase.rpc('get_current_empresa_id');
       logger.debug('Empresa atual ID:', empresaAtualId.data);
 
+      // Se não tem empresa, verificar se precisa criar uma a partir do metadata
+      if (!empresaAtualId.data) {
+        logger.debug('Usuário sem empresa, verificando se precisa criar...');
+        
+        try {
+          const { data: result } = await supabase.rpc('create_empresa_from_metadata');
+          
+          if (result && typeof result === 'object' && (result as any).success) {
+            logger.info('Empresa criada automaticamente a partir do metadata:', result);
+            // Recarregar dados após criação
+            setTimeout(() => loadEmpresaData(), 500);
+            return;
+          } else if (result && typeof result === 'object' && (result as any).error && (result as any).error !== 'Usuário não precisa de empresa') {
+            logger.error('Erro ao criar empresa do metadata:', (result as any).error);
+          }
+        } catch (error) {
+          logger.error('Erro ao tentar criar empresa do metadata:', error);
+        }
+      }
+
       if (empresaAtualId.data) {
         setEmpresaId(empresaAtualId.data);
 

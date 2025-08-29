@@ -48,50 +48,51 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
+    setError('');
 
     try {
-      let result;
       if (isSignUp) {
-        result = await signUp(
+        const { error } = await signUp(
           email, 
           password, 
-          fullName,
-          nomeEmpresa || undefined,
-          cnpjEmpresa || undefined,
-          emailEmpresa || undefined
+          fullName, 
+          nomeEmpresa, 
+          cnpjEmpresa, 
+          emailEmpresa
         );
-        if (!result.error) {
+        
+        if (error) {
+          setError(error.message);
+        } else {
           toast({
             title: "Conta criada com sucesso!",
-            description: nomeEmpresa 
-              ? `Empresa "${nomeEmpresa}" criada e conta configurada!` 
-              : "Verifique seu email para confirmar a conta",
+            description: "Verifique seu email para confirmar sua conta antes de fazer login.",
+            duration: 5000,
           });
+          
+          // Limpar formulário e voltar para modo de login
+          setEmail('');
+          setPassword('');
+          setFullName('');
+          setNomeEmpresa('');
+          setCnpjEmpresa('');
+          setEmailEmpresa('');
           setIsSignUp(false);
         }
       } else {
-        result = await signIn(email, password);
-        if (!result.error) {
+        const { error } = await signIn(email, password);
+        if (error) {
+          setError(error.message);
+        } else {
           toast({
             title: "Login realizado com sucesso!",
-            description: "Bem-vindo ao Auto Center Pro Manager",
+            description: "Bem-vindo de volta!",
           });
-          navigate("/dashboard");
+          // Navigate será feito pelo useEffect quando user mudar
         }
       }
-
-      if (result.error) {
-        if (result.error.message.includes("Invalid login credentials")) {
-          setError("Email ou senha incorretos");
-        } else if (result.error.message.includes("User already registered")) {
-          setError("Este email já está cadastrado. Faça login.");
-        } else {
-          setError(result.error.message || "Erro ao processar solicitação");
-        }
-      }
-    } catch (error) {
-      setError("Erro interno. Tente novamente.");
+    } catch (error: any) {
+      setError(error.message || 'Ocorreu um erro inesperado');
     } finally {
       setIsLoading(false);
     }

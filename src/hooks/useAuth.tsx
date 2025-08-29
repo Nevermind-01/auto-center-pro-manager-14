@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
@@ -142,46 +142,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName?: string, nomeEmpresa?: string, cnpjEmpresa?: string, emailEmpresa?: string) => {
-    setLoading(true);
-    const redirectUrl = `${window.location.origin}/`;
-    
+  const signUp = async (
+    email: string, 
+    password: string, 
+    fullName?: string, 
+    nomeEmpresa?: string, 
+    cnpjEmpresa?: string, 
+    emailEmpresa?: string
+  ) => {
     try {
+      const redirectUrl = `${window.location.origin}/`;
+      
+      // Preparar dados para o metadata do usuário
+      const userData: Record<string, any> = {
+        full_name: fullName || email
+      };
+
+      // Se dados da empresa foram fornecidos, salvar no metadata
+      if (nomeEmpresa) {
+        userData.empresa_nome = nomeEmpresa;
+        userData.empresa_cnpj = cnpjEmpresa || '';
+        userData.empresa_email = emailEmpresa || '';
+        userData.needs_empresa_creation = true;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: redirectUrl,
-          data: {
-            full_name: fullName || email,
-          }
+          data: userData
         }
       });
 
-      if (error) throw error;
-
-      // Se o usuário foi criado e tem empresa para criar
-      if (data.user && nomeEmpresa) {
-        try {
-          const { error: empresaError } = await supabase.rpc('create_empresa_with_owner', {
-            nome_empresa: nomeEmpresa,
-            cnpj_empresa: cnpjEmpresa || null,
-            email_empresa: emailEmpresa || null,
-          });
-
-          if (empresaError) {
-            logger.error('Erro ao criar empresa:', empresaError);
-          }
-        } catch (empresaErr) {
-          logger.error('Erro ao criar empresa:', empresaErr);
-        }
+      if (error) {
+        return { error };
       }
 
-      setLoading(false);
+      logger.info('Usuário criado com sucesso. Empresa será criada após confirmação de email.', { 
+        email, 
+        userId: data.user?.id,
+        hasEmpresaData: !!nomeEmpresa
+      });
+
       return { error: null };
     } catch (error) {
-      setLoading(false);
-      return { error };
+      logger.error('Erro no signup:', error);
+      return { error: error as AuthError };
     }
   };
 

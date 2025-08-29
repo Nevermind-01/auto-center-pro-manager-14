@@ -1136,6 +1136,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_empresa_from_metadata: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       create_empresa_with_owner: {
         Args: {
           cnpj_empresa?: string

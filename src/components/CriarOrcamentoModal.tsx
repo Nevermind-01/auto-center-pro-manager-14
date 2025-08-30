@@ -15,6 +15,7 @@ import { useMecanicos } from '@/hooks/useMecanicos';
 import { useOrcamentoMutations, type CreateOrcamentoData } from '@/hooks/useOrcamentos';
 import { useAuth } from '@/hooks/useAuth';
 import { Truck } from 'lucide-react';
+import { AtualizarKmModal } from '@/components/AtualizarKmModal';
 
 interface CriarOrcamentoModalProps {
   open: boolean;
@@ -73,6 +74,10 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
     km_atual: "",
     observacoes: ""
   });
+
+  // Estados para atualização de KM
+  const [showAtualizarKmModal, setShowAtualizarKmModal] = useState(false);
+  const [veiculoParaAtualizarKm, setVeiculoParaAtualizarKm] = useState<any>(null);
 
   // Gerar número do orçamento automaticamente ou carregar dados para edição
   useEffect(() => {
@@ -212,8 +217,9 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
         observacoes: novoVeiculo.observacoes || null
       });
 
-      // Selecionar o veículo recém-criado
-      setFormData(prev => ({ ...prev, veiculoId: veiculo.id }));
+      // Selecionar o veículo recém-criado - abrir modal de KM primeiro
+      setVeiculoParaAtualizarKm(veiculo);
+      setShowAtualizarKmModal(true);
       
       // Limpar formulário
       setNovoVeiculo({
@@ -369,7 +375,17 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
               </div>
               <div className="space-y-2">
                 <Label htmlFor="veiculo">Veículo</Label>
-                <Select value={formData.veiculoId} onValueChange={(value) => setFormData(prev => ({ ...prev, veiculoId: value }))}>
+                <Select 
+                  value={formData.veiculoId} 
+                  onValueChange={(value) => {
+                    const veiculo = veiculos.find(v => v.id === value);
+                    if (veiculo) {
+                      // Abrir modal para atualizar KM antes de selecionar o veículo
+                      setVeiculoParaAtualizarKm(veiculo);
+                      setShowAtualizarKmModal(true);
+                    }
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um veículo" />
                   </SelectTrigger>
@@ -814,6 +830,24 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal para atualizar KM do veículo */}
+      <AtualizarKmModal
+        veiculo={veiculoParaAtualizarKm}
+        open={showAtualizarKmModal}
+        onOpenChange={setShowAtualizarKmModal}
+        onKmUpdated={(novoKm) => {
+          // Atualizar o veículo selecionado com o novo KM e definir no formData
+          const veiculoAtualizado = { 
+            ...veiculoParaAtualizarKm, 
+            km_atual: novoKm 
+          };
+          setFormData(prev => ({ ...prev, veiculoId: veiculoAtualizado.id }));
+          setVeiculoParaAtualizarKm(null);
+        }}
+        orcamentoId={orcamentoParaEditar?.id}
+        observacoes="Seleção para Orçamento"
+      />
     </Dialog>
   );
 }

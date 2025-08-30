@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Eye, EyeOff, Shield, Car } from 'lucide-react';
+import { Edit, Trash2, Eye, EyeOff, Shield, Car, History } from 'lucide-react';
 import { Cliente } from '@/hooks/useSupabaseQueries';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,9 +12,10 @@ interface MaskedClienteCardProps {
   onEdit: (cliente: Cliente) => void;
   onDelete: (id: string) => void;
   onViewVeiculos: (cliente: Cliente) => void;
+  onViewHistorico: (cliente: Cliente) => void;
 }
 
-export function MaskedClienteCard({ cliente, onEdit, onDelete, onViewVeiculos }: MaskedClienteCardProps) {
+export function MaskedClienteCard({ cliente, onEdit, onDelete, onViewVeiculos, onViewHistorico }: MaskedClienteCardProps) {
   const [showSensitive, setShowSensitive] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const { logAction } = useAuditLog();
@@ -156,7 +157,16 @@ export function MaskedClienteCard({ cliente, onEdit, onDelete, onViewVeiculos }:
             <Button
               variant="outline"
               size="sm"
+              onClick={() => onViewHistorico(cliente)}
+              title="Ver histórico (OS e Orçamentos)"
+            >
+              <History className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => onEdit(cliente)}
+              title="Editar cliente"
             >
               <Edit className="w-4 h-4" />
             </Button>
@@ -164,6 +174,7 @@ export function MaskedClienteCard({ cliente, onEdit, onDelete, onViewVeiculos }:
               variant="outline"
               size="sm"
               onClick={() => onDelete(cliente.id)}
+              title="Excluir cliente"
             >
               <Trash2 className="w-4 h-4" />
             </Button>

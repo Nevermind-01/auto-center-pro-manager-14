@@ -582,6 +582,90 @@ export const useVeiculoMutations = () => {
   return { createVeiculo, updateVeiculo, deleteVeiculo };
 };
 
+// ============= VENDAS E HISTORIC =============
+
+export const useVendasByCliente = (clienteId: string | null) => {
+  const { empresaId } = useEmpresaContext();
+  
+  return useQuery({
+    queryKey: ['vendas', 'cliente', clienteId, empresaId],
+    queryFn: async () => {
+      if (!clienteId || !empresaId) return [];
+      
+      const { data, error } = await supabase
+        .from('vendas')
+        .select(`
+          *,
+          venda_produtos (
+            id,
+            produto_nome,
+            quantidade,
+            preco_unitario,
+            preco_total
+          ),
+          venda_servicos (
+            id,
+            servico_nome,
+            preco
+          ),
+          veiculos (
+            marca,
+            modelo,
+            placa
+          )
+        `)
+        .eq('cliente_id', clienteId)
+        .eq('empresa_id', empresaId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!clienteId && !!empresaId,
+  });
+};
+
+export const useOrcamentosByCliente = (clienteId: string | null) => {
+  const { empresaId } = useEmpresaContext();
+  
+  return useQuery({
+    queryKey: ['orcamentos', 'cliente', clienteId, empresaId],
+    queryFn: async () => {
+      if (!clienteId || !empresaId) return [];
+      
+      const { data, error } = await supabase
+        .from('orcamentos')
+        .select(`
+          *,
+          orcamento_produtos (
+            id,
+            produto_nome,
+            quantidade,
+            preco_unitario,
+            preco_total
+          ),
+          orcamento_servicos (
+            id,
+            servico_nome,
+            preco
+          ),
+          veiculos (
+            marca,
+            modelo,
+            placa
+          )
+        `)
+        .eq('cliente_id', clienteId)
+        .eq('empresa_id', empresaId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!clienteId && !!empresaId,
+  });
+};
+
 // Sales hooks
 interface VendasFilters {
   startDate?: Date;

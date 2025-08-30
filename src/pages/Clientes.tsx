@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useClientes, useClienteMutations, Cliente } from '@/hooks/useSupabaseQueries';
 import { MaskedClienteCard } from '@/components/MaskedClienteCard';
 import { VeiculosClienteModal } from '@/components/VeiculosClienteModal';
+import { ClienteHistoricoModal } from '@/components/ClienteHistoricoModal';
 import { useClienteValidation } from '@/hooks/useClienteValidation';
 import { sanitizeClienteData } from '@/lib/inputSanitizer';
 import { Search, Plus, Shield, AlertTriangle } from 'lucide-react';
@@ -20,6 +21,8 @@ export default function Clientes() {
   const [isEditing, setIsEditing] = useState(false);
   const [isVeiculosModalOpen, setIsVeiculosModalOpen] = useState(false);
   const [selectedClienteVeiculos, setSelectedClienteVeiculos] = useState<Cliente | null>(null);
+  const [selectedClienteHistorico, setSelectedClienteHistorico] = useState<Cliente | null>(null);
+  const [isHistoricoModalOpen, setIsHistoricoModalOpen] = useState(false);
   
   const { data: clientes = [], isLoading } = useClientes();
   const { createCliente, updateCliente, deleteCliente } = useClienteMutations();
@@ -133,6 +136,11 @@ export default function Clientes() {
   const handleViewVeiculos = (cliente: Cliente) => {
     setSelectedClienteVeiculos(cliente);
     setIsVeiculosModalOpen(true);
+  };
+
+  const handleViewHistorico = (cliente: Cliente) => {
+    setSelectedClienteHistorico(cliente);
+    setIsHistoricoModalOpen(true);
   };
 
   const openNewClienteDialog = () => {
@@ -338,9 +346,10 @@ export default function Clientes() {
            <MaskedClienteCard
              key={cliente.id}
              cliente={cliente}
-             onEdit={handleEdit}
-             onDelete={handleDelete}
-             onViewVeiculos={handleViewVeiculos}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onViewVeiculos={handleViewVeiculos}
+                onViewHistorico={handleViewHistorico}
            />
         ))}
       </div>
@@ -357,6 +366,12 @@ export default function Clientes() {
         cliente={selectedClienteVeiculos}
         open={isVeiculosModalOpen}
         onOpenChange={setIsVeiculosModalOpen}
+      />
+      
+      <ClienteHistoricoModal
+        cliente={selectedClienteHistorico}
+        open={isHistoricoModalOpen}
+        onOpenChange={setIsHistoricoModalOpen}
       />
     </div>
   );

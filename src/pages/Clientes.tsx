@@ -9,6 +9,8 @@ import { useClientes, useClienteMutations, Cliente } from '@/hooks/useSupabaseQu
 import { MaskedClienteCard } from '@/components/MaskedClienteCard';
 import { VeiculosClienteModal } from '@/components/VeiculosClienteModal';
 import { ClienteHistoricoModal } from '@/components/ClienteHistoricoModal';
+import { VisualizarOSModal } from '@/components/VisualizarOSModal';
+import { VisualizarOrcamentoModal } from '@/components/VisualizarOrcamentoModal';
 import { useClienteValidation } from '@/hooks/useClienteValidation';
 import { sanitizeClienteData } from '@/lib/inputSanitizer';
 import { Search, Plus, Shield, AlertTriangle } from 'lucide-react';
@@ -23,6 +25,10 @@ export default function Clientes() {
   const [selectedClienteVeiculos, setSelectedClienteVeiculos] = useState<Cliente | null>(null);
   const [selectedClienteHistorico, setSelectedClienteHistorico] = useState<Cliente | null>(null);
   const [isHistoricoModalOpen, setIsHistoricoModalOpen] = useState(false);
+  const [isVisualizarOSModalOpen, setIsVisualizarOSModalOpen] = useState(false);
+  const [selectedOS, setSelectedOS] = useState<string | null>(null);
+  const [isVisualizarOrcamentoModalOpen, setIsVisualizarOrcamentoModalOpen] = useState(false);
+  const [selectedOrcamento, setSelectedOrcamento] = useState<any>(null);
   
   const { data: clientes = [], isLoading } = useClientes();
   const { createCliente, updateCliente, deleteCliente } = useClienteMutations();
@@ -141,6 +147,16 @@ export default function Clientes() {
   const handleViewHistorico = (cliente: Cliente) => {
     setSelectedClienteHistorico(cliente);
     setIsHistoricoModalOpen(true);
+  };
+
+  const handleViewOS = (osId: string) => {
+    setSelectedOS(osId);
+    setIsVisualizarOSModalOpen(true);
+  };
+
+  const handleViewOrcamento = (orcamento: any) => {
+    setSelectedOrcamento(orcamento);
+    setIsVisualizarOrcamentoModalOpen(true);
   };
 
   const openNewClienteDialog = () => {
@@ -372,6 +388,20 @@ export default function Clientes() {
         cliente={selectedClienteHistorico}
         open={isHistoricoModalOpen}
         onOpenChange={setIsHistoricoModalOpen}
+        onViewOS={handleViewOS}
+        onViewOrcamento={handleViewOrcamento}
+      />
+
+      <VisualizarOSModal
+        osId={selectedOS}
+        open={isVisualizarOSModalOpen}
+        onOpenChange={setIsVisualizarOSModalOpen}
+      />
+
+      <VisualizarOrcamentoModal
+        orcamento={selectedOrcamento}
+        open={isVisualizarOrcamentoModalOpen}
+        onClose={() => setIsVisualizarOrcamentoModalOpen(false)}
       />
     </div>
   );

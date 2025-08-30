@@ -19,7 +19,7 @@ interface ClienteHistoricoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onViewOS?: (osId: string) => void;
-  onViewOrcamento?: (orcamentoId: string) => void;
+  onViewOrcamento?: (orcamento: any) => void;
 }
 
 export function ClienteHistoricoModal({ 
@@ -243,7 +243,7 @@ export function ClienteHistoricoModal({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => onViewOrcamento?.(orcamento.id)}
+                        onClick={() => onViewOrcamento?.(orcamento)}
                         className="flex items-center gap-2"
                       >
                         <Eye className="w-4 h-4" />

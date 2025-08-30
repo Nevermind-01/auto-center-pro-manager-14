@@ -28,7 +28,8 @@ import { ComissaoCalculatorModal } from "@/components/ComissaoCalculatorModal";
 import { useSupabaseEstoque, ProdutoComCategoria } from "@/lib/supabaseEstoque";
 import { useClienteValidation } from "@/hooks/useClienteValidation";
 import { sanitizeClienteData } from "@/lib/inputSanitizer";
-import { generateUniqueOSNumber, createOSWithRetry } from "@/lib/utils";
+import { generateSequentialOSNumber, createOSWithRetry } from "@/lib/utils";
+import { useEmpresaContext } from "@/hooks/useEmpresaContext";
 import { useMultipleAsyncActions } from "@/hooks/useAsyncAction";
 import { 
   Plus, 
@@ -77,6 +78,7 @@ const NovaOSSupabase = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editingId = searchParams?.get('edit') || null;
+  const { empresaId } = useEmpresaContext();
   
   // Queries
   const { data: produtosDisponiveis = [], isLoading: loadingProdutos } = useProdutos();
@@ -174,10 +176,10 @@ const NovaOSSupabase = () => {
 
   // Gerar número da OS automaticamente
   useEffect(() => {
-    if (!editingId && !isEditing && !numeroOS) {
+    if (!editingId && !isEditing && !numeroOS && empresaId) {
       const inicializarNumeroOS = async () => {
         try {
-          const novoNumero = await generateUniqueOSNumber();
+          const novoNumero = await generateSequentialOSNumber(empresaId);
           setNumeroOS(novoNumero);
         } catch (error) {
           console.error('Erro ao gerar número inicial da OS:', error);
@@ -194,7 +196,7 @@ const NovaOSSupabase = () => {
 
       inicializarNumeroOS();
     }
-  }, [editingId, isEditing, numeroOS]);
+  }, [editingId, isEditing, numeroOS, empresaId]);
 
   // Carregar dados para edição - aguarda clientes carregarem primeiro
   useEffect(() => {
@@ -359,17 +361,19 @@ const NovaOSSupabase = () => {
     setEditDataLoaded(false);
     setLoadingEditData(false);
     
-    // Gerar novo número de OS único
-    try {
-      const novoNumero = await generateUniqueOSNumber();
-      setNumeroOS(novoNumero);
-    } catch (error) {
-      console.error('Erro ao gerar novo número de OS:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao gerar novo número de OS.",
-        variant: "destructive",
-      });
+    // Gerar novo número de OS sequencial
+    if (empresaId) {
+      try {
+        const novoNumero = await generateSequentialOSNumber(empresaId);
+        setNumeroOS(novoNumero);
+      } catch (error) {
+        console.error('Erro ao gerar novo número de OS:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao gerar novo número de OS.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -812,7 +816,7 @@ const NovaOSSupabase = () => {
             observacoes: observacoes || null,
             status: 'pendente'
           });
-        }, 5);
+        }, empresaId!, 5);
 
         const venda = osCreationResult.result;
         const numeroOSFinal = osCreationResult.numeroOS;
@@ -978,7 +982,7 @@ const NovaOSSupabase = () => {
             observacoes: observacoes || null,
             status: 'finalizada'
           });
-        }, 5);
+        }, empresaId!, 5);
 
         const venda = osCreationResult.result;
         const numeroOSFinal = osCreationResult.numeroOS;

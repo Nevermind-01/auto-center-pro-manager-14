@@ -260,6 +260,33 @@ export type Database = {
         }
         Relationships: []
       }
+      empresa_contadores: {
+        Row: {
+          contador_orcamento: number
+          contador_os: number
+          created_at: string
+          empresa_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          contador_orcamento?: number
+          contador_os?: number
+          created_at?: string
+          empresa_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          contador_orcamento?: number
+          contador_os?: number
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       empresa_usuarios: {
         Row: {
           ativo: boolean
@@ -1222,6 +1249,10 @@ export type Database = {
           updated_at: string
           user_id: string
         }[]
+      }
+      get_next_sequential_number: {
+        Args: { p_empresa_id: string; p_tipo: string }
+        Returns: string
       }
       get_user_role: {
         Args: { check_user_id?: string }

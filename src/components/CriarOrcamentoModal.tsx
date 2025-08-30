@@ -14,6 +14,8 @@ import * as useSupabaseQueries from '@/hooks/useSupabaseQueries';
 import { useMecanicos } from '@/hooks/useMecanicos';
 import { useOrcamentoMutations, type CreateOrcamentoData } from '@/hooks/useOrcamentos';
 import { useAuth } from '@/hooks/useAuth';
+import { useEmpresaContext } from '@/hooks/useEmpresaContext';
+import { generateSequentialOrcamentoNumber, createOrcamentoWithRetry } from '@/lib/utils';
 import { Truck } from 'lucide-react';
 import { AtualizarKmModal } from '@/components/AtualizarKmModal';
 
@@ -25,6 +27,7 @@ interface CriarOrcamentoModalProps {
 
 export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: CriarOrcamentoModalProps) {
   const { user } = useAuth();
+  const { empresaId } = useEmpresaContext();
   const { data: clientes = [] } = useSupabaseQueries.useClientes();
   const { data: produtos = [] } = useSupabaseQueries.useProdutos();
   const { data: servicos = [] } = useSupabaseQueries.useServicos();
@@ -114,13 +117,23 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
             valor: s.preco,
           })));
         }
-      } else {
-        // Modo criação - gerar número novo
-        const numeroOrcamento = `ORC-${Date.now()}`;
-        setFormData(prev => ({ ...prev, numeroOrcamento }));
+      } else if (empresaId) {
+        // Modo criação - gerar número sequencial
+        const gerarNumeroOrcamento = async () => {
+          try {
+            const numeroOrcamento = await generateSequentialOrcamentoNumber(empresaId);
+            setFormData(prev => ({ ...prev, numeroOrcamento }));
+          } catch (error) {
+            console.error('Erro ao gerar número do orçamento:', error);
+            // Fallback para timestamp em caso de erro
+            const numeroOrcamento = `ORC-${Date.now()}`;
+            setFormData(prev => ({ ...prev, numeroOrcamento }));
+          }
+        };
+        gerarNumeroOrcamento();
       }
     }
-  }, [open, orcamentoParaEditar]);
+  }, [open, orcamentoParaEditar, empresaId]);
 
   // Buscar veículos do cliente selecionado
   const { data: veiculos = [] } = useSupabaseQueries.useVeiculosByCliente(formData.clienteId || '');
@@ -259,6 +272,11 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
       return;
     }
 
+    if (!empresaId) {
+      alert('Erro: Empresa não selecionada');
+      return;
+    }
+
     const data: CreateOrcamentoData = {
       numeroOrcamento: formData.numeroOrcamento,
       clienteId: formData.clienteId,
@@ -279,8 +297,11 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
       // Modo edição
       await updateOrcamento.mutateAsync({ id: orcamentoParaEditar.id, data });
     } else {
-      // Modo criação
-      await createOrcamento.mutateAsync(data);
+      // Modo criação com retry para evitar conflitos de numeração
+      await createOrcamentoWithRetry(async (numeroOrcamentoSequencial) => {
+        const dataComNumero = { ...data, numeroOrcamento: numeroOrcamentoSequencial };
+        return await createOrcamento.mutateAsync(dataComNumero);
+      }, empresaId);
     }
     
     handleClose();

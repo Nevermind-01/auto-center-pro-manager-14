@@ -34,13 +34,13 @@ interface OSFinalizadaPrintProps {
     forma_pagamento: string;
     parcelas?: number;
     observacoes?: string;
-    produtos: Array<{
+    venda_produtos: Array<{
       produto_nome: string;
       quantidade: number;
       preco_unitario: number;
       preco_total: number;
     }>;
-    servicos: Array<{
+    venda_servicos: Array<{
       servico_nome: string;
       preco: number;
     }>;
@@ -71,8 +71,8 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
     return formaMap[forma] || forma;
   };
 
-  const subtotalProdutos = (os.produtos || []).reduce((sum, p) => sum + p.preco_total, 0);
-  const subtotalServicos = (os.servicos || []).reduce((sum, s) => sum + s.preco, 0);
+  const subtotalProdutos = (os.venda_produtos || []).reduce((sum, p) => sum + p.preco_total, 0);
+  const subtotalServicos = (os.venda_servicos || []).reduce((sum, s) => sum + s.preco, 0);
   const valorParcela = os.parcelas && os.parcelas > 1 ? os.valor_final / os.parcelas : os.valor_final;
 
   return (
@@ -176,7 +176,7 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
             </tr>
           </thead>
           <tbody>
-            {(os.produtos || []).map((produto, index) => (
+            {(os.venda_produtos || []).map((produto, index) => (
               <tr key={`produto-${index}`}>
                 <td className="border border-border p-2">{produto.produto_nome}</td>
                 <td className="border border-border p-2 text-center">{produto.quantidade}</td>
@@ -184,7 +184,7 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
                 <td className="border border-border p-2 text-right">{formatCurrency(produto.preco_total)}</td>
               </tr>
             ))}
-            {(os.servicos || []).map((servico, index) => (
+            {(os.venda_servicos || []).map((servico, index) => (
               <tr key={`servico-${index}`}>
                 <td className="border border-border p-2">{servico.servico_nome}</td>
                 <td className="border border-border p-2 text-center">1</td>
@@ -192,7 +192,7 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
                 <td className="border border-border p-2 text-right">{formatCurrency(servico.preco)}</td>
               </tr>
             ))}
-            {(os.produtos || []).length === 0 && (os.servicos || []).length === 0 && (
+            {(os.venda_produtos || []).length === 0 && (os.venda_servicos || []).length === 0 && (
               <tr>
                 <td colSpan={4} className="border border-border p-4 text-center text-muted-foreground">
                   Nenhum item encontrado

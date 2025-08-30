@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,6 @@ import { useVeiculosByCliente, useVeiculoMutations, Cliente } from '@/hooks/useS
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useMultipleVeiculosKmHistory } from '@/hooks/useVeiculoKmHistory';
-import { AtualizarKmModal } from '@/components/AtualizarKmModal';
 
 interface VeiculosClienteModalProps {
   cliente: Cliente | null;
@@ -32,8 +31,6 @@ interface VeiculoForm {
 export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosClienteModalProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [showKmModal, setShowKmModal] = useState(false);
-  const [selectedVeiculoForKm, setSelectedVeiculoForKm] = useState<any>(null);
   const [formData, setFormData] = useState<VeiculoForm>({
     marca: '',
     modelo: '',
@@ -54,6 +51,13 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
   
   // Check if current editing vehicle has KM history
   const editingVehicleHasHistory = editingId ? kmHistoryMap[editingId]?.hasHistory || false : false;
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!open) {
+      resetForm();
+    }
+  }, [open]);
 
   const resetForm = () => {
     setFormData({
@@ -124,16 +128,6 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
     });
     setEditingId(veiculo.id);
     setIsAdding(true);
-  };
-
-  const handleOpenKmModal = (veiculo: any) => {
-    setSelectedVeiculoForKm(veiculo);
-    setShowKmModal(true);
-  };
-
-  const handleKmUpdated = () => {
-    setShowKmModal(false);
-    setSelectedVeiculoForKm(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -271,15 +265,9 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
                   <Alert>
                     <Info className="h-4 w-4" />
                     <AlertDescription>
-                      Este veículo já possui histórico de quilometragem. Para atualizar o KM, 
-                      use a funcionalidade específica que mantém o histórico de alterações.
-                      <Button 
-                        variant="link" 
-                        className="p-0 h-auto ml-2 text-primary"
-                        onClick={() => handleOpenKmModal(veiculos.find(v => v.id === editingId))}
-                      >
-                        Atualizar KM →
-                      </Button>
+                      Este veículo já possui histórico de quilometragem. O KM só pode ser alterado 
+                      durante a criação de uma OS (Ordem de Serviço) ou Orçamento, mantendo assim 
+                      o histórico de alterações.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -339,17 +327,6 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
                             <Edit className="w-4 h-4" />
                           </Button>
                           
-                          {kmHistoryMap[veiculo.id]?.hasHistory && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenKmModal(veiculo)}
-                              title="Atualizar KM"
-                            >
-                              <Car className="w-4 h-4" />
-                            </Button>
-                          )}
-                          
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm">
@@ -385,14 +362,6 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
           </div>
         </div>
       </DialogContent>
-      
-      {/* KM Update Modal */}
-      <AtualizarKmModal
-        veiculo={selectedVeiculoForKm}
-        open={showKmModal}
-        onOpenChange={setShowKmModal}
-        onKmUpdated={handleKmUpdated}
-      />
     </Dialog>
   );
 }

@@ -5,10 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { Edit, Trash2, Car, Plus } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Edit, Trash2, Car, Plus, Lock, Info } from 'lucide-react';
 import { useVeiculosByCliente, useVeiculoMutations, Cliente } from '@/hooks/useSupabaseQueries';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useMultipleVeiculosKmHistory } from '@/hooks/useVeiculoKmHistory';
+import { AtualizarKmModal } from '@/components/AtualizarKmModal';
 
 interface VeiculosClienteModalProps {
   cliente: Cliente | null;
@@ -29,6 +32,8 @@ interface VeiculoForm {
 export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosClienteModalProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showKmModal, setShowKmModal] = useState(false);
+  const [selectedVeiculoForKm, setSelectedVeiculoForKm] = useState<any>(null);
   const [formData, setFormData] = useState<VeiculoForm>({
     marca: '',
     modelo: '',
@@ -42,6 +47,13 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
   const { toast } = useToast();
   const { data: veiculos = [], isLoading } = useVeiculosByCliente(cliente?.id || '');
   const { createVeiculo, updateVeiculo, deleteVeiculo } = useVeiculoMutations();
+  
+  // Get KM history for all vehicles
+  const veiculoIds = veiculos.map(v => v.id);
+  const { data: kmHistoryMap = {} } = useMultipleVeiculosKmHistory(veiculoIds);
+  
+  // Check if current editing vehicle has KM history
+  const editingVehicleHasHistory = editingId ? kmHistoryMap[editingId]?.hasHistory || false : false;
 
   const resetForm = () => {
     setFormData({
@@ -112,6 +124,16 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
     });
     setEditingId(veiculo.id);
     setIsAdding(true);
+  };
+
+  const handleOpenKmModal = (veiculo: any) => {
+    setSelectedVeiculoForKm(veiculo);
+    setShowKmModal(true);
+  };
+
+  const handleKmUpdated = () => {
+    setShowKmModal(false);
+    setSelectedVeiculoForKm(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -208,7 +230,12 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="km_atual">KM Atual *</Label>
+                    <Label htmlFor="km_atual" className="flex items-center gap-2">
+                      KM Atual *
+                      {editingVehicleHasHistory && (
+                        <Lock className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </Label>
                     <Input
                       id="km_atual"
                       type="number"
@@ -217,7 +244,15 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
                       placeholder="Ex: 50000"
                       min="0"
                       required
+                      disabled={editingVehicleHasHistory}
+                      className={editingVehicleHasHistory ? "bg-muted cursor-not-allowed" : ""}
                     />
+                    {editingVehicleHasHistory && (
+                      <div className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Info className="w-3 h-3" />
+                        KM não pode ser alterado - possui histórico de atualizações
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -231,6 +266,23 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
                     rows={3}
                   />
                 </div>
+
+                {editingVehicleHasHistory && (
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Este veículo já possui histórico de quilometragem. Para atualizar o KM, 
+                      use a funcionalidade específica que mantém o histórico de alterações.
+                      <Button 
+                        variant="link" 
+                        className="p-0 h-auto ml-2 text-primary"
+                        onClick={() => handleOpenKmModal(veiculos.find(v => v.id === editingId))}
+                      >
+                        Atualizar KM →
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <div className="flex gap-2">
                   <Button type="submit" disabled={createVeiculo.isPending || updateVeiculo.isPending}>
@@ -287,6 +339,17 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
                             <Edit className="w-4 h-4" />
                           </Button>
                           
+                          {kmHistoryMap[veiculo.id]?.hasHistory && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenKmModal(veiculo)}
+                              title="Atualizar KM"
+                            >
+                              <Car className="w-4 h-4" />
+                            </Button>
+                          )}
+                          
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm">
@@ -322,6 +385,14 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
           </div>
         </div>
       </DialogContent>
+      
+      {/* KM Update Modal */}
+      <AtualizarKmModal
+        veiculo={selectedVeiculoForKm}
+        open={showKmModal}
+        onOpenChange={setShowKmModal}
+        onKmUpdated={handleKmUpdated}
+      />
     </Dialog>
   );
 }

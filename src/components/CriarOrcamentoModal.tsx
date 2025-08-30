@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ import * as useSupabaseQueries from '@/hooks/useSupabaseQueries';
 import { useMecanicos } from '@/hooks/useMecanicos';
 import { useOrcamentoMutations, type CreateOrcamentoData } from '@/hooks/useOrcamentos';
 import { useAuth } from '@/hooks/useAuth';
+import { Truck } from 'lucide-react';
 
 interface CriarOrcamentoModalProps {
   open: boolean;
@@ -28,6 +29,7 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
   const { data: servicos = [] } = useSupabaseQueries.useServicos();
   const { data: mecanicos = [] } = useMecanicos();
   const { createOrcamento, updateOrcamento } = useOrcamentoMutations();
+  const { createVeiculo } = useSupabaseQueries.useVeiculoMutations();
 
   const [formData, setFormData] = useState({
     numeroOrcamento: '',
@@ -58,6 +60,19 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
   const [servicoSearch, setServicoSearch] = useState('');
   const [showProdutoSearch, setShowProdutoSearch] = useState(false);
   const [showServicoSearch, setShowServicoSearch] = useState(false);
+  
+  // Estados para novo veículo
+  const [showVeiculoModal, setShowVeiculoModal] = useState(false);
+  const [isAddingVeiculo, setIsAddingVeiculo] = useState(false);
+  const [novoVeiculo, setNovoVeiculo] = useState({
+    marca: "",
+    modelo: "",
+    placa: "",
+    ano: "",
+    cor: "",
+    km_atual: "",
+    observacoes: ""
+  });
 
   // Gerar número do orçamento automaticamente ou carregar dados para edição
   useEffect(() => {
@@ -171,6 +186,55 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
     );
   };
 
+  // Função para adicionar novo veículo
+  const adicionarNovoVeiculo = async () => {
+    if (!novoVeiculo.marca || !novoVeiculo.modelo || !novoVeiculo.placa) {
+      alert('Marca, modelo e placa são obrigatórios.');
+      return;
+    }
+
+    if (!formData.clienteId) {
+      alert('Selecione um cliente primeiro.');
+      return;
+    }
+
+    setIsAddingVeiculo(true);
+
+    try {
+      const veiculo = await createVeiculo.mutateAsync({
+        cliente_id: formData.clienteId,
+        marca: novoVeiculo.marca,
+        modelo: novoVeiculo.modelo,
+        placa: novoVeiculo.placa,
+        ano: novoVeiculo.ano || null,
+        cor: novoVeiculo.cor || null,
+        km_atual: novoVeiculo.km_atual ? Number(novoVeiculo.km_atual) : 0,
+        observacoes: novoVeiculo.observacoes || null
+      });
+
+      // Selecionar o veículo recém-criado
+      setFormData(prev => ({ ...prev, veiculoId: veiculo.id }));
+      
+      // Limpar formulário
+      setNovoVeiculo({
+        marca: "",
+        modelo: "",
+        placa: "",
+        ano: "",
+        cor: "",
+        km_atual: "",
+        observacoes: ""
+      });
+      
+      setShowVeiculoModal(false);
+    } catch (error) {
+      console.error('Erro ao adicionar veículo:', error);
+      alert('Erro ao adicionar veículo.');
+    } finally {
+      setIsAddingVeiculo(false);
+    }
+  };
+
   // Cálculos
   const valorTotalProdutos = produtosSelecionados.reduce((total, produto) => 
     total + (produto.valor * produto.quantidade), 0
@@ -234,6 +298,16 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
     setServicoSearch('');
     setShowProdutoSearch(false);
     setShowServicoSearch(false);
+    setShowVeiculoModal(false);
+    setNovoVeiculo({
+      marca: "",
+      modelo: "",
+      placa: "",
+      ano: "",
+      cor: "",
+      km_atual: "",
+      observacoes: ""
+    });
     onClose();
   };
 
@@ -293,7 +367,7 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="veiculo">Veículo</Label>
                 <Select value={formData.veiculoId} onValueChange={(value) => setFormData(prev => ({ ...prev, veiculoId: value }))}>
                   <SelectTrigger>
@@ -307,6 +381,18 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
                     ))}
                   </SelectContent>
                 </Select>
+                {formData.clienteId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowVeiculoModal(true)}
+                    className="w-full mt-2"
+                  >
+                    <Truck className="h-4 w-4 mr-2" />
+                    Adicionar Novo Veículo
+                  </Button>
+                )}
               </div>
               <div className="col-span-2">
                 <Label htmlFor="mecanico">Mecânico</Label>
@@ -633,6 +719,101 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
           </div>
         </div>
       </DialogContent>
+
+      {/* Modal para adicionar novo veículo */}
+      <Dialog open={showVeiculoModal} onOpenChange={setShowVeiculoModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar Novo Veículo</DialogTitle>
+            <DialogDescription>
+              Cadastre um novo veículo para o cliente selecionado
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="marca">Marca *</Label>
+                <Input
+                  id="marca"
+                  value={novoVeiculo.marca}
+                  onChange={(e) => setNovoVeiculo({...novoVeiculo, marca: e.target.value})}
+                  placeholder="Ex: Toyota"
+                />
+              </div>
+              <div>
+                <Label htmlFor="modelo">Modelo *</Label>
+                <Input
+                  id="modelo"
+                  value={novoVeiculo.modelo}
+                  onChange={(e) => setNovoVeiculo({...novoVeiculo, modelo: e.target.value})}
+                  placeholder="Ex: Corolla"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="placa">Placa *</Label>
+                <Input
+                  id="placa"
+                  value={novoVeiculo.placa}
+                  onChange={(e) => setNovoVeiculo({...novoVeiculo, placa: e.target.value})}
+                  placeholder="Ex: ABC-1234"
+                />
+              </div>
+              <div>
+                <Label htmlFor="ano">Ano/Modelo</Label>
+                <Input
+                  id="ano"
+                  value={novoVeiculo.ano}
+                  onChange={(e) => setNovoVeiculo({...novoVeiculo, ano: e.target.value})}
+                  placeholder="Ex: 2015/2016"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="cor">Cor</Label>
+                <Input
+                  id="cor"
+                  value={novoVeiculo.cor}
+                  onChange={(e) => setNovoVeiculo({...novoVeiculo, cor: e.target.value})}
+                  placeholder="Ex: Branco"
+                />
+              </div>
+              <div>
+                <Label htmlFor="km_atual">KM Atual</Label>
+                <Input
+                  id="km_atual"
+                  type="number"
+                  value={novoVeiculo.km_atual}
+                  onChange={(e) => setNovoVeiculo({...novoVeiculo, km_atual: e.target.value})}
+                  placeholder="Ex: 50000"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="observacoes">Observações</Label>
+              <Textarea
+                id="observacoes"
+                value={novoVeiculo.observacoes}
+                onChange={(e) => setNovoVeiculo({...novoVeiculo, observacoes: e.target.value})}
+                placeholder="Observações sobre o veículo..."
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowVeiculoModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={adicionarNovoVeiculo} 
+              disabled={isAddingVeiculo}
+            >
+              {isAddingVeiculo ? "Adicionando..." : "Adicionar Veículo"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

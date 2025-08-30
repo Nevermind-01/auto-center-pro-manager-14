@@ -37,6 +37,7 @@ type LogMovimentacaoInsert = Database['public']['Tables']['log_movimentacoes']['
 // Vehicles types
 export type Veiculo = Database['public']['Tables']['veiculos']['Row'];
 export type VeiculoInsert = Database['public']['Tables']['veiculos']['Insert'];
+export type VeiculoKmHistorico = Database['public']['Tables']['veiculo_km_historico']['Row'];
 
 // Products hooks
 export const useProdutos = () => {
@@ -434,6 +435,70 @@ export const useVeiculosByCliente = (clienteId: string | null) => {
       return data;
     },
     enabled: !!clienteId && !!empresaId
+  });
+};
+
+// Hook para histórico de KM dos veículos
+export const useVeiculoKmHistorico = (veiculoId: string | null) => {
+  const { empresaId } = useEmpresaContext();
+  
+  return useQuery({
+    queryKey: ['veiculo_km_historico', veiculoId, empresaId],
+    queryFn: async (): Promise<VeiculoKmHistorico[]> => {
+      if (!veiculoId || !empresaId) return [];
+      
+      const { data, error } = await supabase
+        .from('veiculo_km_historico')
+        .select('*')
+        .eq('veiculo_id', veiculoId)
+        .eq('empresa_id', empresaId)
+        .order('data_atualizacao', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!veiculoId && !!empresaId,
+  });
+};
+
+// Hook para atualizar KM do veículo
+export const useUpdateVeiculoKm = () => {
+  const queryClient = useQueryClient();
+  const { empresaId } = useEmpresaContext();
+
+  return useMutation({
+    mutationFn: async ({
+      veiculoId,
+      novoKm,
+      osId,
+      orcamentoId,
+      observacoes
+    }: {
+      veiculoId: string;
+      novoKm: number;
+      osId?: string;
+      orcamentoId?: string;
+      observacoes?: string;
+    }) => {
+      const { data, error } = await supabase.rpc('update_veiculo_km', {
+        p_veiculo_id: veiculoId,
+        p_km_novo: novoKm,
+        p_os_id: osId || null,
+        p_orcamento_id: orcamentoId || null,
+        p_observacoes: observacoes || null
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data, variables) => {
+      // Invalidar queries relacionadas
+      queryClient.invalidateQueries({ queryKey: ['veiculos', empresaId] });
+      queryClient.invalidateQueries({ queryKey: ['veiculo_km_historico', variables.veiculoId, empresaId] });
+      
+      // Se houver cliente_id, invalidar veículos do cliente
+      queryClient.invalidateQueries({ queryKey: ['veiculos'] });
+    }
   });
 };
 

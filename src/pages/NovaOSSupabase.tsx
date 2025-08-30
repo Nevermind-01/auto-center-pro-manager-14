@@ -49,6 +49,7 @@ import {
   Truck,
   Wrench
 } from "lucide-react";
+import { AtualizarKmModal } from '@/components/AtualizarKmModal';
 
 // Interfaces
 interface ProdutoSelecionado {
@@ -107,6 +108,8 @@ const NovaOSSupabase = () => {
   // Estados para veículos
   const [veiculoSelecionado, setVeiculoSelecionado] = useState<any>(null);
   const [showVeiculoModal, setShowVeiculoModal] = useState(false);
+  const [showAtualizarKmModal, setShowAtualizarKmModal] = useState(false);
+  const [veiculoParaAtualizarKm, setVeiculoParaAtualizarKm] = useState<any>(null);
   const [mecanicoSelecionado, setMecanicoSelecionado] = useState<string>("");
   const [novoVeiculo, setNovoVeiculo] = useState({
     marca: "",
@@ -1411,46 +1414,59 @@ const NovaOSSupabase = () => {
               {veiculosCliente.length > 0 ? (
                 <div className="space-y-2">
                   <Label>Veículos Disponíveis</Label>
-                  <Select 
-                    value={veiculoSelecionado?.id || ""} 
-                    onValueChange={(value) => {
-                      const veiculo = veiculosCliente.find(v => v.id === value);
-                      setVeiculoSelecionado(veiculo || null);
-                    }}
-                  >
+                   <Select 
+                     value={veiculoSelecionado?.id || ""} 
+                     onValueChange={(value) => {
+                       const veiculo = veiculosCliente.find(v => v.id === value);
+                       if (veiculo) {
+                         // Abrir modal para atualizar KM antes de selecionar o veículo
+                         setVeiculoParaAtualizarKm(veiculo);
+                         setShowAtualizarKmModal(true);
+                       }
+                     }}
+                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um veículo" />
                     </SelectTrigger>
                     <SelectContent>
-                      {veiculosCliente.map((veiculo) => (
-                        <SelectItem key={veiculo.id} value={veiculo.id}>
-                          {veiculo.marca} {veiculo.modelo} - {veiculo.placa} ({veiculo.ano})
-                        </SelectItem>
-                      ))}
+                       {veiculosCliente.map((veiculo) => (
+                         <SelectItem key={veiculo.id} value={veiculo.id}>
+                           {veiculo.marca} {veiculo.modelo} - {veiculo.placa}
+                           {veiculo.ano && ` (${veiculo.ano})`}
+                           {veiculo.cor && ` - ${veiculo.cor}`}
+                           {` - ${Number(veiculo.km_atual || 0).toLocaleString('pt-BR')} km`}
+                         </SelectItem>
+                       ))}
                     </SelectContent>
                   </Select>
                   
-                  {veiculoSelecionado && (
-                    <div className="p-3 border rounded-lg bg-blue-50">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium">{veiculoSelecionado.marca} {veiculoSelecionado.modelo}</div>
-                          <div className="text-sm text-gray-600">Placa: {veiculoSelecionado.placa}</div>
-                          <div className="text-sm text-gray-600">Ano: {veiculoSelecionado.ano}</div>
-                          {veiculoSelecionado.observacoes && (
-                            <div className="text-sm text-gray-600">Obs: {veiculoSelecionado.observacoes}</div>
-                          )}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setVeiculoSelecionado(null)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                   {veiculoSelecionado && (
+                     <div className="p-3 border rounded-lg bg-blue-50">
+                       <div className="flex items-center justify-between">
+                         <div>
+                           <div className="font-medium">{veiculoSelecionado.marca} {veiculoSelecionado.modelo}</div>
+                           <div className="text-sm text-gray-600">Placa: {veiculoSelecionado.placa}</div>
+                           {veiculoSelecionado.ano && (
+                             <div className="text-sm text-gray-600">Ano/Modelo: {veiculoSelecionado.ano}</div>
+                           )}
+                           {veiculoSelecionado.cor && (
+                             <div className="text-sm text-gray-600">Cor: {veiculoSelecionado.cor}</div>
+                           )}
+                           <div className="text-sm text-gray-600">KM Atual: {Number(veiculoSelecionado.km_atual || 0).toLocaleString('pt-BR')}</div>
+                           {veiculoSelecionado.observacoes && (
+                             <div className="text-sm text-gray-600">Obs: {veiculoSelecionado.observacoes}</div>
+                           )}
+                         </div>
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={() => setVeiculoSelecionado(null)}
+                         >
+                           <X className="h-4 w-4" />
+                         </Button>
+                       </div>
+                     </div>
+                   )}
                 </div>
               ) : (
                 <div className="text-center py-4 text-gray-500">
@@ -2022,6 +2038,23 @@ const NovaOSSupabase = () => {
           isEditing,
           editingVenda
         }}
+      />
+
+      {/* Modal para atualizar KM do veículo */}
+      <AtualizarKmModal
+        veiculo={veiculoParaAtualizarKm}
+        open={showAtualizarKmModal}
+        onOpenChange={setShowAtualizarKmModal}
+        onKmUpdated={(novoKm) => {
+          // Atualizar o objeto veículo com o novo KM
+          const veiculoAtualizado = { 
+            ...veiculoParaAtualizarKm, 
+            km_atual: novoKm 
+          };
+          setVeiculoSelecionado(veiculoAtualizado);
+          setVeiculoParaAtualizarKm(null);
+        }}
+        observacoes="Seleção para Nova OS"
       />
     </div>
   );

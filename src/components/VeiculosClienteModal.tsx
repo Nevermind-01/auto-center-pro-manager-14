@@ -21,6 +21,8 @@ interface VeiculoForm {
   modelo: string;
   placa: string;
   ano?: string;
+  cor?: string;
+  km_atual: number;
   observacoes?: string;
 }
 
@@ -32,6 +34,8 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
     modelo: '',
     placa: '',
     ano: '',
+    cor: '',
+    km_atual: 0,
     observacoes: ''
   });
 
@@ -45,6 +49,8 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
       modelo: '',
       placa: '',
       ano: '',
+      cor: '',
+      km_atual: 0,
       observacoes: ''
     });
     setIsAdding(false);
@@ -55,10 +61,10 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
     e.preventDefault();
     if (!cliente) return;
 
-    if (!formData.marca || !formData.modelo || !formData.placa) {
+    if (!formData.marca || !formData.modelo || !formData.placa || formData.km_atual < 0) {
       toast({
         title: "Erro",
-        description: "Marca, modelo e placa são obrigatórios.",
+        description: "Marca, modelo, placa são obrigatórios e KM deve ser maior ou igual a zero.",
         variant: "destructive",
       });
       return;
@@ -100,6 +106,8 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
       modelo: veiculo.modelo,
       placa: veiculo.placa,
       ano: veiculo.ano || '',
+      cor: veiculo.cor || '',
+      km_atual: veiculo.km_atual || 0,
       observacoes: veiculo.observacoes || ''
     });
     setEditingId(veiculo.id);
@@ -179,12 +187,36 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="ano">Ano</Label>
+                    <Label htmlFor="ano">Ano/Modelo</Label>
                     <Input
                       id="ano"
                       value={formData.ano}
                       onChange={(e) => setFormData({ ...formData, ano: e.target.value })}
-                      placeholder="Ex: 2020"
+                      placeholder="Ex: 2020/2021"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cor">Cor</Label>
+                    <Input
+                      id="cor"
+                      value={formData.cor}
+                      onChange={(e) => setFormData({ ...formData, cor: e.target.value })}
+                      placeholder="Ex: Prata"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="km_atual">KM Atual *</Label>
+                    <Input
+                      id="km_atual"
+                      type="number"
+                      value={formData.km_atual}
+                      onChange={(e) => setFormData({ ...formData, km_atual: Number(e.target.value) || 0 })}
+                      placeholder="Ex: 50000"
+                      min="0"
+                      required
                     />
                   </div>
                 </div>
@@ -237,7 +269,9 @@ export function VeiculosClienteModal({ cliente, open, onOpenChange }: VeiculosCl
                           </h4>
                           <div className="text-sm text-muted-foreground space-y-1">
                             <p><strong>Placa:</strong> {veiculo.placa}</p>
-                            {veiculo.ano && <p><strong>Ano:</strong> {veiculo.ano}</p>}
+                            {veiculo.ano && <p><strong>Ano/Modelo:</strong> {veiculo.ano}</p>}
+                            {veiculo.cor && <p><strong>Cor:</strong> {veiculo.cor}</p>}
+                            <p><strong>KM Atual:</strong> {Number(veiculo.km_atual || 0).toLocaleString('pt-BR')}</p>
                             {veiculo.observacoes && (
                               <p><strong>Observações:</strong> {veiculo.observacoes}</p>
                             )}

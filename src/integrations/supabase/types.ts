@@ -897,13 +897,54 @@ export type Database = {
         }
         Relationships: []
       }
+      veiculo_km_historico: {
+        Row: {
+          data_atualizacao: string
+          empresa_id: string
+          id: string
+          km_anterior: number
+          km_novo: number
+          observacoes: string | null
+          orcamento_id: string | null
+          os_id: string | null
+          user_id: string | null
+          veiculo_id: string
+        }
+        Insert: {
+          data_atualizacao?: string
+          empresa_id: string
+          id?: string
+          km_anterior: number
+          km_novo: number
+          observacoes?: string | null
+          orcamento_id?: string | null
+          os_id?: string | null
+          user_id?: string | null
+          veiculo_id: string
+        }
+        Update: {
+          data_atualizacao?: string
+          empresa_id?: string
+          id?: string
+          km_anterior?: number
+          km_novo?: number
+          observacoes?: string | null
+          orcamento_id?: string | null
+          os_id?: string | null
+          user_id?: string | null
+          veiculo_id?: string
+        }
+        Relationships: []
+      }
       veiculos: {
         Row: {
           ano: string | null
           cliente_id: string
+          cor: string | null
           created_at: string
           empresa_id: string | null
           id: string
+          km_atual: number | null
           marca: string
           modelo: string
           observacoes: string | null
@@ -914,9 +955,11 @@ export type Database = {
         Insert: {
           ano?: string | null
           cliente_id: string
+          cor?: string | null
           created_at?: string
           empresa_id?: string | null
           id?: string
+          km_atual?: number | null
           marca: string
           modelo: string
           observacoes?: string | null
@@ -927,9 +970,11 @@ export type Database = {
         Update: {
           ano?: string | null
           cliente_id?: string
+          cor?: string | null
           created_at?: string
           empresa_id?: string | null
           id?: string
+          km_atual?: number | null
           marca?: string
           modelo?: string
           observacoes?: string | null
@@ -1218,6 +1263,16 @@ export type Database = {
       }
       rpc_finalizar_os_com_comissao: {
         Args: { payload: Json }
+        Returns: Json
+      }
+      update_veiculo_km: {
+        Args: {
+          p_km_novo: number
+          p_observacoes?: string
+          p_orcamento_id?: string
+          p_os_id?: string
+          p_veiculo_id: string
+        }
         Returns: Json
       }
       validate_user_exists: {

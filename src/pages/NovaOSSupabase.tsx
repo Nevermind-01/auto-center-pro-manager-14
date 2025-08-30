@@ -116,6 +116,8 @@ const NovaOSSupabase = () => {
     modelo: "",
     placa: "",
     ano: "",
+    cor: "",
+    km_atual: "",
     observacoes: ""
   });
 
@@ -664,6 +666,8 @@ const NovaOSSupabase = () => {
         modelo: novoVeiculo.modelo,
         placa: novoVeiculo.placa,
         ano: novoVeiculo.ano || null,
+        cor: novoVeiculo.cor || null,
+        km_atual: novoVeiculo.km_atual ? Number(novoVeiculo.km_atual) : 0,
         observacoes: novoVeiculo.observacoes || null
       });
 
@@ -673,6 +677,8 @@ const NovaOSSupabase = () => {
         modelo: "",
         placa: "",
         ano: "",
+        cor: "",
+        km_atual: "",
         observacoes: ""
       });
       setShowVeiculoModal(false);
@@ -1520,12 +1526,33 @@ const NovaOSSupabase = () => {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="ano">Ano</Label>
+                        <Label htmlFor="ano">Ano/Modelo</Label>
                         <Input
                           id="ano"
                           value={novoVeiculo.ano}
                           onChange={(e) => setNovoVeiculo({...novoVeiculo, ano: e.target.value})}
-                          placeholder="Ex: 2015"
+                          placeholder="Ex: 2015/2016"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="cor">Cor</Label>
+                        <Input
+                          id="cor"
+                          value={novoVeiculo.cor}
+                          onChange={(e) => setNovoVeiculo({...novoVeiculo, cor: e.target.value})}
+                          placeholder="Ex: Branco"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="km_atual">KM Atual</Label>
+                        <Input
+                          id="km_atual"
+                          type="number"
+                          value={novoVeiculo.km_atual}
+                          onChange={(e) => setNovoVeiculo({...novoVeiculo, km_atual: e.target.value})}
+                          placeholder="Ex: 50000"
                         />
                       </div>
                     </div>

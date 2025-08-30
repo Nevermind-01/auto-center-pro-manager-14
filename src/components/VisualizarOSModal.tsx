@@ -255,17 +255,37 @@ export const VisualizarOSModal = ({ open, onOpenChange, osId }: VisualizarOSModa
                         <p>{osDetails.veiculo.placa}</p>
                       </div>
                       {osDetails.veiculo.ano && (
-                        <div>
-                          <span className="font-medium">Ano:</span>
-                          <p>{osDetails.veiculo.ano}</p>
-                        </div>
-                      )}
-                      {osDetails.veiculo.observacoes && (
-                        <div>
-                          <span className="font-medium">Observações:</span>
-                          <p className="text-sm bg-muted p-2 rounded">{osDetails.veiculo.observacoes}</p>
-                        </div>
-                      )}
+                       <div>
+                         <span className="font-medium">Ano:</span>
+                         <p>{osDetails.veiculo.ano}</p>
+                       </div>
+                     )}
+                     {osDetails.veiculo.cor && (
+                       <div>
+                         <span className="font-medium">Cor:</span>
+                         <p>{osDetails.veiculo.cor}</p>
+                       </div>
+                     )}
+                     {osDetails.veiculo.km_atual !== undefined && osDetails.veiculo.km_atual > 0 && (
+                       <div>
+                         <span className="font-medium">KM Atual:</span>
+                         <p>{osDetails.veiculo.km_atual.toLocaleString('pt-BR')} km</p>
+                         {osDetails.km_historico?.km_anterior && (
+                           <p className="text-xs text-muted-foreground">
+                             Anterior: {osDetails.km_historico.km_anterior.toLocaleString('pt-BR')} km 
+                             {osDetails.km_historico.diferenca && osDetails.km_historico.diferenca > 0 && (
+                               <span className="text-success"> (+{osDetails.km_historico.diferenca.toLocaleString('pt-BR')} km)</span>
+                             )}
+                           </p>
+                         )}
+                       </div>
+                     )}
+                     {osDetails.veiculo.observacoes && (
+                       <div>
+                         <span className="font-medium">Observações:</span>
+                         <p className="text-sm bg-muted p-2 rounded">{osDetails.veiculo.observacoes}</p>
+                       </div>
+                     )}
                     </>
                   ) : (
                     <p className="text-muted-foreground">Nenhum veículo cadastrado</p>

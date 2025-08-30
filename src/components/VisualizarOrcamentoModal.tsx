@@ -41,7 +41,9 @@ export function VisualizarOrcamentoModal({ open, onClose, orcamento }: Visualiza
       veiculo: orcamentoDetails.veiculo ? {
         marca: orcamentoDetails.veiculo.marca,
         modelo: orcamentoDetails.veiculo.modelo,
-        ano: undefined, // Ano não está disponível no tipo veiculo
+        ano: orcamentoDetails.veiculo.ano,
+        cor: orcamentoDetails.veiculo.cor,
+        km_atual: orcamentoDetails.veiculo.km_atual,
         placa: orcamentoDetails.veiculo.placa,
       } : undefined,
       mecanico: orcamentoDetails.mecanico ? {
@@ -161,7 +163,7 @@ export function VisualizarOrcamentoModal({ open, onClose, orcamento }: Visualiza
                 <CardTitle>Veículo</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Marca/Modelo</p>
                     <p>{orcamentoDetails.veiculo.marca} {orcamentoDetails.veiculo.modelo}</p>
@@ -170,6 +172,24 @@ export function VisualizarOrcamentoModal({ open, onClose, orcamento }: Visualiza
                     <p className="text-sm font-medium text-muted-foreground">Placa</p>
                     <p className="font-mono">{orcamentoDetails.veiculo.placa}</p>
                   </div>
+                  {orcamentoDetails.veiculo.ano && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Ano</p>
+                      <p>{orcamentoDetails.veiculo.ano}</p>
+                    </div>
+                  )}
+                  {orcamentoDetails.veiculo.cor && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Cor</p>
+                      <p>{orcamentoDetails.veiculo.cor}</p>
+                    </div>
+                  )}
+                  {orcamentoDetails.veiculo.km_atual !== undefined && orcamentoDetails.veiculo.km_atual > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">KM Atual</p>
+                      <p>{orcamentoDetails.veiculo.km_atual.toLocaleString('pt-BR')} km</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

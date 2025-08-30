@@ -31,6 +31,9 @@ export interface Orcamento {
     marca: string;
     modelo: string;
     placa: string;
+    ano?: string;
+    cor?: string;
+    km_atual?: number;
   } | null;
   mecanico: {
     nome: string;
@@ -117,7 +120,10 @@ export const useOrcamentos = () => {
           veiculos!orcamentos_veiculo_id_fkey (
             marca,
             modelo,
-            placa
+            placa,
+            ano,
+            cor,
+            km_atual
           ),
           mecanicos!orcamentos_mecanico_id_fkey (
             nome,
@@ -168,7 +174,10 @@ export const useOrcamentoDetails = (orcamentoId: string | null) => {
           veiculos!orcamentos_veiculo_id_fkey (
             marca,
             modelo,
-            placa
+            placa,
+            ano,
+            cor,
+            km_atual
           ),
           mecanicos!orcamentos_mecanico_id_fkey (
             nome,

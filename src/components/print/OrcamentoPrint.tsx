@@ -20,6 +20,8 @@ interface OrcamentoPrintProps {
       marca: string;
       modelo: string;
       ano?: string;
+      cor?: string;
+      km_atual?: number;
       placa: string;
     };
     mecanico?: {
@@ -100,10 +102,20 @@ export function OrcamentoPrint({ orcamento, empresa }: OrcamentoPrintProps) {
           <h3 className="text-lg font-semibold mb-4 text-primary border-b border-border pb-2">
             Dados do Veículo
           </h3>
-          <div className="grid grid-cols-3 gap-4 text-sm">
-            <p><span className="font-medium">Marca/Modelo:</span> {orcamento.veiculo.marca} {orcamento.veiculo.modelo}</p>
-            <p><span className="font-medium">Ano:</span> {orcamento.veiculo.ano || 'N/A'}</p>
-            <p><span className="font-medium">Placa:</span> {orcamento.veiculo.placa}</p>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p><span className="font-medium">Marca/Modelo:</span> {orcamento.veiculo.marca} {orcamento.veiculo.modelo}</p>
+              <p><span className="font-medium">Ano:</span> {orcamento.veiculo.ano || 'N/A'}</p>
+              <p><span className="font-medium">Placa:</span> {orcamento.veiculo.placa}</p>
+            </div>
+            <div>
+              {orcamento.veiculo.cor && (
+                <p><span className="font-medium">Cor:</span> {orcamento.veiculo.cor}</p>
+              )}
+              {orcamento.veiculo.km_atual !== undefined && orcamento.veiculo.km_atual > 0 && (
+                <p><span className="font-medium">KM Atual:</span> {orcamento.veiculo.km_atual.toLocaleString('pt-BR')} km</p>
+              )}
+            </div>
           </div>
         </section>
       )}

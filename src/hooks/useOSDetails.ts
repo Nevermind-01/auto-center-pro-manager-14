@@ -33,7 +33,13 @@ export interface OSDetails {
     modelo: string;
     placa: string;
     ano?: string;
+    cor?: string;
+    km_atual?: number;
     observacoes?: string;
+  } | null;
+  km_historico?: {
+    km_anterior?: number;
+    diferenca?: number;
   } | null;
   mecanico: {
     nome: string;
@@ -81,6 +87,7 @@ export const useOSDetails = (osId: string | null) => {
           forma_pagamento,
           parcelas,
           user_id,
+          veiculo_id,
           clientes!vendas_cliente_id_fkey (
             nome,
             telefone,
@@ -98,6 +105,8 @@ export const useOSDetails = (osId: string | null) => {
             modelo,
             placa,
             ano,
+            cor,
+            km_atual,
             observacoes
           ),
           mecanicos!vendas_mecanico_id_fkey (
@@ -139,6 +148,26 @@ export const useOSDetails = (osId: string | null) => {
         creatorData = profileData;
       }
 
+      // Fetch KM history for the vehicle if it exists
+      let kmHistorico = null;
+      if (vendaData.veiculo_id) {
+        const { data: kmHistoricoData } = await supabase
+          .from('veiculo_km_historico')
+          .select('km_anterior, km_novo')
+          .eq('veiculo_id', vendaData.veiculo_id)
+          .eq('os_id', osId)
+          .order('data_atualizacao', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (kmHistoricoData) {
+          kmHistorico = {
+            km_anterior: kmHistoricoData.km_anterior,
+            diferenca: kmHistoricoData.km_novo - kmHistoricoData.km_anterior
+          };
+        }
+      }
+
       return {
         ...vendaData,
         cliente: vendaData.clientes || null,
@@ -146,7 +175,8 @@ export const useOSDetails = (osId: string | null) => {
         mecanico: vendaData.mecanicos || null,
         venda_produtos: produtosData || [],
         venda_servicos: servicosData || [],
-        creator: creatorData
+        creator: creatorData,
+        km_historico: kmHistorico
       };
     },
     enabled: !!osId,

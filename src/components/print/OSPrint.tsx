@@ -20,6 +20,8 @@ interface OSPrintProps {
       marca: string;
       modelo: string;
       ano?: string;
+      cor?: string;
+      km_atual?: number;
       placa: string;
     };
     mecanico?: {
@@ -120,10 +122,20 @@ export function OSPrint({ os, empresa }: OSPrintProps) {
           <h3 className="text-lg font-semibold mb-4 text-primary border-b border-border pb-2">
             Dados do Veículo
           </h3>
-          <div className="grid grid-cols-3 gap-4 text-sm">
-            <p><span className="font-medium">Marca/Modelo:</span> {os.veiculo.marca} {os.veiculo.modelo}</p>
-            <p><span className="font-medium">Ano:</span> {os.veiculo.ano || 'N/A'}</p>
-            <p><span className="font-medium">Placa:</span> {os.veiculo.placa}</p>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p><span className="font-medium">Marca/Modelo:</span> {os.veiculo.marca} {os.veiculo.modelo}</p>
+              <p><span className="font-medium">Ano:</span> {os.veiculo.ano || 'N/A'}</p>
+              <p><span className="font-medium">Placa:</span> {os.veiculo.placa}</p>
+            </div>
+            <div>
+              {os.veiculo.cor && (
+                <p><span className="font-medium">Cor:</span> {os.veiculo.cor}</p>
+              )}
+              {os.veiculo.km_atual !== undefined && os.veiculo.km_atual > 0 && (
+                <p><span className="font-medium">KM Atual:</span> {os.veiculo.km_atual.toLocaleString('pt-BR')} km</p>
+              )}
+            </div>
           </div>
         </section>
       )}

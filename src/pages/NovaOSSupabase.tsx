@@ -172,29 +172,7 @@ const NovaOSSupabase = () => {
   const [valorServicosParaComissao, setValorServicosParaComissao] = useState<number>(0);
   const [valorTotalParaComissao, setValorTotalParaComissao] = useState<number>(0);
 
-  // Gerar número da OS automaticamente
-  useEffect(() => {
-    if (!editingId && !isEditing && !numeroOS && empresaId) {
-      const inicializarNumeroOS = async () => {
-        try {
-          const novoNumero = await generateSequentialOSNumber(empresaId);
-          setNumeroOS(novoNumero);
-        } catch (error) {
-          console.error('Erro ao gerar número inicial da OS:', error);
-          // Fallback para número simples em caso de erro
-          const agora = new Date();
-          const ano = agora.getFullYear();
-          const mes = String(agora.getMonth() + 1).padStart(2, '0');
-          const dia = String(agora.getDate()).padStart(2, '0');
-          const hora = String(agora.getHours()).padStart(2, '0');
-          const minuto = String(agora.getMinutes()).padStart(2, '0');
-          setNumeroOS(`OS${ano}${mes}${dia}${hora}${minuto}`);
-        }
-      };
-
-      inicializarNumeroOS();
-    }
-  }, [editingId, isEditing, numeroOS, empresaId]);
+  // Número da OS será gerado apenas no salvamento
 
   // Carregar dados para edição - aguarda clientes carregarem primeiro
   useEffect(() => {
@@ -1165,7 +1143,7 @@ const NovaOSSupabase = () => {
             </Badge>
           )}
           <Badge variant="outline" className="text-lg px-3 py-1">
-            {numeroOS}
+            {numeroOS || "Será gerado automaticamente"}
           </Badge>
         </div>
       </div>

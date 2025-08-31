@@ -118,19 +118,8 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
           })));
         }
       } else if (empresaId) {
-        // Modo criação - gerar número sequencial
-        const gerarNumeroOrcamento = async () => {
-          try {
-            const numeroOrcamento = await generateSequentialOrcamentoNumber(empresaId);
-            setFormData(prev => ({ ...prev, numeroOrcamento }));
-          } catch (error) {
-            console.error('Erro ao gerar número do orçamento:', error);
-            // Fallback para timestamp em caso de erro
-            const numeroOrcamento = `ORC-${Date.now()}`;
-            setFormData(prev => ({ ...prev, numeroOrcamento }));
-          }
-        };
-        gerarNumeroOrcamento();
+        // Modo criação - número será gerado no salvamento
+        setFormData(prev => ({ ...prev, numeroOrcamento: '' }));
       }
     }
   }, [open, orcamentoParaEditar, empresaId]);
@@ -277,8 +266,13 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
       return;
     }
 
+    // Gerar número do orçamento no momento do salvamento (apenas para criação)
+    const numeroOrcamentoFinal = orcamentoParaEditar 
+      ? formData.numeroOrcamento 
+      : await generateSequentialOrcamentoNumber(empresaId);
+
     const data: CreateOrcamentoData = {
-      numeroOrcamento: formData.numeroOrcamento,
+      numeroOrcamento: numeroOrcamentoFinal,
       clienteId: formData.clienteId,
       clienteNome: formData.clienteNome,
       veiculoId: formData.veiculoId || undefined,
@@ -364,6 +358,7 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
                 <Input
                   id="numeroOrcamento"
                   value={formData.numeroOrcamento}
+                  placeholder="Será gerado automaticamente"
                   disabled
                 />
               </div>

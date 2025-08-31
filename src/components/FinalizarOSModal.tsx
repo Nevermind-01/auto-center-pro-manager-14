@@ -100,8 +100,8 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
   }, [open, venda]);
 
   // Cálculos de valores
-  const produtos = venda.venda_produtos || [];
-  const servicos = venda.venda_servicos || [];
+  const produtos = venda?.venda_produtos || [];
+  const servicos = venda?.venda_servicos || [];
   
   const valorProdutos = produtos.reduce((total: number, produto: any) => 
     total + (Number(produto.preco_total) || 0), 0
@@ -123,7 +123,7 @@ const valorFinal = valorTotal - valorDesconto;
     ? (typeof valorFixo === 'number' ? valorFixo : 0)
     : 0;
 
-  const hasMecanico = Boolean(venda.mecanico_id);
+  const hasMecanico = Boolean(venda?.mecanico_id);
   const hasServicos = servicos.length > 0;
 
   // Hook para proteção contra múltiplos cliques

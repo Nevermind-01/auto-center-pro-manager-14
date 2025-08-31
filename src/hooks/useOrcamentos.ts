@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useEmpresaContext } from './useEmpresaContext';
 import { useToast } from './use-toast';
-import { generateUniqueOSNumber } from '@/lib/utils';
+import { generateSequentialOSNumber } from '@/lib/utils';
 
 export interface Orcamento {
   id: string;
@@ -375,72 +375,30 @@ export const useOrcamentoMutations = () => {
         throw new Error('Apenas orçamentos aprovados podem ser convertidos');
       }
 
-      // Implementar retry para concorrência de números de OS
-      let tentativas = 0;
-      let venda: any = null;
-      const maxTentativas = 5;
+      // Gerar número da OS sequencial (retry já integrado na função)
+      const numeroOS = await generateSequentialOSNumber(empresaId);
 
-      while (tentativas < maxTentativas) {
-        try {
-          // Gerar novo número da OS a cada tentativa
-          const numeroOS = await generateUniqueOSNumber();
+      // Criar a OS
+      const { data: venda, error: vendaError } = await supabase
+        .from('vendas')
+        .insert({
+          numero_os: numeroOS,
+          cliente_id: orcamento.cliente_id,
+          cliente_nome: orcamento.cliente_nome,
+          veiculo_id: orcamento.veiculo_id,
+          mecanico_id: orcamento.mecanico_id,
+          valor_total: orcamento.valor_total,
+          valor_desconto: orcamento.valor_desconto,
+          valor_final: orcamento.valor_final,
+          forma_pagamento: 'dinheiro',
+          observacoes: orcamento.observacoes,
+          status: 'pendente',
+          user_id: user?.id,
+        })
+        .select()
+        .single();
 
-          // Criar a OS
-          const { data: vendaData, error: vendaError } = await supabase
-            .from('vendas')
-            .insert({
-              numero_os: numeroOS,
-              cliente_id: orcamento.cliente_id,
-              cliente_nome: orcamento.cliente_nome,
-              veiculo_id: orcamento.veiculo_id,
-              mecanico_id: orcamento.mecanico_id,
-              valor_total: orcamento.valor_total,
-              valor_desconto: orcamento.valor_desconto,
-              valor_final: orcamento.valor_final,
-              forma_pagamento: 'dinheiro',
-              observacoes: orcamento.observacoes,
-              status: 'pendente',
-              user_id: user?.id,
-            })
-            .select()
-            .single();
-
-          if (vendaError) {
-            // Verificar se é erro de constraint unique (concorrência)
-            if (vendaError.code === '23505' && vendaError.message?.includes('numero_os')) {
-              tentativas++;
-              console.log(`Conflito de numeração OS (tentativa ${tentativas}/${maxTentativas}), tentando novamente...`);
-              
-              if (tentativas < maxTentativas) {
-                // Aguardar um tempo aleatório antes de tentar novamente (entre 100-500ms)
-                const delay = Math.random() * 400 + 100;
-                await new Promise(resolve => setTimeout(resolve, delay));
-                continue;
-              }
-            }
-            throw vendaError;
-          }
-
-          // Se chegou até aqui, a venda foi criada com sucesso
-          venda = vendaData;
-          break;
-          
-        } catch (error: any) {
-          // Se é erro de concorrência e ainda temos tentativas, continua
-          if (error?.code === '23505' && error?.message?.includes('numero_os') && tentativas < maxTentativas - 1) {
-            tentativas++;
-            const delay = Math.random() * 400 + 100;
-            await new Promise(resolve => setTimeout(resolve, delay));
-            continue;
-          }
-          // Para outros erros ou se esgotaram as tentativas, lança o erro
-          throw error;
-        }
-      }
-
-      if (!venda) {
-        throw new Error(`Não foi possível criar OS após ${maxTentativas} tentativas devido à concorrência`);
-      }
+      if (vendaError) throw vendaError;
 
       // Copiar produtos
       if (orcamento.orcamento_produtos.length > 0) {

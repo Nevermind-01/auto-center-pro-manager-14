@@ -28,7 +28,7 @@ import { ComissaoCalculatorModal } from "@/components/ComissaoCalculatorModal";
 import { useSupabaseEstoque, ProdutoComCategoria } from "@/lib/supabaseEstoque";
 import { useClienteValidation } from "@/hooks/useClienteValidation";
 import { sanitizeClienteData } from "@/lib/inputSanitizer";
-import { generateSequentialOSNumber, createOSWithRetry } from "@/lib/utils";
+import { generateSequentialOSNumber } from "@/lib/utils";
 import { useEmpresaContext } from "@/hooks/useEmpresaContext";
 import { useMultipleAsyncActions } from "@/hooks/useAsyncAction";
 import { 
@@ -171,8 +171,6 @@ const NovaOSSupabase = () => {
   // Estados para preservar valores durante cálculo de comissão
   const [valorServicosParaComissao, setValorServicosParaComissao] = useState<number>(0);
   const [valorTotalParaComissao, setValorTotalParaComissao] = useState<number>(0);
-
-  // Função para gerar novo número de OS único - removida (agora usa generateUniqueOSNumber do utils)
 
   // Gerar número da OS automaticamente
   useEffect(() => {
@@ -800,26 +798,25 @@ const NovaOSSupabase = () => {
         // Voltar para histórico
         navigate('/history');
       } else {
-        // Criar nova venda com retry para lidar com concorrência
-        const osCreationResult = await createOSWithRetry(async (numeroOSAtual) => {
-          return await createVenda.mutateAsync({
-            numero_os: numeroOSAtual,
-            cliente_id: clienteSelecionado.id,
-            cliente_nome: clienteSelecionado.nome,
-            veiculo_id: veiculoSelecionado?.id || null,
-            mecanico_id: mecanicoSelecionado === "none" ? null : mecanicoSelecionado || null,
-            valor_total: valorTotal,
-            valor_desconto: valorDesconto,
-            valor_final: valorFinal,
-            forma_pagamento: (formaPagamento || 'dinheiro') as any,
-            parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
-            observacoes: observacoes || null,
-            status: 'pendente'
-          });
-        }, empresaId!, 5);
+        // Gerar número sequencial de OS
+        const numeroOSFinal = await generateSequentialOSNumber(empresaId!);
+        
+        // Criar nova venda
+        const venda = await createVenda.mutateAsync({
+          numero_os: numeroOSFinal,
+          cliente_id: clienteSelecionado.id,
+          cliente_nome: clienteSelecionado.nome,
+          veiculo_id: veiculoSelecionado?.id || null,
+          mecanico_id: mecanicoSelecionado === "none" ? null : mecanicoSelecionado || null,
+          valor_total: valorTotal,
+          valor_desconto: valorDesconto,
+          valor_final: valorFinal,
+          forma_pagamento: (formaPagamento || 'dinheiro') as any,
+          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+          observacoes: observacoes || null,
+          status: 'pendente'
+        });
 
-        const venda = osCreationResult.result;
-        const numeroOSFinal = osCreationResult.numeroOS;
         
         // Atualizar o estado com o número final usado
         setNumeroOS(numeroOSFinal);
@@ -966,26 +963,25 @@ const NovaOSSupabase = () => {
           dados_novos: vendaAtualizada
         });
       } else {
-        // Modo criação - usar createOSWithRetry para lidar com concorrência automaticamente
-        const osCreationResult = await createOSWithRetry(async (numeroOSAtual) => {
-          return await createVenda.mutateAsync({
-            numero_os: numeroOSAtual,
-            cliente_id: clienteSelecionado.id,
-            cliente_nome: clienteSelecionado.nome,
-            veiculo_id: veiculoSelecionado?.id || null,
-            mecanico_id: mecanicoSelecionado === "none" ? null : mecanicoSelecionado || null,
-            valor_total: valorTotal,
-            valor_desconto: valorDesconto,
-            valor_final: valorFinal,
-            forma_pagamento: formaPagamento as any,
-            parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
-            observacoes: observacoes || null,
-            status: 'finalizada'
-          });
-        }, empresaId!, 5);
+        // Gerar número sequencial de OS
+        const numeroOSFinal = await generateSequentialOSNumber(empresaId!);
+        
+        // Modo criação - usar numeração sequencial
+        const venda = await createVenda.mutateAsync({
+          numero_os: numeroOSFinal,
+          cliente_id: clienteSelecionado.id,
+          cliente_nome: clienteSelecionado.nome,
+          veiculo_id: veiculoSelecionado?.id || null,
+          mecanico_id: mecanicoSelecionado === "none" ? null : mecanicoSelecionado || null,
+          valor_total: valorTotal,
+          valor_desconto: valorDesconto,
+          valor_final: valorFinal,
+          forma_pagamento: formaPagamento as any,
+          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+          observacoes: observacoes || null,
+          status: 'finalizada'
+        });
 
-        const venda = osCreationResult.result;
-        const numeroOSFinal = osCreationResult.numeroOS;
         
         // Atualizar o estado com o número final usado
         setNumeroOS(numeroOSFinal);

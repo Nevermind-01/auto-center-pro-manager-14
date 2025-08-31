@@ -15,7 +15,7 @@ import { useMecanicos } from '@/hooks/useMecanicos';
 import { useOrcamentoMutations, type CreateOrcamentoData } from '@/hooks/useOrcamentos';
 import { useAuth } from '@/hooks/useAuth';
 import { useEmpresaContext } from '@/hooks/useEmpresaContext';
-import { generateSequentialOrcamentoNumber, createOrcamentoWithRetry } from '@/lib/utils';
+import { generateSequentialOrcamentoNumber } from '@/lib/utils';
 import { Truck } from 'lucide-react';
 import { AtualizarKmModal } from '@/components/AtualizarKmModal';
 
@@ -297,11 +297,8 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
       // Modo edição
       await updateOrcamento.mutateAsync({ id: orcamentoParaEditar.id, data });
     } else {
-      // Modo criação com retry para evitar conflitos de numeração
-      await createOrcamentoWithRetry(async (numeroOrcamentoSequencial) => {
-        const dataComNumero = { ...data, numeroOrcamento: numeroOrcamentoSequencial };
-        return await createOrcamento.mutateAsync(dataComNumero);
-      }, empresaId);
+      // Modo criação com numeração sequencial (retry já integrado)
+      await createOrcamento.mutateAsync(data);
     }
     
     handleClose();

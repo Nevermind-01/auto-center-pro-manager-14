@@ -18,6 +18,7 @@ import { useComissoesMutations } from "@/hooks/useComissoes";
 import { useMecanicos } from "@/hooks/useMecanicos";
 import { supabase } from "@/integrations/supabase/client";
 import { PrintModal } from "@/components/print/PrintModal";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
 
 interface FinalizarOSModalProps {
   open: boolean;
@@ -127,45 +128,47 @@ const valorFinal = valorTotal - valorDesconto;
   const hasMecanico = Boolean(venda.mecanico_id);
   const hasServicos = servicos.length > 0;
 
-  const handleFinalizarOS = async () => {
-    // Validações obrigatórias
-    if (!formaPagamento) {
-      toast({
-        title: "Erro", 
-        description: "Selecione uma forma de pagamento.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!hasServicos) {
-      toast({
-        title: "Erro", 
-        description: "A OS deve ter pelo menos um serviço para ser finalizada.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!hasMecanico) {
-      toast({
-        title: "Erro", 
-        description: "A OS deve ter um mecânico vinculado para ser finalizada.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validações de comissão apenas se estiver habilitada
-    if (registrarComissao) {
-      if (!tipoCalculo) {
+  // Hook para proteção contra múltiplos cliques
+  const { execute: executarFinalizacao, isLoading: finalizandoOS } = useAsyncAction(
+    async () => {
+      // Validações obrigatórias
+      if (!formaPagamento) {
         toast({
           title: "Erro", 
-          description: "Selecione o tipo de cálculo da comissão.",
+          description: "Selecione uma forma de pagamento.",
           variant: "destructive",
         });
         return;
       }
+
+      if (!hasServicos) {
+        toast({
+          title: "Erro", 
+          description: "A OS deve ter pelo menos um serviço para ser finalizada.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!hasMecanico) {
+        toast({
+          title: "Erro", 
+          description: "A OS deve ter um mecânico vinculado para ser finalizada.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validações de comissão apenas se estiver habilitada
+      if (registrarComissao) {
+        if (!tipoCalculo) {
+          toast({
+            title: "Erro", 
+            description: "Selecione o tipo de cálculo da comissão.",
+            variant: "destructive",
+          });
+          return;
+        }
 
       if (tipoCalculo === 'percentual') {
         if (!valorPercentual || valorPercentual <= 0 || valorPercentual > 100) {
@@ -185,127 +188,128 @@ const valorFinal = valorTotal - valorDesconto;
           });
           return;
         }
+        }
       }
-    }
 
-    setIsLoading(true);
+      setIsLoading(true);
 
-    try {
-      // Validar estoque dos produtos
-      if (produtos.length > 0) {
-        for (const item of produtos) {
-          const temEstoque = await estoqueManager.verificarEstoque(item.produto_id, item.quantidade);
-          if (!temEstoque) {
-            const produto = await estoqueManager.buscarProdutoPorId(item.produto_id);
+      try {
+        // Validar estoque dos produtos
+        if (produtos.length > 0) {
+          for (const item of produtos) {
+            const temEstoque = await estoqueManager.verificarEstoque(item.produto_id, item.quantidade);
+            if (!temEstoque) {
+              const produto = await estoqueManager.buscarProdutoPorId(item.produto_id);
+              toast({
+                title: "Estoque insuficiente",
+                description: `Não há estoque suficiente para o produto ${produto?.nome || item.produto_nome}. Disponível: ${produto?.quantidade || 0}, Necessário: ${item.quantidade}`,
+                variant: "destructive",
+              });
+              return;
+            }
+          }
+
+          // Dar baixa no estoque
+          const produtosParaBaixa = produtos.map((item: any) => ({
+            id: item.produto_id,
+            nome: item.produto_nome,
+            marca: null,
+            valor: item.preco_unitario,
+            quantidade: item.quantidade
+          }));
+
+          const sucessoEstoque = await estoqueManager.processarVenda(produtosParaBaixa, venda.numero_os);
+          if (!sucessoEstoque) {
             toast({
-              title: "Estoque insuficiente",
-              description: `Não há estoque suficiente para o produto ${produto?.nome || item.produto_nome}. Disponível: ${produto?.quantidade || 0}, Necessário: ${item.quantidade}`,
+              title: "Erro no estoque",
+              description: "Erro ao dar baixa no estoque. Tente novamente.",
               variant: "destructive",
             });
-            setIsLoading(false);
             return;
           }
         }
 
-        // Dar baixa no estoque
-        const produtosParaBaixa = produtos.map((item: any) => ({
-          id: item.produto_id,
-          nome: item.produto_nome,
-          marca: null,
-          valor: item.preco_unitario,
-          quantidade: item.quantidade
-        }));
-
-        const sucessoEstoque = await estoqueManager.processarVenda(produtosParaBaixa, venda.numero_os);
-        if (!sucessoEstoque) {
-          toast({
-            title: "Erro no estoque",
-            description: "Erro ao dar baixa no estoque. Tente novamente.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Atualizar a venda com os novos valores e status finalizada
-      await updateVenda.mutateAsync({
-        id: venda.id,
-        valor_total: valorTotal,
-        valor_desconto: valorDesconto,
-        valor_final: valorFinal,
-        forma_pagamento: formaPagamento as any,
-        parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
-        observacoes: observacoes || null,
-        status: 'finalizada',
-        finalizado_em: new Date().toISOString()
-      });
-
-      // Registrar comissão se especificada
-      if (registrarComissao && tipoCalculo && hasMecanico) {
-        await createComissao.mutateAsync({
-          venda_id: venda.id,
-          mecanico_id: venda.mecanico_id,
-          tipo_calculo: tipoCalculo,
-          percentual: tipoCalculo === 'percentual' ? Number(valorPercentual) : null,
-          valor_fixo: tipoCalculo === 'fixo' ? Number(valorFixo) : null,
-          valor_final: comissaoPreview,
-          base_calculo: baseCalculo,
-          observacoes: obsComissao || null
-        });
-      }
-
-      // Registrar log de finalização
-      const logDescricao = registrarComissao && tipoCalculo
-        ? `OS ${venda.numero_os} finalizada com comissão registrada - ${formaPagamento}${formaPagamento === 'parcelado' ? ` (${parcelas}x)` : ''}`
-        : `OS ${venda.numero_os} finalizada via modal - ${formaPagamento}${formaPagamento === 'parcelado' ? ` (${parcelas}x)` : ''}`;
-
-      await createLog.mutateAsync({
-        os_id: venda.id,
-        tipo: 'finalizacao',
-        usuario: 'Admin',
-        observacoes: logDescricao
-      });
-
-      const successMessage = registrarComissao && tipoCalculo
-        ? `OS ${venda.numero_os} finalizada e comissão registrada com sucesso.`
-        : `OS ${venda.numero_os} foi finalizada com sucesso.`;
-
-      toast({
-        title: "Sucesso",
-        description: successMessage,
-      });
-
-      // Preparar dados da OS finalizada para impressão
-      if (imprimirAposFinalizacao) {
-        const osData = {
-          ...venda,
+        // Atualizar a venda com os novos valores e status finalizada
+        await updateVenda.mutateAsync({
+          id: venda.id,
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: formaPagamento,
+          forma_pagamento: formaPagamento as any,
           parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
           observacoes: observacoes || null,
           status: 'finalizada',
           finalizado_em: new Date().toISOString()
-        };
-        setOsFinalizadaData(osData);
-        setShowPrintModal(true);
+        });
+
+        // Registrar comissão se especificada
+        if (registrarComissao && tipoCalculo && hasMecanico) {
+          await createComissao.mutateAsync({
+            venda_id: venda.id,
+            mecanico_id: venda.mecanico_id,
+            tipo_calculo: tipoCalculo,
+            percentual: tipoCalculo === 'percentual' ? Number(valorPercentual) : null,
+            valor_fixo: tipoCalculo === 'fixo' ? Number(valorFixo) : null,
+            valor_final: comissaoPreview,
+            base_calculo: baseCalculo,
+            observacoes: obsComissao || null
+          });
+        }
+
+        // Registrar log de finalização
+        const logDescricao = registrarComissao && tipoCalculo
+          ? `OS ${venda.numero_os} finalizada com comissão registrada - ${formaPagamento}${formaPagamento === 'parcelado' ? ` (${parcelas}x)` : ''}`
+          : `OS ${venda.numero_os} finalizada via modal - ${formaPagamento}${formaPagamento === 'parcelado' ? ` (${parcelas}x)` : ''}`;
+
+        await createLog.mutateAsync({
+          os_id: venda.id,
+          tipo: 'finalizacao',
+          usuario: 'Admin',
+          observacoes: logDescricao
+        });
+
+        const successMessage = registrarComissao && tipoCalculo
+          ? `OS ${venda.numero_os} finalizada e comissão registrada com sucesso.`
+          : `OS ${venda.numero_os} foi finalizada com sucesso.`;
+
+        toast({
+          title: "Sucesso",
+          description: successMessage,
+        });
+
+        // Preparar dados da OS finalizada para impressão
+        if (imprimirAposFinalizacao) {
+          const osData = {
+            ...venda,
+            valor_total: valorTotal,
+            valor_desconto: valorDesconto,
+            valor_final: valorFinal,
+            forma_pagamento: formaPagamento,
+            parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+            observacoes: observacoes || null,
+            status: 'finalizada',
+            finalizado_em: new Date().toISOString()
+          };
+          setOsFinalizadaData(osData);
+          setShowPrintModal(true);
+        }
+
+        onOpenChange(false);
+
+      } catch (error) {
+        console.error('Erro ao finalizar OS:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao finalizar a OS. Tente novamente.",
+          variant: "destructive",
+        });
+        throw error;
       }
+    },
+    'finalizar-os'
+  );
 
-      onOpenChange(false);
-
-    } catch (error) {
-      console.error('Erro ao finalizar OS:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao finalizar a OS. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const handleFinalizarOS = () => executarFinalizacao();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -645,14 +649,14 @@ const valorFinal = valorTotal - valorDesconto;
 
         {/* Botões de ação */}
         <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={finalizandoOS}>
             Cancelar
           </Button>
           <Button 
             onClick={handleFinalizarOS} 
-            disabled={!formaPagamento || !hasServicos || !hasMecanico || isLoading}
+            disabled={!formaPagamento || !hasServicos || !hasMecanico || finalizandoOS}
           >
-            {isLoading ? "Finalizando..." : (registrarComissao && tipoCalculo ? "Finalizar OS e Registrar Comissão" : "Finalizar OS")}
+            {finalizandoOS ? "Finalizando..." : (registrarComissao && tipoCalculo ? "Finalizar OS e Registrar Comissão" : "Finalizar OS")}
           </Button>
         </div>
 

@@ -4,16 +4,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
 import { type Orcamento } from '@/hooks/useOrcamentos';
+import { useAsyncAction } from '@/hooks/useAsyncAction';
 
 interface ConversaoOSModalProps {
   open: boolean;
   onClose: () => void;
   orcamento: Orcamento | null;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void>;
   isLoading?: boolean;
 }
 
 export function ConversaoOSModal({ open, onClose, orcamento, onConfirm, isLoading = false }: ConversaoOSModalProps) {
+  // Hook para proteção contra múltiplos cliques
+  const { execute: executarConversao, isLoading: convertendoOrcamento } = useAsyncAction(
+    onConfirm,
+    'converter-orcamento'
+  );
+
+  const isProcessing = isLoading || convertendoOrcamento;
   if (!orcamento) return null;
 
   const valorTotalProdutos = orcamento.orcamento_produtos?.reduce((total, produto) => 
@@ -159,11 +167,11 @@ export function ConversaoOSModal({ open, onClose, orcamento, onConfirm, isLoadin
 
           {/* Botões */}
           <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button variant="outline" onClick={onClose} disabled={isLoading}>
+            <Button variant="outline" onClick={onClose} disabled={isProcessing}>
               Cancelar
             </Button>
-            <Button onClick={onConfirm} className="bg-green-600 hover:bg-green-700" disabled={isLoading}>
-              {isLoading ? 'Convertendo...' : 'Confirmar Conversão'}
+            <Button onClick={executarConversao} className="bg-green-600 hover:bg-green-700" disabled={isProcessing}>
+              {isProcessing ? 'Convertendo...' : 'Confirmar Conversão'}
             </Button>
           </div>
         </div>

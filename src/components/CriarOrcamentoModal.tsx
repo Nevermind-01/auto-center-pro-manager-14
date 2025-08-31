@@ -15,6 +15,7 @@ import { useMecanicos } from '@/hooks/useMecanicos';
 import { useOrcamentoMutations, type CreateOrcamentoData } from '@/hooks/useOrcamentos';
 import { useAuth } from '@/hooks/useAuth';
 import { useEmpresaContext } from '@/hooks/useEmpresaContext';
+import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { generateSequentialOrcamentoNumber } from '@/lib/utils';
 import { Truck } from 'lucide-react';
 import { AtualizarKmModal } from '@/components/AtualizarKmModal';
@@ -255,48 +256,54 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
   const valorTotal = valorTotalProdutos + valorTotalServicos;
   const valorFinal = valorTotal - formData.valorDesconto;
 
-  const handleSubmit = async () => {
-    if (!formData.clienteId || !formData.validade) {
-      alert('Preencha todos os campos obrigatórios');
-      return;
-    }
+  // Hook para proteção contra múltiplos cliques
+  const { execute: executarSubmit, isLoading: salvandoOrcamento } = useAsyncAction(
+    async () => {
+      if (!formData.clienteId || !formData.validade) {
+        alert('Preencha todos os campos obrigatórios');
+        return;
+      }
 
-    if (!empresaId) {
-      alert('Erro: Empresa não selecionada');
-      return;
-    }
+      if (!empresaId) {
+        alert('Erro: Empresa não selecionada');
+        return;
+      }
 
-    // Gerar número do orçamento no momento do salvamento (apenas para criação)
-    const numeroOrcamentoFinal = orcamentoParaEditar 
-      ? formData.numeroOrcamento 
-      : await generateSequentialOrcamentoNumber(empresaId);
+      // Gerar número do orçamento no momento do salvamento (apenas para criação)
+      const numeroOrcamentoFinal = orcamentoParaEditar 
+        ? formData.numeroOrcamento 
+        : await generateSequentialOrcamentoNumber(empresaId);
 
-    const data: CreateOrcamentoData = {
-      numeroOrcamento: numeroOrcamentoFinal,
-      clienteId: formData.clienteId,
-      clienteNome: formData.clienteNome,
-      veiculoId: formData.veiculoId || undefined,
-      mecanicoId: formData.mecanicoId || undefined,
-      valorTotal,
-      valorDesconto: formData.valorDesconto,
-      valorFinal,
-      validade: formData.validade,
-      observacoes: formData.observacoes || undefined,
-      observacoesInternas: formData.observacoesInternas || undefined,
-      produtos: produtosSelecionados,
-      servicos: servicosSelecionados,
-    };
+      const data: CreateOrcamentoData = {
+        numeroOrcamento: numeroOrcamentoFinal,
+        clienteId: formData.clienteId,
+        clienteNome: formData.clienteNome,
+        veiculoId: formData.veiculoId || undefined,
+        mecanicoId: formData.mecanicoId || undefined,
+        valorTotal,
+        valorDesconto: formData.valorDesconto,
+        valorFinal,
+        validade: formData.validade,
+        observacoes: formData.observacoes || undefined,
+        observacoesInternas: formData.observacoesInternas || undefined,
+        produtos: produtosSelecionados,
+        servicos: servicosSelecionados,
+      };
 
-    if (orcamentoParaEditar) {
-      // Modo edição
-      await updateOrcamento.mutateAsync({ id: orcamentoParaEditar.id, data });
-    } else {
-      // Modo criação com numeração sequencial (retry já integrado)
-      await createOrcamento.mutateAsync(data);
-    }
-    
-    handleClose();
-  };
+      if (orcamentoParaEditar) {
+        // Modo edição
+        await updateOrcamento.mutateAsync({ id: orcamentoParaEditar.id, data });
+      } else {
+        // Modo criação com numeração sequencial (retry já integrado)
+        await createOrcamento.mutateAsync(data);
+      }
+      
+      handleClose();
+    },
+    'salvar-orcamento'
+  );
+
+  const handleSubmit = () => executarSubmit();
 
   const handleClose = () => {
     setFormData({
@@ -735,14 +742,14 @@ export function CriarOrcamentoModal({ open, onClose, orcamentoParaEditar }: Cria
 
           {/* Botões */}
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleClose}>
+            <Button variant="outline" onClick={handleClose} disabled={salvandoOrcamento}>
               Cancelar
             </Button>
             <Button 
               onClick={handleSubmit}
-              disabled={createOrcamento.isPending || updateOrcamento.isPending}
+              disabled={salvandoOrcamento}
             >
-              {(createOrcamento.isPending || updateOrcamento.isPending) ? 'Salvando...' : 
+              {salvandoOrcamento ? 'Salvando...' : 
                orcamentoParaEditar ? 'Atualizar Orçamento' : 'Salvar Orçamento'}
             </Button>
           </div>

@@ -1220,6 +1220,39 @@ export type Database = {
         }
         Returns: string
       }
+      create_orcamento_safe: {
+        Args: {
+          p_cliente_id: string
+          p_cliente_nome: string
+          p_mecanico_id: string
+          p_numero_orcamento: string
+          p_observacoes: string
+          p_observacoes_internas: string
+          p_validade: string
+          p_valor_desconto: number
+          p_valor_final: number
+          p_valor_total: number
+          p_veiculo_id: string
+        }
+        Returns: string
+      }
+      create_venda_safe: {
+        Args: {
+          p_cliente_id: string
+          p_cliente_nome: string
+          p_forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
+          p_mecanico_id: string
+          p_numero_os: string
+          p_observacoes: string
+          p_parcelas: number
+          p_status?: Database["public"]["Enums"]["venda_status"]
+          p_valor_desconto: number
+          p_valor_final: number
+          p_valor_total: number
+          p_veiculo_id: string
+        }
+        Returns: string
+      }
       get_current_empresa_id: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1251,6 +1284,10 @@ export type Database = {
         }[]
       }
       get_next_sequential_number: {
+        Args: { p_empresa_id: string; p_tipo: string }
+        Returns: string
+      }
+      get_next_sequential_number_safe: {
         Args: { p_empresa_id: string; p_tipo: string }
         Returns: string
       }

@@ -17,7 +17,7 @@ export async function generateSequentialOSNumber(empresaId: string, maxTentativa
     try {
       console.log(`🔄 Tentativa ${tentativas + 1}/${maxTentativas} para gerar número sequencial de OS`);
       
-      const { data, error } = await supabase.rpc('get_next_sequential_number', {
+      const { data, error } = await supabase.rpc('get_next_sequential_number_safe', {
         p_empresa_id: empresaId,
         p_tipo: 'os'
       });
@@ -66,7 +66,7 @@ export async function generateSequentialOrcamentoNumber(empresaId: string, maxTe
     try {
       console.log(`🔄 Tentativa ${tentativas + 1}/${maxTentativas} para gerar número sequencial de orçamento`);
       
-      const { data, error } = await supabase.rpc('get_next_sequential_number', {
+      const { data, error } = await supabase.rpc('get_next_sequential_number_safe', {
         p_empresa_id: empresaId,
         p_tipo: 'orcamento'
       });

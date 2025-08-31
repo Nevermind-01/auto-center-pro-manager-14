@@ -99,8 +99,6 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
     }
   }, [open, venda]);
 
-  if (!venda) return null;
-
   // Cálculos de valores
   const produtos = venda.venda_produtos || [];
   const servicos = venda.venda_servicos || [];
@@ -310,6 +308,19 @@ const valorFinal = valorTotal - valorDesconto;
   );
 
   const handleFinalizarOS = () => executarFinalizacao();
+
+  if (!venda) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Erro</DialogTitle>
+          </DialogHeader>
+          <p>Nenhuma OS selecionada.</p>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

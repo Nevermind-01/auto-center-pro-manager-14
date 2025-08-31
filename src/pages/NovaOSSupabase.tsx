@@ -1060,22 +1060,86 @@ const NovaOSSupabase = () => {
   };
 
   const processarFinalizacaoComComissao = async () => {
-    console.log("🚀 Preparando modal de comissão (não finalizando OS ainda)");
+    console.log("🚀 Preparando modal de comissão");
     
-    // Capturar valores para exibição no modal (apenas informativos)
-    console.log("💰 Capturando valores informativos - Serviços:", valorServicos, "Total:", valorTotal);
-    setValorServicosParaComissao(valorServicos);
-    setValorTotalParaComissao(valorTotal);
-    
-    // Armazenar vendaId para comissão se editando uma OS existente
-    if (isEditing && editingVenda?.id) {
-      setVendaIdForComissao(editingVenda.id);
+    try {
+      // Validar dados obrigatórios antes de abrir o modal
+      if (!clienteSelecionado) {
+        toast({
+          title: "Erro",
+          description: "Selecione um cliente antes de calcular a comissão.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!mecanicoSelecionado || mecanicoSelecionado === "none") {
+        toast({
+          title: "Erro", 
+          description: "Selecione um mecânico para calcular a comissão.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!formaPagamento) {
+        toast({
+          title: "Erro",
+          description: "Selecione uma forma de pagamento antes de calcular a comissão.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (servicosSelecionados.length === 0) {
+        toast({
+          title: "Erro",
+          description: "É necessário ter pelo menos um serviço para calcular comissão.",
+          variant: "destructive", 
+        });
+        return;
+      }
+
+      // Gerar número da OS se for uma nova OS
+      let numeroOSFinal = numeroOS;
+      if (!numeroOSFinal && !isEditing && empresaId) {
+        try {
+          numeroOSFinal = await generateSequentialOSNumber(empresaId);
+          setNumeroOS(numeroOSFinal);
+          console.log("✅ Número OS gerado para comissão:", numeroOSFinal);
+        } catch (error) {
+          console.error('Erro ao gerar número de OS:', error);
+          toast({
+            title: "Erro",
+            description: "Erro ao gerar número da OS. Tente novamente.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Capturar valores para exibição no modal
+      console.log("💰 Capturando valores - Serviços:", valorServicos, "Total:", valorTotal);
+      setValorServicosParaComissao(valorServicos);
+      setValorTotalParaComissao(valorTotal);
+      
+      // Armazenar vendaId para comissão se editando uma OS existente
+      if (isEditing && editingVenda?.id) {
+        setVendaIdForComissao(editingVenda.id);
+      }
+      
+      // Abrir modal de comissão com dados validados
+      console.log("📋 Abrindo modal de comissão. Número OS:", numeroOSFinal);
+      setShowComissaoCalculator(true);
+      
+    } catch (error) {
+      console.error("Erro ao preparar comissão:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao preparar cálculo de comissão. Tente novamente.",
+        variant: "destructive",
+      });
     }
-    // Para nova OS, o vendaId será setado no ComissaoCalculatorModal após finalizar
-    
-    // Abrir modal de comissão SEM finalizar a OS
-    console.log("📋 Abrindo modal de comissão. VendaId para edição:", isEditing ? editingVenda?.id : 'nova OS');
-    setShowComissaoCalculator(true);
   };
 
   const handleComissaoFinalized = () => {

@@ -92,7 +92,7 @@ export const ComissaoCalculatorModal = ({
     setIsProcessing(true);
 
     try {
-      // Validar pré-requisitos
+      // Validar pré-requisitos críticos
       if (!osData) {
         throw new Error("Dados da OS não fornecidos");
       }
@@ -100,22 +100,30 @@ export const ComissaoCalculatorModal = ({
       const { clienteSelecionado, veiculoSelecionado, servicosSelecionados, produtosSelecionados, 
               formaPagamento, parcelas, valorDesconto, observacoes, numeroOS } = osData;
 
-      // Validações básicas
-      if (!clienteSelecionado || !numeroOS || !mecanicoId) {
-        throw new Error("Dados obrigatórios ausentes: cliente, número OS ou mecânico");
+      // Validações obrigatórias mais específicas
+      if (!clienteSelecionado?.id || !clienteSelecionado?.nome) {
+        throw new Error("Cliente não selecionado ou dados incompletos");
       }
 
-      if (!formaPagamento) {
-        throw new Error("Forma de pagamento é obrigatória");
+      if (!numeroOS || numeroOS.trim() === "") {
+        throw new Error("Número da OS não foi gerado");
       }
 
-      if (servicosSelecionados.length === 0) {
+      if (!mecanicoId || mecanicoId === "none") {
+        throw new Error("Mecânico não selecionado");
+      }
+
+      if (!formaPagamento || formaPagamento.trim() === "") {
+        throw new Error("Forma de pagamento não selecionada");
+      }
+
+      if (!servicosSelecionados || servicosSelecionados.length === 0) {
         throw new Error("É necessário ter pelo menos um serviço para calcular comissão");
       }
 
       // Validar cálculo de comissão
       if (tipoCalculo !== "percentual" && tipoCalculo !== "fixo") {
-        throw new Error("Tipo de cálculo inválido");
+        throw new Error("Tipo de cálculo de comissão inválido");
       }
 
       if (tipoCalculo === "percentual" && (percentual <= 0 || percentual > 100)) {
@@ -126,35 +134,41 @@ export const ComissaoCalculatorModal = ({
         throw new Error("Valor fixo deve ser maior que zero");
       }
 
+      // Validar base de cálculo
+      const baseCalculada = getBaseCalculoValue();
+      if (baseCalculada <= 0) {
+        throw new Error("Base de cálculo deve ser maior que zero");
+      }
+
       // Obter usuário autenticado
       const user = await supabase.auth.getUser();
-      if (!user.data.user) {
+      if (!user.data.user?.id) {
         throw new Error("Usuário não autenticado");
       }
 
       // Preparar payload para o RPC
       const payload = {
-        numeroOS,
+        numeroOS: numeroOS.trim(),
         clienteId: clienteSelecionado.id,
         veiculoId: veiculoSelecionado?.id || null,
         mecanicoId,
         userId: user.data.user.id,
         valorTotal: valorTotal,
-        valorDesconto,
-        valorFinal: valorTotal - valorDesconto,
+        valorDesconto: valorDesconto || 0,
+        valorFinal: valorTotal - (valorDesconto || 0),
         formaPagamento,
-        parcelas,
+        parcelas: parcelas || 1,
         observacoes: observacoes || "",
-        produtos: produtosSelecionados.map(p => ({
+        produtos: (produtosSelecionados || []).map(p => ({
           id: p.id,
           nome: p.nome,
-          valor: p.valor,
-          quantidade: p.quantidade
+          valor: Number(p.valor) || 0,
+          quantidade: Number(p.quantidade) || 0
         })),
         servicos: servicosSelecionados.map(s => ({
           id: s.id || null,
           nome: s.nome,
-          valor: s.valor
+          valor: Number(s.valor) || 0
         })),
         comissao: {
           tipoCalculo,
@@ -163,6 +177,8 @@ export const ComissaoCalculatorModal = ({
           observacoes: observacoes || ""
         }
       };
+
+      console.log("📋 Enviando payload para RPC:", payload);
 
       // Usar RPC para finalizar OS com comissão (integração completa e atômica)
       const { data: resultado, error: rpcError } = await supabase.rpc(
@@ -177,7 +193,7 @@ export const ComissaoCalculatorModal = ({
 
       const resultadoData = resultado as any;
       if (!resultadoData?.success) {
-        throw new Error("Falha ao processar finalização da OS");
+        throw new Error(resultadoData?.error || "Falha ao processar finalização da OS");
       }
 
       // Sucesso
@@ -205,6 +221,8 @@ export const ComissaoCalculatorModal = ({
         errorMessage = "Dados não encontrados no sistema";
       } else if (errorMessage.includes("row-level security")) {
         errorMessage = "Erro de permissão. Verifique se você tem acesso aos dados da empresa";
+      } else if (errorMessage.includes("não selecionado") || errorMessage.includes("não foi gerado")) {
+        errorMessage = "Dados obrigatórios não preenchidos: " + errorMessage;
       }
 
       toast({

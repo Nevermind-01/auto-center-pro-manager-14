@@ -337,20 +337,8 @@ const NovaOSSupabase = () => {
     setEditDataLoaded(false);
     setLoadingEditData(false);
     
-    // Gerar novo número de OS sequencial
-    if (empresaId) {
-      try {
-        const novoNumero = await generateSequentialOSNumber(empresaId);
-        setNumeroOS(novoNumero);
-      } catch (error) {
-        console.error('Erro ao gerar novo número de OS:', error);
-        toast({
-          title: "Erro",
-          description: "Erro ao gerar novo número de OS.",
-          variant: "destructive",
-        });
-      }
-    }
+    // Limpar número de OS para gerar apenas quando necessário
+    setNumeroOS('');
   };
 
   // Reset quando sair do modo de edição
@@ -776,8 +764,12 @@ const NovaOSSupabase = () => {
         // Voltar para histórico
         navigate('/history');
       } else {
-        // Gerar número sequencial de OS
-        const numeroOSFinal = await generateSequentialOSNumber(empresaId!);
+        // Gerar número sequencial de OS apenas se não tiver
+        let numeroOSFinal = numeroOS;
+        if (!numeroOSFinal) {
+          numeroOSFinal = await generateSequentialOSNumber(empresaId!);
+          setNumeroOS(numeroOSFinal);
+        }
         
         // Criar nova venda
         const venda = await createVenda.mutateAsync({
@@ -941,8 +933,12 @@ const NovaOSSupabase = () => {
           dados_novos: vendaAtualizada
         });
       } else {
-        // Gerar número sequencial de OS
-        const numeroOSFinal = await generateSequentialOSNumber(empresaId!);
+        // Gerar número sequencial de OS apenas se não tiver
+        let numeroOSFinal = numeroOS;
+        if (!numeroOSFinal) {
+          numeroOSFinal = await generateSequentialOSNumber(empresaId!);
+          setNumeroOS(numeroOSFinal);
+        }
         
         // Modo criação - usar numeração sequencial
         const venda = await createVenda.mutateAsync({
@@ -1100,7 +1096,7 @@ const NovaOSSupabase = () => {
         return;
       }
 
-      // Gerar número da OS se for uma nova OS
+      // Usar número da OS existente ou gerar novo apenas se necessário
       let numeroOSFinal = numeroOS;
       if (!numeroOSFinal && !isEditing && empresaId) {
         try {

@@ -8,6 +8,15 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Extrai mensagem de erro de forma segura
+ */
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'Erro desconhecido';
+}
+
+/**
  * Valida se um UUID é válido
  */
 function isValidUUID(uuid: string): boolean {
@@ -49,11 +58,11 @@ export async function generateSequentialOSNumber(empresaId: string, maxTentativa
       logger.info('Número OS sequencial gerado com sucesso', { numero: data, empresaId });
       return data;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       tentativas++;
       logger.warn(`Tentativa ${tentativas}/${maxTentativas} falhou ao gerar número OS`, { 
         empresaId, 
-        error: error.message,
+        error: getErrorMessage(error),
         tentativa: tentativas 
       });
       
@@ -70,15 +79,11 @@ export async function generateSequentialOSNumber(empresaId: string, maxTentativa
       logger.error('Erro não recuperável ao gerar número OS - tentativas esgotadas', { 
         empresaId, 
         maxTentativas, 
-        error: error.message 
+        error: getErrorMessage(error) 
       });
       throw error;
     }
   }
-  
-  const finalError = new Error(`Não foi possível gerar número de OS após ${maxTentativas} tentativas`);
-  logger.error('Falha total ao gerar número OS', { empresaId, maxTentativas });
-  throw finalError;
 }
 
 /**
@@ -115,11 +120,11 @@ export async function generateSequentialOrcamentoNumber(empresaId: string, maxTe
       logger.info('Número orçamento sequencial gerado com sucesso', { numero: data, empresaId });
       return data;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       tentativas++;
       logger.warn(`Tentativa ${tentativas}/${maxTentativas} falhou ao gerar número orçamento`, { 
         empresaId, 
-        error: error.message,
+        error: getErrorMessage(error),
         tentativa: tentativas 
       });
       
@@ -136,14 +141,10 @@ export async function generateSequentialOrcamentoNumber(empresaId: string, maxTe
       logger.error('Erro não recuperável ao gerar número orçamento - tentativas esgotadas', { 
         empresaId, 
         maxTentativas, 
-        error: error.message 
+        error: getErrorMessage(error) 
       });
       throw error;
     }
   }
-  
-  const finalError = new Error(`Não foi possível gerar número de orçamento após ${maxTentativas} tentativas`);
-  logger.error('Falha total ao gerar número orçamento', { empresaId, maxTentativas });
-  throw finalError;
 }
 

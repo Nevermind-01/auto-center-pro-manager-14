@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PrintModal } from "@/components/print/PrintModal";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
+import { mapVendaToCaixaFormaPagamento, type VendaFormaPagamento } from "@/lib/paymentMethodMapper";
 
 interface FinalizarOSModalProps {
   open: boolean;
@@ -257,15 +258,28 @@ const valorFinal = valorTotal - valorDesconto;
         }
 
         // Registrar movimentação no caixa
-        await criarMovimentacao({
-          tipo: 'entrada',
-          tipo_origem: 'OS',
-          forma_pagamento: formaPagamento as any,
-          valor_bruto: valorFinal,
-          valor_liquido: valorFinal,
-          descricao: `OS ${venda.numero_os} - ${venda.cliente_nome}`,
-          referencia_id: venda.id,
-        });
+        const caixaFormaPagamento = mapVendaToCaixaFormaPagamento(formaPagamento as VendaFormaPagamento);
+        
+        try {
+          await criarMovimentacao({
+            tipo: 'entrada',
+            tipo_origem: 'OS',
+            forma_pagamento: caixaFormaPagamento,
+            valor_bruto: valorFinal,
+            valor_liquido: valorFinal,
+            descricao: `OS ${venda.numero_os} - ${venda.cliente_nome}`,
+            referencia_id: venda.id,
+          });
+        } catch (caixaError) {
+          console.error('Erro ao registrar movimentação no caixa:', caixaError);
+          // Note: We don't throw here to avoid full rollback, just log the error
+          // The OS is already finalized successfully
+          toast({
+            title: "Atenção",
+            description: "OS finalizada com sucesso, mas houve um problema ao registrar no caixa. Verifique as movimentações.",
+            variant: "destructive",
+          });
+        }
 
         // Registrar log de finalização
         const logDescricao = registrarComissao && tipoCalculo

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,15 @@ export function SangriaModal({ open, onOpenChange }: SangriaModalProps) {
   const [valor, setValor] = useState('');
   const [motivo, setMotivo] = useState('');
   const [autorizadoPor, setAutorizadoPor] = useState('');
+
+  // Reset form when modal closes or operation succeeds
+  useEffect(() => {
+    if (!open || !isCriandoSangria) {
+      setValor('');
+      setMotivo('');
+      setAutorizadoPor('');
+    }
+  }, [open, isCriandoSangria]);
 
   // Buscar usuários admin/owner da empresa
   const { data: usuariosAutorizados } = useQuery({
@@ -69,18 +78,13 @@ export function SangriaModal({ open, onOpenChange }: SangriaModalProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!valor || !motivo || !autorizadoPor) return;
+    if (!valor || !motivo || !autorizadoPor || isCriandoSangria) return;
     
     criarSangria({
       valor: parseFloat(valor),
       motivo,
       autorizado_por: autorizadoPor,
     });
-    
-    setValor('');
-    setMotivo('');
-    setAutorizadoPor('');
-    onOpenChange(false);
   };
 
   if (!caixaAtual) {

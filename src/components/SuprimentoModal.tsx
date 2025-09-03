@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,19 +22,23 @@ export function SuprimentoModal({ open, onOpenChange }: SuprimentoModalProps) {
   const [valor, setValor] = useState('');
   const [motivo, setMotivo] = useState('');
 
+  // Reset form when modal closes or operation succeeds
+  useEffect(() => {
+    if (!open || !isCriandoSuprimento) {
+      setValor('');
+      setMotivo('');
+    }
+  }, [open, isCriandoSuprimento]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!valor || !motivo) return;
+    if (!valor || !motivo || isCriandoSuprimento) return;
     
     criarSuprimento({
       valor: parseFloat(valor),
       motivo,
     });
-    
-    setValor('');
-    setMotivo('');
-    onOpenChange(false);
   };
 
   if (!caixaAtual) {

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useEmpresaContext } from '@/hooks/useEmpresaContext';
@@ -56,7 +57,7 @@ export function useFechamentoCaixa() {
   });
 
   // Função para calcular valores esperados
-  const calcularValoresEsperados = async (caixaId: string) => {
+  const calcularValoresEsperados = useCallback(async (caixaId: string) => {
     // Buscar caixa
     const { data: caixa, error: caixaError } = await supabase
       .from('caixas')
@@ -133,7 +134,7 @@ export function useFechamentoCaixa() {
       totalSangrias,
       trocoInicial: Number(caixa.troco_inicial),
     };
-  };
+  }, []);
 
   // Mutation para processar fechamento
   const processarFechamento = useMutation({

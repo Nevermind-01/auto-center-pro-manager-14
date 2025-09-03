@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,25 +28,36 @@ export function CaixaModal({ open, onOpenChange }: CaixaModalProps) {
 
   const [trocoInicial, setTrocoInicial] = useState('');
   const [observacao, setObservacao] = useState('');
+  const [activeTab, setActiveTab] = useState('');
+
+  // Update tab based on caixa status
+  useEffect(() => {
+    setActiveTab(caixaAtual ? "resumo" : "abrir");
+  }, [caixaAtual]);
+
+  // Reset form when closed and clear after success 
+  useEffect(() => {
+    if (!open) {
+      setTrocoInicial('');
+      setObservacao('');
+    }
+  }, [open]);
 
   const handleAbrirCaixa = () => {
-    if (!trocoInicial) return;
+    if (!trocoInicial || isAbrindoCaixa) return;
     
     abrirCaixa({
       troco_inicial: parseFloat(trocoInicial),
       observacao: observacao || undefined,
     });
-    
-    setTrocoInicial('');
-    setObservacao('');
   };
 
   const handleFecharCaixa = () => {
+    if (isFechandoCaixa) return;
+    
     fecharCaixa({
       observacao: observacao || undefined,
     });
-    
-    setObservacao('');
   };
 
   const calcularTotalCaixa = () => {
@@ -69,7 +80,7 @@ export function CaixaModal({ open, onOpenChange }: CaixaModalProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue={caixaAtual ? "resumo" : "abrir"} className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="abrir" disabled={!!caixaAtual}>
               Abrir Caixa

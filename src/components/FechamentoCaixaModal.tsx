@@ -60,7 +60,7 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
   };
 
   const handleProcessarFechamento = () => {
-    if (!caixaAtual?.id) return;
+    if (!caixaAtual?.id || isProcessandoFechamento) return;
 
     processarFechamento({
       contagem_dinheiro: parseFloat(contagemDinheiro) || 0,
@@ -69,15 +69,18 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
       contagem_credito: parseFloat(contagemCredito) || 0,
       caixa_id: caixaAtual.id,
     });
-
-    // Reset form
-    setContagemDinheiro('');
-    setContagemPix('');
-    setContagemDebito('');
-    setContagemCredito('');
-    setValoresEsperados(null);
-    onOpenChange(false);
   };
+
+  // Reset form when modal closes or operation succeeds
+  useEffect(() => {
+    if (!open || !isProcessandoFechamento) {
+      setContagemDinheiro('');
+      setContagemPix('');
+      setContagemDebito('');
+      setContagemCredito('');
+      setValoresEsperados(null);
+    }
+  }, [open, isProcessandoFechamento]);
 
   if (!caixaAtual) {
     return (

@@ -53,6 +53,86 @@ export type Database = {
         }
         Relationships: []
       }
+      auditoria_caixa: {
+        Row: {
+          acao: string
+          caixa_id: string | null
+          criado_em: string
+          detalhes: Json | null
+          empresa_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          acao: string
+          caixa_id?: string | null
+          criado_em?: string
+          detalhes?: Json | null
+          empresa_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          acao?: string
+          caixa_id?: string | null
+          criado_em?: string
+          detalhes?: Json | null
+          empresa_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auditoria_caixa_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      caixas: {
+        Row: {
+          aberto_em: string
+          aberto_por: string
+          created_at: string
+          empresa_id: string
+          fechado_em: string | null
+          fechado_por: string | null
+          id: string
+          observacao: string | null
+          status: Database["public"]["Enums"]["caixa_status"]
+          troco_inicial: number
+          updated_at: string
+        }
+        Insert: {
+          aberto_em?: string
+          aberto_por: string
+          created_at?: string
+          empresa_id: string
+          fechado_em?: string | null
+          fechado_por?: string | null
+          id?: string
+          observacao?: string | null
+          status?: Database["public"]["Enums"]["caixa_status"]
+          troco_inicial?: number
+          updated_at?: string
+        }
+        Update: {
+          aberto_em?: string
+          aberto_por?: string
+          created_at?: string
+          empresa_id?: string
+          fechado_em?: string | null
+          fechado_por?: string | null
+          id?: string
+          observacao?: string | null
+          status?: Database["public"]["Enums"]["caixa_status"]
+          troco_inicial?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       categorias: {
         Row: {
           created_at: string
@@ -451,6 +531,71 @@ export type Database = {
         }
         Relationships: []
       }
+      fechamentos_caixa: {
+        Row: {
+          arquivo_relatorio_url: string | null
+          caixa_id: string
+          contagem_credito: number
+          contagem_debito: number
+          contagem_dinheiro: number
+          contagem_outros: Json | null
+          contagem_pix: number
+          created_at: string
+          diferenca: number
+          empresa_id: string
+          gerado_em: string
+          gerado_por: string
+          id: string
+          resumo_por_forma: Json
+          total_contado: number
+          total_esperado: number
+        }
+        Insert: {
+          arquivo_relatorio_url?: string | null
+          caixa_id: string
+          contagem_credito?: number
+          contagem_debito?: number
+          contagem_dinheiro?: number
+          contagem_outros?: Json | null
+          contagem_pix?: number
+          created_at?: string
+          diferenca: number
+          empresa_id: string
+          gerado_em?: string
+          gerado_por: string
+          id?: string
+          resumo_por_forma: Json
+          total_contado: number
+          total_esperado: number
+        }
+        Update: {
+          arquivo_relatorio_url?: string | null
+          caixa_id?: string
+          contagem_credito?: number
+          contagem_debito?: number
+          contagem_dinheiro?: number
+          contagem_outros?: Json | null
+          contagem_pix?: number
+          created_at?: string
+          diferenca?: number
+          empresa_id?: string
+          gerado_em?: string
+          gerado_por?: string
+          id?: string
+          resumo_por_forma?: Json
+          total_contado?: number
+          total_esperado?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fechamentos_caixa_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       log_movimentacoes: {
         Row: {
           created_at: string | null
@@ -583,6 +728,71 @@ export type Database = {
             columns: ["produto_id"]
             isOneToOne: false
             referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      movimentacoes_caixa: {
+        Row: {
+          caixa_id: string
+          conciliado: boolean
+          created_at: string
+          criado_por: string
+          data_hora: string
+          descricao: string | null
+          empresa_id: string
+          forma_pagamento: Database["public"]["Enums"]["forma_pagamento_caixa"]
+          id: string
+          metadados: Json | null
+          referencia_conciliacao: string | null
+          referencia_id: string | null
+          tipo: Database["public"]["Enums"]["movimentacao_caixa_tipo"]
+          tipo_origem: Database["public"]["Enums"]["movimentacao_caixa_origem"]
+          valor_bruto: number
+          valor_liquido: number
+        }
+        Insert: {
+          caixa_id: string
+          conciliado?: boolean
+          created_at?: string
+          criado_por: string
+          data_hora?: string
+          descricao?: string | null
+          empresa_id: string
+          forma_pagamento: Database["public"]["Enums"]["forma_pagamento_caixa"]
+          id?: string
+          metadados?: Json | null
+          referencia_conciliacao?: string | null
+          referencia_id?: string | null
+          tipo: Database["public"]["Enums"]["movimentacao_caixa_tipo"]
+          tipo_origem: Database["public"]["Enums"]["movimentacao_caixa_origem"]
+          valor_bruto: number
+          valor_liquido: number
+        }
+        Update: {
+          caixa_id?: string
+          conciliado?: boolean
+          created_at?: string
+          criado_por?: string
+          data_hora?: string
+          descricao?: string | null
+          empresa_id?: string
+          forma_pagamento?: Database["public"]["Enums"]["forma_pagamento_caixa"]
+          id?: string
+          metadados?: Json | null
+          referencia_conciliacao?: string | null
+          referencia_id?: string | null
+          tipo?: Database["public"]["Enums"]["movimentacao_caixa_tipo"]
+          tipo_origem?: Database["public"]["Enums"]["movimentacao_caixa_origem"]
+          valor_bruto?: number
+          valor_liquido?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimentacoes_caixa_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas"
             referencedColumns: ["id"]
           },
         ]
@@ -870,6 +1080,50 @@ export type Database = {
         }
         Relationships: []
       }
+      sangrias: {
+        Row: {
+          autorizado_por: string
+          caixa_id: string
+          created_at: string
+          criado_por: string
+          data_hora: string
+          empresa_id: string
+          id: string
+          motivo: string
+          valor: number
+        }
+        Insert: {
+          autorizado_por: string
+          caixa_id: string
+          created_at?: string
+          criado_por: string
+          data_hora?: string
+          empresa_id: string
+          id?: string
+          motivo: string
+          valor: number
+        }
+        Update: {
+          autorizado_por?: string
+          caixa_id?: string
+          created_at?: string
+          criado_por?: string
+          data_hora?: string
+          empresa_id?: string
+          id?: string
+          motivo?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sangrias_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       servicos: {
         Row: {
           created_at: string
@@ -902,6 +1156,47 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      suprimentos: {
+        Row: {
+          caixa_id: string
+          created_at: string
+          criado_por: string
+          data_hora: string
+          empresa_id: string
+          id: string
+          motivo: string
+          valor: number
+        }
+        Insert: {
+          caixa_id: string
+          created_at?: string
+          criado_por: string
+          data_hora?: string
+          empresa_id: string
+          id?: string
+          motivo: string
+          valor: number
+        }
+        Update: {
+          caixa_id?: string
+          created_at?: string
+          criado_por?: string
+          data_hora?: string
+          empresa_id?: string
+          id?: string
+          motivo?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suprimentos_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -1350,8 +1645,19 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      caixa_status: "aberto" | "fechado"
       empresa_role: "owner" | "admin" | "user"
       forma_pagamento: "dinheiro" | "cartao" | "pix" | "cheque" | "parcelado"
+      forma_pagamento_caixa:
+        | "dinheiro"
+        | "pix"
+        | "debito"
+        | "credito"
+        | "cheque"
+        | "boleto"
+        | "outros"
+      movimentacao_caixa_origem: "OS" | "VENDA" | "MANUAL"
+      movimentacao_caixa_tipo: "entrada" | "saida"
       movimentacao_tipo: "entrada" | "saida" | "ajuste"
       orcamento_status: "pendente" | "aprovado" | "rejeitado" | "convertido_os"
       produto_status: "ativo" | "inativo"
@@ -1484,8 +1790,20 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      caixa_status: ["aberto", "fechado"],
       empresa_role: ["owner", "admin", "user"],
       forma_pagamento: ["dinheiro", "cartao", "pix", "cheque", "parcelado"],
+      forma_pagamento_caixa: [
+        "dinheiro",
+        "pix",
+        "debito",
+        "credito",
+        "cheque",
+        "boleto",
+        "outros",
+      ],
+      movimentacao_caixa_origem: ["OS", "VENDA", "MANUAL"],
+      movimentacao_caixa_tipo: ["entrada", "saida"],
       movimentacao_tipo: ["entrada", "saida", "ajuste"],
       orcamento_status: ["pendente", "aprovado", "rejeitado", "convertido_os"],
       produto_status: ["ativo", "inativo"],

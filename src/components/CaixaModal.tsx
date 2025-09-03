@@ -3,16 +3,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { useCaixa } from '@/hooks/useCaixa';
 import { useMovimentacoesCaixa } from '@/hooks/useMovimentacoesCaixa';
 import { useSuprimentosCaixa } from '@/hooks/useSuprimentosCaixa';
 import { useSangriasCaixa } from '@/hooks/useSangriasCaixa';
-import { Wallet, Plus, Minus, Calculator, Clock, DollarSign } from 'lucide-react';
+import { Wallet, Plus, Calculator, Clock, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface CaixaModalProps {
@@ -21,7 +19,7 @@ interface CaixaModalProps {
 }
 
 export function CaixaModal({ open, onOpenChange }: CaixaModalProps) {
-  const { caixaAtual, abrirCaixa, fecharCaixa, isAbrindoCaixa, isFechandoCaixa } = useCaixa();
+  const { caixaAtual, abrirCaixa, isAbrindoCaixa } = useCaixa();
   const { movimentacoes, resumoPorForma } = useMovimentacoesCaixa();
   const { totalSuprimentos } = useSuprimentosCaixa();
   const { totalSangrias } = useSangriasCaixa();
@@ -52,13 +50,6 @@ export function CaixaModal({ open, onOpenChange }: CaixaModalProps) {
     });
   };
 
-  const handleFecharCaixa = () => {
-    if (isFechandoCaixa) return;
-    
-    fecharCaixa({
-      observacao: observacao || undefined,
-    });
-  };
 
   const calcularTotalCaixa = () => {
     if (!caixaAtual || !resumoPorForma) return 0;
@@ -81,7 +72,7 @@ export function CaixaModal({ open, onOpenChange }: CaixaModalProps) {
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="abrir" disabled={!!caixaAtual}>
               Abrir Caixa
             </TabsTrigger>
@@ -90,9 +81,6 @@ export function CaixaModal({ open, onOpenChange }: CaixaModalProps) {
             </TabsTrigger>
             <TabsTrigger value="movimentacoes" disabled={!caixaAtual}>
               Movimentações
-            </TabsTrigger>
-            <TabsTrigger value="fechar" disabled={!caixaAtual}>
-              Fechar Caixa
             </TabsTrigger>
           </TabsList>
 
@@ -276,59 +264,6 @@ export function CaixaModal({ open, onOpenChange }: CaixaModalProps) {
             </Card>
           </TabsContent>
 
-          <TabsContent value="fechar" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Minus className="h-5 w-5" />
-                  Fechar Caixa
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800">
-                    <strong>Atenção:</strong> Ao fechar o caixa, não será mais possível registrar movimentações.
-                    Certifique-se de que todas as transações foram registradas.
-                  </p>
-                </div>
-
-                <div>
-                  <Label htmlFor="observacao_fechamento">Observação de Fechamento</Label>
-                  <Textarea
-                    id="observacao_fechamento"
-                    value={observacao}
-                    onChange={(e) => setObservacao(e.target.value)}
-                    placeholder="Observação opcional para o fechamento"
-                    rows={3}
-                  />
-                </div>
-
-                <Separator />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">Total Esperado</p>
-                    <p className="text-2xl font-bold">
-                      R$ {calcularTotalCaixa().toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">Status</p>
-                    <Badge>Aguardando Fechamento</Badge>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleFecharCaixa}
-                  disabled={isFechandoCaixa}
-                  variant="destructive"
-                  className="w-full"
-                >
-                  {isFechandoCaixa ? 'Fechando...' : 'Fechar Caixa'}
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>

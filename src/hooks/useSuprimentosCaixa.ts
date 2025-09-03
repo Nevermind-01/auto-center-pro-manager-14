@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useEmpresaContext } from '@/hooks/useEmpresaContext';
 import { useCaixa } from './useCaixa';
+import { useMovimentacoesCaixa } from './useMovimentacoesCaixa';
 
 export interface Suprimento {
   id: string;
@@ -24,6 +25,7 @@ export function useSuprimentosCaixa() {
   const { toast } = useToast();
   const { empresaId } = useEmpresaContext();
   const { caixaAtual } = useCaixa();
+  const { criarMovimentacao } = useMovimentacoesCaixa();
   const queryClient = useQueryClient();
 
   // Buscar suprimentos do caixa atual
@@ -98,6 +100,17 @@ export function useSuprimentosCaixa() {
         user_id: (await supabase.auth.getUser()).data.user?.id,
       });
 
+      // Criar movimentação no caixa
+      await criarMovimentacao({
+        tipo: 'entrada',
+        tipo_origem: 'MANUAL',
+        forma_pagamento: 'dinheiro',
+        valor_bruto: data.valor,
+        valor_liquido: data.valor,
+        descricao: `Suprimento: ${data.motivo}`,
+        referencia_id: novoSuprimento.id,
+      });
+
       return novoSuprimento;
     },
     onSuccess: () => {
@@ -107,6 +120,8 @@ export function useSuprimentosCaixa() {
       });
       queryClient.invalidateQueries({ queryKey: ['suprimentos-caixa'] });
       queryClient.invalidateQueries({ queryKey: ['total-suprimentos'] });
+      queryClient.invalidateQueries({ queryKey: ['movimentacoes-caixa'] });
+      queryClient.invalidateQueries({ queryKey: ['resumo-por-forma'] });
     },
     onError: (error: any) => {
       toast({

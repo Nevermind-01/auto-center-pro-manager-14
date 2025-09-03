@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useEmpresaContext } from '@/hooks/useEmpresaContext';
 import { useCaixa } from './useCaixa';
+import { useMovimentacoesCaixa } from './useMovimentacoesCaixa';
 
 export interface Sangria {
   id: string;
@@ -26,6 +27,7 @@ export function useSangriasCaixa() {
   const { toast } = useToast();
   const { empresaId } = useEmpresaContext();
   const { caixaAtual } = useCaixa();
+  const { criarMovimentacao } = useMovimentacoesCaixa();
   const queryClient = useQueryClient();
 
   // Buscar sangrias do caixa atual
@@ -106,28 +108,41 @@ export function useSangriasCaixa() {
 
       if (error) throw error;
 
-      // Registrar na auditoria
-      await supabase.from('auditoria_caixa').insert({
-        empresa_id: empresaId,
-        caixa_id: caixaAtual.id,
-        acao: 'SANGRIA_CRIADA',
-        detalhes: {
-          valor: data.valor,
-          motivo: data.motivo,
-          autorizado_por: data.autorizado_por,
-        },
-        user_id: (await supabase.auth.getUser()).data.user?.id,
-      });
+        // Registrar na auditoria
+        await supabase.from('auditoria_caixa').insert({
+          empresa_id: empresaId,
+          caixa_id: caixaAtual.id,
+          acao: 'SANGRIA_CRIADA',
+          detalhes: {
+            valor: data.valor,
+            motivo: data.motivo,
+            autorizado_por: data.autorizado_por,
+          },
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+        });
 
-      return novaSangria;
+        // Criar movimentação no caixa
+        await criarMovimentacao({
+          tipo: 'saida',
+          tipo_origem: 'MANUAL',
+          forma_pagamento: 'dinheiro',
+          valor_bruto: data.valor,
+          valor_liquido: data.valor,
+          descricao: `Sangria: ${data.motivo}`,
+          referencia_id: novaSangria.id,
+        });
+
+        return novaSangria;
     },
     onSuccess: () => {
       toast({
         title: "Sangria registrada",
         description: "A sangria foi registrada no caixa com sucesso.",
       });
-      queryClient.invalidateQueries({ queryKey: ['sangrias-caixa'] });
-      queryClient.invalidateQueries({ queryKey: ['total-sangrias'] });
+        queryClient.invalidateQueries({ queryKey: ['sangrias-caixa'] });
+        queryClient.invalidateQueries({ queryKey: ['total-sangrias'] });
+        queryClient.invalidateQueries({ queryKey: ['movimentacoes-caixa'] });
+        queryClient.invalidateQueries({ queryKey: ['resumo-por-forma'] });
     },
     onError: (error: any) => {
       toast({

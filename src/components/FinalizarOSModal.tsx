@@ -19,6 +19,7 @@ import { useMecanicos } from "@/hooks/useMecanicos";
 import { supabase } from "@/integrations/supabase/client";
 import { PrintModal } from "@/components/print/PrintModal";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
 
 interface FinalizarOSModalProps {
   open: boolean;
@@ -31,6 +32,7 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
   const { updateVenda } = useVendaMutations();
   const { createLog } = useLogMovimentacaoMutations();
   const { createComissao } = useComissoesMutations();
+  const { criarMovimentacao } = useMovimentacoesCaixa();
   const estoqueManager = useSupabaseEstoque();
 
   // Estados para a finalização
@@ -253,6 +255,17 @@ const valorFinal = valorTotal - valorDesconto;
             observacoes: obsComissao || null
           });
         }
+
+        // Registrar movimentação no caixa
+        await criarMovimentacao({
+          tipo: 'entrada',
+          tipo_origem: 'OS',
+          forma_pagamento: formaPagamento as any,
+          valor_bruto: valorFinal,
+          valor_liquido: valorFinal,
+          descricao: `OS ${venda.numero_os} - ${venda.cliente_nome}`,
+          referencia_id: venda.id,
+        });
 
         // Registrar log de finalização
         const logDescricao = registrarComissao && tipoCalculo

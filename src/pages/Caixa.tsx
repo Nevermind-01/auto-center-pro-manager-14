@@ -8,6 +8,7 @@ import { CaixaModal } from '@/components/CaixaModal';
 import { SuprimentoModal } from '@/components/SuprimentoModal';
 import { SangriaModal } from '@/components/SangriaModal';
 import { FechamentoCaixaModal } from '@/components/FechamentoCaixaModal';
+import { HistoricoCaixaModal } from '@/components/HistoricoCaixaModal';
 import { useCaixa } from '@/hooks/useCaixa';
 import { useMovimentacoesCaixa } from '@/hooks/useMovimentacoesCaixa';
 import { useSuprimentosCaixa } from '@/hooks/useSuprimentosCaixa';
@@ -21,7 +22,8 @@ import {
   Clock,
   Plus,
   Minus,
-  Settings
+  Settings,
+  History
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -35,6 +37,7 @@ export default function Caixa() {
   const [suprimentoModalOpen, setSuprimentoModalOpen] = useState(false);
   const [sangriaModalOpen, setSangriaModalOpen] = useState(false);
   const [fechamentoModalOpen, setFechamentoModalOpen] = useState(false);
+  const [historicoModalOpen, setHistoricoModalOpen] = useState(false);
 
   const calcularTotalCaixa = () => {
     if (!caixaAtual || !resumoPorForma) return 0;
@@ -69,10 +72,19 @@ export default function Caixa() {
               Gerencie aberturas, fechamentos e movimentações do caixa
             </p>
           </div>
-          <Button onClick={() => setCaixaModalOpen(true)}>
-            <Settings className="h-4 w-4 mr-2" />
-            Gerenciar Caixa
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => setHistoricoModalOpen(true)}
+            >
+              <History className="h-4 w-4 mr-2" />
+              Histórico
+            </Button>
+            <Button onClick={() => setCaixaModalOpen(true)}>
+              <Settings className="h-4 w-4 mr-2" />
+              Gerenciar Caixa
+            </Button>
+          </div>
         </div>
 
         {/* Status do Caixa */}
@@ -317,6 +329,10 @@ export default function Caixa() {
         <FechamentoCaixaModal
           open={fechamentoModalOpen}
           onOpenChange={setFechamentoModalOpen}
+        />
+        <HistoricoCaixaModal
+          open={historicoModalOpen}
+          onOpenChange={setHistoricoModalOpen}
         />
       </div>
     </Layout>

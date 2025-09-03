@@ -45,7 +45,23 @@ export function SangriaModal({ open, onOpenChange }: SangriaModalProps) {
         .eq('ativo', true);
 
       if (error) throw error;
-      return data;
+      
+      if (!data) return [];
+
+      // Buscar os nomes dos usuários
+      const userIds = data.map(u => u.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email')
+        .in('user_id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Combinar os dados
+      return data.map(usuario => ({
+        ...usuario,
+        profile: profiles?.find(p => p.user_id === usuario.user_id)
+      }));
     },
     enabled: !!empresaId,
   });
@@ -149,7 +165,7 @@ export function SangriaModal({ open, onOpenChange }: SangriaModalProps) {
                       <SelectContent>
                         {usuariosAutorizados?.map((usuario) => (
                           <SelectItem key={usuario.user_id} value={usuario.user_id}>
-                            {usuario.user_id} ({usuario.role})
+                            {usuario.profile?.full_name || usuario.profile?.email || 'Usuário'} ({usuario.role})
                           </SelectItem>
                         ))}
                       </SelectContent>

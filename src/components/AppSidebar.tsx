@@ -10,7 +10,8 @@ import {
   History,
   CreditCard,
   Wrench,
-  Building2
+  Building2,
+  Wallet
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -32,6 +33,7 @@ import { Button } from "@/components/ui/button";
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "NOVA OS", url: "/nova-os", icon: Plus },
+  { title: "Caixa", url: "/caixa", icon: Wallet },
   { title: "Estoque", url: "/inventory", icon: Package },
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Orçamentos", url: "/orcamentos", icon: FileText },

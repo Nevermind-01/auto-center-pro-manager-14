@@ -7,6 +7,7 @@ import { Layout } from "@/components/Layout";
 import { AuthProvider } from "@/hooks/useAuth";
 import { EmpresaProvider } from "@/hooks/useEmpresaContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import Caixa from "./pages/Caixa";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import NovaOSSupabase from "./pages/NovaOSSupabase";
@@ -80,6 +81,11 @@ const App = () => (
             <Route path="/configuracoes/empresa" element={
               <ProtectedRoute>
                 <Layout><Empresas /></Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/caixa" element={
+              <ProtectedRoute>
+                <Caixa />
               </ProtectedRoute>
             } />
             <Route path="/settings" element={

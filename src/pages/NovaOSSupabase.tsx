@@ -31,6 +31,8 @@ import { sanitizeClienteData } from "@/lib/inputSanitizer";
 import { generateSequentialOSNumber } from "@/lib/utils";
 import { useEmpresaContext } from "@/hooks/useEmpresaContext";
 import { useMultipleAsyncActions } from "@/hooks/useAsyncAction";
+import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
+import { mapVendaToCaixaFormaPagamento, type VendaFormaPagamento, isValidCaixaFormaPagamento } from "@/lib/paymentMethodMapper";
 import { 
   Plus, 
   Search, 
@@ -93,6 +95,7 @@ const NovaOSSupabase = () => {
   const { createVenda, createVendaProduto, createVendaServico, updateVenda, deleteVendaProdutos, deleteVendaServicos } = useVendaMutations();
   const { createVeiculo } = useVeiculoMutations();
   const { createLog } = useLogMovimentacaoMutations();
+  const { criarMovimentacao } = useMovimentacoesCaixa();
   
   // Validation
   const { validateClienteData } = useClienteValidation();
@@ -717,7 +720,7 @@ const NovaOSSupabase = () => {
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: (formaPagamento || 'dinheiro') as any,
+          forma_pagamento: (formaPagamento || 'dinheiro') as VendaFormaPagamento,
           parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
           observacoes: observacoes || null
         });
@@ -781,7 +784,7 @@ const NovaOSSupabase = () => {
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: (formaPagamento || 'dinheiro') as any,
+          forma_pagamento: (formaPagamento || 'dinheiro') as VendaFormaPagamento,
           parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
           observacoes: observacoes || null,
           status: 'pendente'
@@ -898,7 +901,30 @@ const NovaOSSupabase = () => {
 
   const processarFinalizacao = async () => {
     try {
+      // Validar forma de pagamento antes de processar
+      if (!formaPagamento) {
+        toast({
+          title: "Erro",
+          description: "Selecione uma forma de pagamento.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validar se a forma de pagamento é válida para o caixa
+      const caixaFormaPagamento = mapVendaToCaixaFormaPagamento(formaPagamento as VendaFormaPagamento);
+      if (!isValidCaixaFormaPagamento(caixaFormaPagamento)) {
+        console.error('Forma de pagamento inválida para caixa:', caixaFormaPagamento);
+        toast({
+          title: "Erro",
+          description: "Forma de pagamento inválida. Tente novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       let vendaId: string;
+      let numeroOSFinal = numeroOS;
 
       if (isEditing && editingVenda) {
         // Modo edição - atualizar venda existente
@@ -915,26 +941,26 @@ const NovaOSSupabase = () => {
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: formaPagamento as any,
+          forma_pagamento: formaPagamento as VendaFormaPagamento,
           parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
           observacoes: observacoes || null,
           status: 'finalizada'
         });
 
         vendaId = editingVenda.id;
+        numeroOSFinal = editingVenda.numero_os;
 
         // Registrar log de edição
         await createLog.mutateAsync({
           os_id: editingVenda.id,
           tipo: 'edicao',
           usuario: 'Admin',
-          observacoes: `OS ${numeroOS} editada`,
+          observacoes: `OS ${numeroOSFinal} editada`,
           dados_anteriores: originalData,
           dados_novos: vendaAtualizada
         });
       } else {
         // Gerar número sequencial de OS apenas se não tiver
-        let numeroOSFinal = numeroOS;
         if (!numeroOSFinal) {
           numeroOSFinal = await generateSequentialOSNumber(empresaId!);
           setNumeroOS(numeroOSFinal);
@@ -950,7 +976,7 @@ const NovaOSSupabase = () => {
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: formaPagamento as any,
+          forma_pagamento: formaPagamento as VendaFormaPagamento,
           parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
           observacoes: observacoes || null,
           status: 'finalizada'
@@ -1011,12 +1037,34 @@ const NovaOSSupabase = () => {
           valor: p.valor,
           quantidade: p.quantidade
         })),
-        numeroOS  // Use o número atual do estado
+        numeroOSFinal  // Use o número final correto
       );
+
+      // Registrar movimentação no caixa
+      try {
+        await criarMovimentacao({
+          tipo: 'entrada',
+          tipo_origem: 'OS',
+          forma_pagamento: caixaFormaPagamento,
+          valor_bruto: valorFinal,
+          valor_liquido: valorFinal,
+          descricao: `OS ${numeroOSFinal} - ${clienteSelecionado.nome}`,
+          referencia_id: vendaId,
+        });
+      } catch (caixaError) {
+        console.error('Erro ao registrar movimentação no caixa:', caixaError);
+        // Note: We don't throw here to avoid full rollback, just log the error
+        // The OS is already finalized successfully
+        toast({
+          title: "Atenção",
+          description: "OS finalizada com sucesso, mas houve um problema ao registrar no caixa. Verifique as movimentações.",
+          variant: "destructive",
+        });
+      }
 
       toast({
         title: "OS finalizada",
-        description: `OS ${numeroOS} foi finalizada com sucesso.`,
+        description: `OS ${numeroOSFinal} foi finalizada com sucesso.`,
       });
 
       // Se não vai calcular comissão, fazer o reset/navegação normal

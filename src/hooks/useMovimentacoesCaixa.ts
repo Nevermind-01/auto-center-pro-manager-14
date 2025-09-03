@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useEmpresaContext } from '@/hooks/useEmpresaContext';
 import { useCaixa } from './useCaixa';
+import { type CaixaFormaPagamento } from '@/lib/paymentMethodMapper';
 
 export interface MovimentacaoCaixa {
   id: string;
@@ -98,6 +99,12 @@ export function useMovimentacoesCaixa() {
     mutationFn: async (data: CriarMovimentacaoData) => {
       if (!caixaAtual) throw new Error('Nenhum caixa aberto encontrado');
       if (!empresaId) throw new Error('Empresa não selecionada');
+
+      // Validar forma de pagamento antes de inserir
+      const validMethods: CaixaFormaPagamento[] = ['dinheiro', 'pix', 'debito', 'credito', 'cheque', 'boleto', 'outros'];
+      if (!validMethods.includes(data.forma_pagamento as CaixaFormaPagamento)) {
+        throw new Error(`Forma de pagamento inválida: ${data.forma_pagamento}`);
+      }
 
       const valorLiquido = data.valor_liquido || data.valor_bruto;
 

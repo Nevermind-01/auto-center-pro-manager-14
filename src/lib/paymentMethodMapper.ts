@@ -2,8 +2,8 @@
  * Utility functions to handle payment method enum mapping between different tables
  */
 
-// Enum from vendas table
-export type VendaFormaPagamento = 'dinheiro' | 'pix' | 'debito' | 'credito' | 'cartao' | 'parcelado' | 'cheque' | 'boleto';
+// Enum from vendas table - matching database enum exactly
+export type VendaFormaPagamento = 'dinheiro' | 'pix' | 'cheque' | 'cartao' | 'parcelado';
 
 // Enum from movimentacoes_caixa table  
 export type CaixaFormaPagamento = 'dinheiro' | 'pix' | 'debito' | 'credito' | 'cheque' | 'boleto' | 'outros';
@@ -17,12 +17,9 @@ export function mapVendaToCaixaFormaPagamento(vendaFormaPagamento: VendaFormaPag
   const mappingTable: Record<VendaFormaPagamento, CaixaFormaPagamento> = {
     'dinheiro': 'dinheiro',
     'pix': 'pix', 
-    'debito': 'debito',
-    'credito': 'credito',
     'cartao': 'credito', // Default mapping: cartao → credito
     'parcelado': 'credito', // Parcelado is usually credit card
-    'cheque': 'cheque',
-    'boleto': 'boleto'
+    'cheque': 'cheque'
   };
 
   const mapped = mappingTable[vendaFormaPagamento];

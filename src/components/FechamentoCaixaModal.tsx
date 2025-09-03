@@ -27,49 +27,47 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (open && caixaAtual) {
+    if (open && caixaAtual?.id) {
       setLoading(true);
       calcularValoresEsperados(caixaAtual.id)
-        .then((valores) => {
+        .then(valores => {
           setValoresEsperados(valores);
-          // Pre-preencher com valores esperados
-          setContagemDinheiro(valores.valoresEsperados.dinheiro.toFixed(2));
-          setContagemPix(valores.valoresEsperados.pix.toFixed(2));
-          setContagemDebito(valores.valoresEsperados.debito.toFixed(2));
-          setContagemCredito(valores.valoresEsperados.credito.toFixed(2));
+          // Pré-preencher com valores esperados como sugestão
+          setContagemDinheiro(valores?.valoresEsperados?.dinheiro?.toString() || '0');
+          setContagemPix(valores?.valoresEsperados?.pix?.toString() || '0');
+          setContagemDebito(valores?.valoresEsperados?.debito?.toString() || '0');
+          setContagemCredito(valores?.valoresEsperados?.credito?.toString() || '0');
         })
-        .catch((error) => {
-          console.error('Erro ao calcular valores esperados:', error);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+        .catch(console.error)
+        .finally(() => setLoading(false));
     }
-  }, [open, caixaAtual, calcularValoresEsperados]);
+  }, [open, caixaAtual?.id, calcularValoresEsperados]);
 
   const calcularTotalContado = () => {
     return (
-      parseFloat(contagemDinheiro || '0') +
-      parseFloat(contagemPix || '0') +
-      parseFloat(contagemDebito || '0') +
-      parseFloat(contagemCredito || '0')
+      (parseFloat(contagemDinheiro) || 0) +
+      (parseFloat(contagemPix) || 0) +
+      (parseFloat(contagemDebito) || 0) +
+      (parseFloat(contagemCredito) || 0)
     );
   };
 
   const calcularDiferenca = () => {
     if (!valoresEsperados) return 0;
-    return calcularTotalContado() - valoresEsperados.totalEsperado;
+    const totalEsperado = valoresEsperados.totalEsperado || 0;
+    const totalContado = calcularTotalContado();
+    return totalContado - totalEsperado;
   };
 
   const handleProcessarFechamento = () => {
-    if (!caixaAtual) return;
+    if (!caixaAtual?.id) return;
 
     processarFechamento({
+      contagem_dinheiro: parseFloat(contagemDinheiro) || 0,
+      contagem_pix: parseFloat(contagemPix) || 0,
+      contagem_debito: parseFloat(contagemDebito) || 0,
+      contagem_credito: parseFloat(contagemCredito) || 0,
       caixa_id: caixaAtual.id,
-      contagem_dinheiro: parseFloat(contagemDinheiro || '0'),
-      contagem_pix: parseFloat(contagemPix || '0'),
-      contagem_debito: parseFloat(contagemDebito || '0'),
-      contagem_credito: parseFloat(contagemCredito || '0'),
     });
 
     // Reset form
@@ -101,222 +99,213 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Calculator className="h-6 w-6" />
+            <Calculator className="h-6 w-6 text-blue-600" />
             Fechamento de Caixa
           </DialogTitle>
         </DialogHeader>
 
         {loading ? (
-          <div className="text-center py-8">
-            <p>Calculando valores esperados...</p>
-          </div>
+          <div className="text-center py-8">Carregando dados do caixa...</div>
         ) : (
           <div className="space-y-6">
-            {/* Informações do caixa */}
+            {/* Informações do Caixa */}
             <Card>
               <CardHeader>
                 <CardTitle>Informações do Caixa</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Troco Inicial</p>
-                    <p className="font-medium">R$ {caixaAtual.troco_inicial.toFixed(2)}</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Caixa ID</Label>
+                    <p className="font-mono text-sm">{caixaAtual.id}</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Suprimentos</p>
-                    <p className="font-medium text-green-600">
-                      + R$ {valoresEsperados?.totalSuprimentos.toFixed(2) || '0,00'}
+                  <div>
+                    <Label>Abertura</Label>
+                    <p className="text-sm">
+                      {new Date(caixaAtual.aberto_em).toLocaleString()}
                     </p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Sangrias</p>
-                    <p className="font-medium text-red-600">
-                      - R$ {valoresEsperados?.totalSangrias.toFixed(2) || '0,00'}
+                  <div>
+                    <Label>Troco Inicial</Label>
+                    <p className="text-sm font-medium">
+                      R$ {Number(caixaAtual.troco_inicial).toFixed(2)}
                     </p>
+                  </div>
+                  <div>
+                    <Label>Status</Label>
+                    <Badge variant="default">Aberto</Badge>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-2 gap-6">
-              {/* Valores Esperados */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-blue-600" />
-                    Valores Esperados
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {valoresEsperados && (
-                    <>
-                      <div className="flex justify-between">
-                        <span>Dinheiro:</span>
-                        <span className="font-medium">
-                          R$ {valoresEsperados.valoresEsperados.dinheiro.toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>PIX:</span>
-                        <span className="font-medium">
-                          R$ {valoresEsperados.valoresEsperados.pix.toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Débito:</span>
-                        <span className="font-medium">
-                          R$ {valoresEsperados.valoresEsperados.debito.toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Crédito:</span>
-                        <span className="font-medium">
-                          R$ {valoresEsperados.valoresEsperados.credito.toFixed(2)}
-                        </span>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between font-bold">
-                        <span>Total Esperado:</span>
-                        <span>R$ {valoresEsperados.totalEsperado.toFixed(2)}</span>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+            {/* Valores Esperados vs Contados */}
+            {valoresEsperados && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Valores Esperados */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-green-600" />
+                      Valores Esperados
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex justify-between">
+                      <span>Dinheiro:</span>
+                      <span className="font-medium">R$ {valoresEsperados.valoresEsperados?.dinheiro?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>PIX:</span>
+                      <span className="font-medium">R$ {valoresEsperados.valoresEsperados?.pix?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Débito:</span>
+                      <span className="font-medium">R$ {valoresEsperados.valoresEsperados?.debito?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Crédito:</span>
+                      <span className="font-medium">R$ {valoresEsperados.valoresEsperados?.credito?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between text-lg font-bold">
+                      <span>Total Esperado:</span>
+                      <span>R$ {valoresEsperados.totalEsperado?.toFixed(2) || '0.00'}</span>
+                    </div>
+                  </CardContent>
+                </Card>
 
-              {/* Contagem Real */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-green-600" />
-                    Contagem Real
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="dinheiro">Dinheiro (R$)</Label>
-                    <Input
-                      id="dinheiro"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={contagemDinheiro}
-                      onChange={(e) => setContagemDinheiro(e.target.value)}
-                      placeholder="0,00"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="pix">PIX (R$)</Label>
-                    <Input
-                      id="pix"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={contagemPix}
-                      onChange={(e) => setContagemPix(e.target.value)}
-                      placeholder="0,00"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="debito">Débito (R$)</Label>
-                    <Input
-                      id="debito"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={contagemDebito}
-                      onChange={(e) => setContagemDebito(e.target.value)}
-                      placeholder="0,00"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="credito">Crédito (R$)</Label>
-                    <Input
-                      id="credito"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={contagemCredito}
-                      onChange={(e) => setContagemCredito(e.target.value)}
-                      placeholder="0,00"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                {/* Contagem Manual */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calculator className="h-5 w-5 text-blue-600" />
+                      Contagem Manual
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="dinheiro">Dinheiro Contado (R$)</Label>
+                      <Input
+                        id="dinheiro"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={contagemDinheiro}
+                        onChange={(e) => setContagemDinheiro(e.target.value)}
+                        placeholder="0,00"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="pix">PIX Contado (R$)</Label>
+                      <Input
+                        id="pix"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={contagemPix}
+                        onChange={(e) => setContagemPix(e.target.value)}
+                        placeholder="0,00"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="debito">Débito Contado (R$)</Label>
+                      <Input
+                        id="debito"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={contagemDebito}
+                        onChange={(e) => setContagemDebito(e.target.value)}
+                        placeholder="0,00"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="credito">Crédito Contado (R$)</Label>
+                      <Input
+                        id="credito"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={contagemCredito}
+                        onChange={(e) => setContagemCredito(e.target.value)}
+                        placeholder="0,00"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
-            {/* Resumo do Fechamento */}
+            {/* Resumo Final */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Calculator className="h-5 w-5" />
+                  <DollarSign className="h-5 w-5" />
                   Resumo do Fechamento
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <p className="text-sm text-muted-foreground">Total Esperado</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      R$ {valoresEsperados?.totalEsperado.toFixed(2) || '0,00'}
-                    </p>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-lg">
+                    <span>Total Esperado:</span>
+                    <span className="font-medium">
+                      R$ {valoresEsperados?.totalEsperado?.toFixed(2) || '0.00'}
+                    </span>
                   </div>
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <p className="text-sm text-muted-foreground">Total Contado</p>
-                    <p className="text-2xl font-bold text-green-600">
+                  <div className="flex justify-between text-lg">
+                    <span>Total Contado:</span>
+                    <span className="font-medium">
                       R$ {calcularTotalContado().toFixed(2)}
-                    </p>
+                    </span>
                   </div>
-                  <div className="p-4 bg-yellow-50 rounded-lg">
-                    <p className="text-sm text-muted-foreground">Diferença</p>
-                    <p className={`text-2xl font-bold ${
-                      calcularDiferenca() === 0 ? 'text-green-600' :
-                      calcularDiferenca() > 0 ? 'text-blue-600' : 'text-red-600'
-                    }`}>
-                      {calcularDiferenca() >= 0 ? '+' : ''}R$ {calcularDiferenca().toFixed(2)}
-                    </p>
+                  <Separator />
+                  <div className="flex justify-between items-center text-xl font-bold">
+                    <span>Diferença:</span>
+                    <div className="flex items-center gap-2">
+                      {calcularDiferenca() !== 0 && (
+                        calcularDiferenca() > 0 ? (
+                          <TrendingUp className="h-5 w-5 text-green-600" />
+                        ) : (
+                          <TrendingDown className="h-5 w-5 text-red-600" />
+                        )
+                      )}
+                      <span className={`${
+                        calcularDiferenca() === 0 ? 'text-green-600' :
+                        calcularDiferenca() > 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        R$ {calcularDiferenca().toFixed(2)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-
-                <div className="mt-4 flex justify-center">
-                  <Badge variant={
-                    calcularDiferenca() === 0 ? 'default' :
-                    calcularDiferenca() > 0 ? 'secondary' : 'destructive'
-                  }>
-                    {calcularDiferenca() === 0 ? 'Caixa Bateu' :
-                     calcularDiferenca() > 0 ? 'Sobrou Dinheiro' : 'Faltou Dinheiro'}
-                  </Badge>
-                </div>
-
-                {calcularDiferenca() !== 0 && (
-                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-2">
-                    <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
-                    <div className="text-sm text-yellow-800">
-                      <p className="font-medium">Atenção - Diferença no Caixa</p>
-                      <p>
+                  
+                  {calcularDiferenca() !== 0 && (
+                    <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <AlertCircle className="h-5 w-5 text-yellow-600" />
+                      <p className="text-sm text-yellow-800">
                         {calcularDiferenca() > 0 
-                          ? 'Foi encontrado dinheiro a mais no caixa. Verifique se todas as transações foram registradas.'
-                          : 'Está faltando dinheiro no caixa. Verifique se houve alguma saída não registrada.'
+                          ? 'Há uma sobra no caixa. Verifique se todos os valores estão corretos.'
+                          : 'Há uma diferença negativa no caixa. Verifique se todos os valores estão corretos.'
                         }
                       </p>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </CardContent>
             </Card>
 
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
+            {/* Botões de Ação */}
+            <div className="flex gap-4">
+              <Button 
+                variant="outline" 
                 onClick={() => onOpenChange(false)}
                 className="flex-1"
               >
                 Cancelar
               </Button>
-              <Button
+              <Button 
                 onClick={handleProcessarFechamento}
-                disabled={isProcessandoFechamento || !valoresEsperados}
+                disabled={isProcessandoFechamento}
                 className="flex-1"
               >
                 {isProcessandoFechamento ? 'Processando...' : 'Processar Fechamento'}

@@ -86,8 +86,8 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
     >
       {/* Status Finalizada */}
       <section className="print-section">
-        <div className="bg-success/10 border border-success/20 p-3 rounded text-center">
-          <p className="text-lg font-semibold text-success">
+        <div className="bg-success/10 border border-success/20 p-2 rounded text-center">
+          <p className="text-base font-semibold text-success">
             ✓ SERVIÇO CONCLUÍDO
           </p>
         </div>
@@ -95,10 +95,10 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
 
       {/* Dados do Cliente */}
       <section className="print-section">
-        <h3 className="text-lg font-semibold mb-4 text-primary border-b border-border pb-2">
+        <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
           Dados do Cliente
         </h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-2 gap-3 text-xs">
           <div>
             <p><span className="font-medium">Nome:</span> {os.cliente_nome}</p>
             {os.cliente?.cpf && (
@@ -125,10 +125,10 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
       {/* Dados do Veículo */}
       {os.veiculo && (
         <section className="print-section">
-          <h3 className="text-lg font-semibold mb-4 text-primary border-b border-border pb-2">
+          <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
             Dados do Veículo
           </h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
               <p><span className="font-medium">Marca/Modelo:</span> {os.veiculo.marca} {os.veiculo.modelo}</p>
               <p><span className="font-medium">Ano:</span> {os.veiculo.ano || 'N/A'}</p>
@@ -149,10 +149,10 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
       {/* Mecânico Responsável */}
       {os.mecanico && (
         <section className="print-section">
-          <h3 className="text-lg font-semibold mb-4 text-primary border-b border-border pb-2">
+          <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
             Mecânico Responsável
           </h3>
-          <div className="text-sm">
+          <div className="text-xs">
             <p><span className="font-medium">Nome:</span> {os.mecanico.nome}</p>
             {os.mecanico.especialidade && (
               <p><span className="font-medium">Especialidade:</span> {os.mecanico.especialidade}</p>
@@ -163,10 +163,10 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
 
       {/* Período de Execução */}
       <section className="print-section">
-        <h3 className="text-lg font-semibold mb-4 text-primary border-b border-border pb-2">
+        <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
           Período de Execução
         </h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-2 gap-3 text-xs">
           <p><span className="font-medium">Início:</span> {format(new Date(os.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
           <p><span className="font-medium">Conclusão:</span> {format(new Date(os.finalizado_em), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
         </div>
@@ -174,39 +174,39 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
 
       {/* Serviços e Peças Utilizadas */}
       <section className="print-section">
-        <h3 className="text-lg font-semibold mb-4 text-primary border-b border-border pb-2">
+        <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
           Serviços Executados e Peças Utilizadas
         </h3>
         
-        <table className="w-full border-collapse border border-border text-sm">
+        <table className="w-full border-collapse border border-border text-xs">
           <thead>
             <tr className="bg-muted/30">
-              <th className="border border-border p-2 text-left">Descrição</th>
-              <th className="border border-border p-2 text-center w-20">Qtd.</th>
-              <th className="border border-border p-2 text-right w-32">Valor Unit.</th>
-              <th className="border border-border p-2 text-right w-32">Subtotal</th>
+              <th className="border border-border p-1.5 text-left">Descrição</th>
+              <th className="border border-border p-1.5 text-center w-16">Qtd.</th>
+              <th className="border border-border p-1.5 text-right w-24">Valor Unit.</th>
+              <th className="border border-border p-1.5 text-right w-24">Subtotal</th>
             </tr>
           </thead>
           <tbody>
             {(os.venda_produtos || []).map((produto, index) => (
               <tr key={`produto-${index}`}>
-                <td className="border border-border p-2">{produto.produto_nome}</td>
-                <td className="border border-border p-2 text-center">{produto.quantidade}</td>
-                <td className="border border-border p-2 text-right">{formatCurrency(produto.preco_unitario)}</td>
-                <td className="border border-border p-2 text-right">{formatCurrency(produto.preco_total)}</td>
+                <td className="border border-border p-1.5">{produto.produto_nome}</td>
+                <td className="border border-border p-1.5 text-center">{produto.quantidade}</td>
+                <td className="border border-border p-1.5 text-right">{formatCurrency(produto.preco_unitario)}</td>
+                <td className="border border-border p-1.5 text-right">{formatCurrency(produto.preco_total)}</td>
               </tr>
             ))}
             {(os.venda_servicos || []).map((servico, index) => (
               <tr key={`servico-${index}`}>
-                <td className="border border-border p-2">{servico.servico_nome}</td>
-                <td className="border border-border p-2 text-center">1</td>
-                <td className="border border-border p-2 text-right">{formatCurrency(servico.preco)}</td>
-                <td className="border border-border p-2 text-right">{formatCurrency(servico.preco)}</td>
+                <td className="border border-border p-1.5">{servico.servico_nome}</td>
+                <td className="border border-border p-1.5 text-center">1</td>
+                <td className="border border-border p-1.5 text-right">{formatCurrency(servico.preco)}</td>
+                <td className="border border-border p-1.5 text-right">{formatCurrency(servico.preco)}</td>
               </tr>
             ))}
             {(os.venda_produtos || []).length === 0 && (os.venda_servicos || []).length === 0 && (
               <tr>
-                <td colSpan={4} className="border border-border p-4 text-center text-muted-foreground">
+                <td colSpan={4} className="border border-border p-3 text-center text-muted-foreground">
                   Nenhum item encontrado
                 </td>
               </tr>
@@ -217,12 +217,12 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
 
       {/* Resumo Financeiro e Pagamento */}
       <section className="print-section">
-        <h3 className="text-lg font-semibold mb-4 text-primary border-b border-border pb-2">
+        <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
           Resumo Financeiro e Pagamento
         </h3>
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-2 gap-4">
           {/* Resumo */}
-          <div className="space-y-2 text-sm">
+          <div className="space-y-1 text-xs">
             {subtotalProdutos > 0 && (
               <div className="flex justify-between">
                 <span>Subtotal Peças:</span>
@@ -245,17 +245,17 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
                 <span>- {formatCurrency(os.valor_desconto)}</span>
               </div>
             )}
-            <div className="border-t border-border pt-2 mt-2"></div>
-            <div className="flex justify-between font-bold text-lg">
+            <div className="border-t border-border pt-1 mt-1"></div>
+            <div className="flex justify-between font-bold text-sm">
               <span>TOTAL PAGO:</span>
               <span>{formatCurrency(os.valor_final)}</span>
             </div>
           </div>
 
           {/* Forma de Pagamento */}
-          <div className="bg-muted/20 p-4 rounded border">
-            <h4 className="font-semibold mb-3">Forma de Pagamento</h4>
-            <div className="space-y-2 text-sm">
+          <div className="bg-muted/20 p-2 rounded border">
+            <h4 className="font-semibold mb-2 text-xs">Forma de Pagamento</h4>
+            <div className="space-y-1 text-xs">
               <p><span className="font-medium">Método:</span> {getFormaPagamentoText(os.forma_pagamento)}</p>
               {os.parcelas && os.parcelas > 1 ? (
                 <div>
@@ -273,31 +273,31 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
       {/* Observações */}
       {os.observacoes && (
         <section className="print-section">
-          <h3 className="text-lg font-semibold mb-4 text-primary border-b border-border pb-2">
+          <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
             Observações
           </h3>
-          <div className="bg-muted/20 p-3 rounded border">
-            <p className="whitespace-pre-wrap text-sm">{os.observacoes}</p>
+          <div className="bg-muted/20 p-2 rounded border">
+            <p className="whitespace-pre-wrap text-xs">{os.observacoes}</p>
           </div>
         </section>
       )}
 
       {/* Garantia */}
       <section className="print-section">
-        <h3 className="text-lg font-semibold mb-4 text-primary border-b border-border pb-2">
+        <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
           Garantia dos Serviços
         </h3>
-        <div className="bg-muted/20 p-4 rounded border">
-          <div className="text-sm space-y-2">
+        <div className="bg-muted/20 p-2 rounded border">
+          <div className="text-xs space-y-1">
             <p className="font-medium">Condições de Garantia:</p>
-            <ul className="space-y-1 list-disc list-inside text-xs">
+            <ul className="space-y-0.5 list-disc list-inside text-xs">
               <li>Os serviços executados possuem garantia de 90 dias</li>
               <li>As peças substituídas possuem garantia conforme especificação do fabricante</li>
               <li>A garantia é válida mediante apresentação desta fatura</li>
               <li>A garantia não cobre danos causados por mau uso ou desgaste natural</li>
               <li>Serviços de manutenção preventiva não possuem garantia</li>
             </ul>
-            <div className="mt-4 pt-2 border-t border-border">
+            <div className="mt-2 pt-1 border-t border-border">
               <p className="text-xs font-medium">
                 Garantia válida até: {format(new Date(new Date(os.finalizado_em).getTime() + 90 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy', { locale: ptBR })}
               </p>
@@ -308,8 +308,8 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
 
       {/* Declaração de Satisfação */}
       <section className="print-section">
-        <div className="bg-muted/20 p-4 rounded border">
-          <p className="text-sm text-center">
+        <div className="bg-muted/20 p-2 rounded border">
+          <p className="text-xs text-center">
             <strong>Declaro que recebi o veículo em perfeitas condições de funcionamento e estou satisfeito(a) com os serviços prestados.</strong>
           </p>
         </div>

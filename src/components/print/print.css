@@ -12,9 +12,9 @@
     width: 100% !important;
     max-width: none !important;
     margin: 0 !important;
-    padding: 20mm !important;
-    font-size: 12pt !important;
-    line-height: 1.4 !important;
+    padding: 15mm !important;
+    font-size: 10pt !important;
+    line-height: 1.3 !important;
     color: #000 !important;
     background: #fff !important;
   }
@@ -22,42 +22,42 @@
   /* Cabeçalho */
   .print-header {
     border-bottom: 2px solid #333 !important;
-    padding-bottom: 15mm !important;
-    margin-bottom: 10mm !important;
+    padding-bottom: 8mm !important;
+    margin-bottom: 6mm !important;
   }
 
   .print-logo img {
-    max-height: 60px !important;
-    max-width: 120px !important;
+    max-height: 40px !important;
+    max-width: 80px !important;
   }
 
   /* Seções */
   .print-section {
-    margin-bottom: 8mm !important;
+    margin-bottom: 4mm !important;
     page-break-inside: avoid !important;
   }
 
   .print-section h3 {
-    font-size: 14pt !important;
+    font-size: 12pt !important;
     font-weight: bold !important;
     color: #333 !important;
     border-bottom: 1px solid #666 !important;
-    padding-bottom: 2mm !important;
-    margin-bottom: 4mm !important;
+    padding-bottom: 1mm !important;
+    margin-bottom: 2mm !important;
   }
 
   /* Tabelas */
   table {
     width: 100% !important;
     border-collapse: collapse !important;
-    font-size: 11pt !important;
-    margin: 4mm 0 !important;
+    font-size: 9pt !important;
+    margin: 2mm 0 !important;
   }
 
   table th,
   table td {
     border: 1px solid #333 !important;
-    padding: 3mm !important;
+    padding: 2mm !important;
     text-align: left !important;
   }
 
@@ -68,8 +68,8 @@
 
   /* Rodapé */
   .print-footer {
-    margin-top: 15mm !important;
-    padding-top: 8mm !important;
+    margin-top: 8mm !important;
+    padding-top: 4mm !important;
     border-top: 1px solid #666 !important;
     page-break-inside: avoid !important;
   }
@@ -98,9 +98,9 @@
 
   .grid > div {
     display: inline-block !important;
-    width: 48% !important;
+    width: 49% !important;
     vertical-align: top !important;
-    margin-right: 4% !important;
+    margin-right: 2% !important;
   }
 
   .grid > div:nth-child(2n) {
@@ -164,28 +164,28 @@
 
   /* Tamanhos de texto */
   .text-xs {
-    font-size: 9pt !important;
+    font-size: 7pt !important;
   }
 
   .text-sm {
-    font-size: 10pt !important;
+    font-size: 8pt !important;
   }
 
   .text-lg {
-    font-size: 14pt !important;
+    font-size: 12pt !important;
   }
 
   .text-xl {
-    font-size: 16pt !important;
+    font-size: 14pt !important;
   }
 
   .text-2xl {
-    font-size: 18pt !important;
+    font-size: 16pt !important;
   }
 
   /* Margens de página */
   @page {
-    margin: 2cm;
+    margin: 1.5cm;
     size: A4;
   }
 }

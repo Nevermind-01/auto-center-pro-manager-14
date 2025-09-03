@@ -33,16 +33,16 @@ export function PrintLayout({
   return (
     <div className={`print-container bg-background text-foreground ${className}`}>
       {/* Cabeçalho */}
-      <header className="print-header border-b-2 border-border pb-6 mb-6">
+      <header className="print-header border-b-2 border-border pb-3 mb-4">
         <div className="flex justify-between items-start">
           {/* Informações da Empresa */}
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-3">
             {empresa.logo_url && (
               <div className="print-logo">
                 <img 
                   src={empresa.logo_url} 
                   alt="Logo da empresa"
-                  className="max-h-20 max-w-32 object-contain"
+                  className="max-h-12 max-w-20 object-contain"
                   onError={(e) => {
                     // Em caso de erro na logo, esconder o elemento
                     const target = e.target as HTMLImageElement;
@@ -52,16 +52,16 @@ export function PrintLayout({
                 />
               </div>
             )}
-            <div className="space-y-1">
-              <h2 className="text-xl font-bold text-primary">{empresa.nome}</h2>
+            <div className="space-y-0.5">
+              <h2 className="text-lg font-bold text-primary">{empresa.nome}</h2>
               {empresa.razao_social && empresa.razao_social !== empresa.nome && (
-                <p className="text-sm text-muted-foreground">{empresa.razao_social}</p>
+                <p className="text-xs text-muted-foreground">{empresa.razao_social}</p>
               )}
-              <div className="text-sm space-y-1">
+              <div className="text-xs space-y-0.5">
                 {formatAddress(empresa) && (
                   <p>{formatAddress(empresa)}</p>
                 )}
-                <div className="flex gap-4">
+                <div className="flex gap-3">
                   {empresa.telefone_principal && (
                     <span>Tel: {empresa.telefone_principal}</span>
                   )}
@@ -78,8 +78,8 @@ export function PrintLayout({
 
           {/* Informações do Documento */}
           <div className="text-right">
-            <h1 className="text-2xl font-bold text-primary mb-2">{title}</h1>
-            <div className="text-sm space-y-1">
+            <h1 className="text-xl font-bold text-primary mb-1">{title}</h1>
+            <div className="text-xs space-y-0.5">
               <p className="font-mono font-semibold">{documentNumber}</p>
               <p>{documentDate}</p>
             </div>
@@ -88,21 +88,21 @@ export function PrintLayout({
       </header>
 
       {/* Conteúdo */}
-      <main className="print-content space-y-6">
+      <main className="print-content space-y-3">
         {children}
       </main>
 
       {/* Rodapé */}
-      <footer className="print-footer mt-12 pt-6 border-t border-border">
-        <div className="grid grid-cols-2 gap-8">
-          <div className="space-y-2">
-            <p className="font-semibold">Responsável pela Empresa:</p>
-            <div className="border-b border-border h-8"></div>
+      <footer className="print-footer mt-6 pt-3 border-t border-border">
+        <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-1">
+            <p className="font-semibold text-sm">Responsável pela Empresa:</p>
+            <div className="border-b border-border h-6"></div>
             <p className="text-xs text-muted-foreground">Assinatura e carimbo</p>
           </div>
-          <div className="space-y-2">
-            <p className="font-semibold">Cliente:</p>
-            <div className="border-b border-border h-8"></div>
+          <div className="space-y-1">
+            <p className="font-semibold text-sm">Cliente:</p>
+            <div className="border-b border-border h-6"></div>
             <p className="text-xs text-muted-foreground">Assinatura</p>
           </div>
         </div>

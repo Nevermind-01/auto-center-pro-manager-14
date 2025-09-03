@@ -69,10 +69,10 @@ export function OrcamentoPrint({ orcamento, empresa }: OrcamentoPrintProps) {
     >
       {/* Dados do Cliente */}
       <section className="print-section">
-        <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
+        <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
           Dados do Cliente
         </h3>
-        <div className="grid grid-cols-2 gap-3 text-xs">
+        <div className="grid grid-cols-2 gap-2 text-xs">
           <div>
             <p><span className="font-medium">Nome:</span> {orcamento.cliente_nome}</p>
             {orcamento.cliente?.cpf && (
@@ -99,10 +99,10 @@ export function OrcamentoPrint({ orcamento, empresa }: OrcamentoPrintProps) {
       {/* Dados do Veículo */}
       {orcamento.veiculo && (
         <section className="print-section">
-          <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
+          <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
             Dados do Veículo
           </h3>
-          <div className="grid grid-cols-2 gap-3 text-xs">
+          <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
               <p><span className="font-medium">Marca/Modelo:</span> {orcamento.veiculo.marca} {orcamento.veiculo.modelo}</p>
               <p><span className="font-medium">Ano:</span> {orcamento.veiculo.ano || 'N/A'}</p>
@@ -123,7 +123,7 @@ export function OrcamentoPrint({ orcamento, empresa }: OrcamentoPrintProps) {
       {/* Mecânico Responsável */}
       {orcamento.mecanico && (
         <section className="print-section">
-          <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
+          <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
             Mecânico Responsável
           </h3>
           <p className="text-xs"><span className="font-medium">Nome:</span> {orcamento.mecanico.nome}</p>
@@ -132,39 +132,39 @@ export function OrcamentoPrint({ orcamento, empresa }: OrcamentoPrintProps) {
 
       {/* Itens do Orçamento */}
       <section className="print-section">
-        <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
+        <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
           Itens do Orçamento
         </h3>
         
         <table className="w-full border-collapse border border-border text-xs">
           <thead>
             <tr className="bg-muted/30">
-              <th className="border border-border p-1.5 text-left">Descrição</th>
-              <th className="border border-border p-1.5 text-center w-16">Qtd.</th>
-              <th className="border border-border p-1.5 text-right w-24">Valor Unit.</th>
-              <th className="border border-border p-1.5 text-right w-24">Subtotal</th>
+              <th className="border border-border p-1 text-left">Descrição</th>
+              <th className="border border-border p-1 text-center w-12">Qtd.</th>
+              <th className="border border-border p-1 text-right w-20">Valor Unit.</th>
+              <th className="border border-border p-1 text-right w-20">Subtotal</th>
             </tr>
           </thead>
           <tbody>
             {orcamento.produtos.map((produto, index) => (
               <tr key={`produto-${index}`}>
-                <td className="border border-border p-1.5">{produto.produto_nome}</td>
-                <td className="border border-border p-1.5 text-center">{produto.quantidade}</td>
-                <td className="border border-border p-1.5 text-right">{formatCurrency(produto.preco_unitario)}</td>
-                <td className="border border-border p-1.5 text-right">{formatCurrency(produto.preco_total)}</td>
+                <td className="border border-border p-1">{produto.produto_nome}</td>
+                <td className="border border-border p-1 text-center">{produto.quantidade}</td>
+                <td className="border border-border p-1 text-right">{formatCurrency(produto.preco_unitario)}</td>
+                <td className="border border-border p-1 text-right">{formatCurrency(produto.preco_total)}</td>
               </tr>
             ))}
             {orcamento.servicos.map((servico, index) => (
               <tr key={`servico-${index}`}>
-                <td className="border border-border p-1.5">{servico.servico_nome}</td>
-                <td className="border border-border p-1.5 text-center">1</td>
-                <td className="border border-border p-1.5 text-right">{formatCurrency(servico.preco)}</td>
-                <td className="border border-border p-1.5 text-right">{formatCurrency(servico.preco)}</td>
+                <td className="border border-border p-1">{servico.servico_nome}</td>
+                <td className="border border-border p-1 text-center">1</td>
+                <td className="border border-border p-1 text-right">{formatCurrency(servico.preco)}</td>
+                <td className="border border-border p-1 text-right">{formatCurrency(servico.preco)}</td>
               </tr>
             ))}
             {orcamento.produtos.length === 0 && orcamento.servicos.length === 0 && (
               <tr>
-                <td colSpan={4} className="border border-border p-3 text-center text-muted-foreground">
+                <td colSpan={4} className="border border-border p-2 text-center text-muted-foreground">
                   Nenhum item encontrado
                 </td>
               </tr>
@@ -175,10 +175,10 @@ export function OrcamentoPrint({ orcamento, empresa }: OrcamentoPrintProps) {
 
       {/* Resumo Financeiro */}
       <section className="print-section">
-        <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
+        <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
           Resumo Financeiro
         </h3>
-        <div className="space-y-1 text-xs max-w-sm ml-auto">
+        <div className="space-y-0.5 text-xs max-w-xs ml-auto">
           {subtotalProdutos > 0 && (
             <div className="flex justify-between">
               <span>Subtotal Produtos:</span>
@@ -201,7 +201,7 @@ export function OrcamentoPrint({ orcamento, empresa }: OrcamentoPrintProps) {
               <span>- {formatCurrency(orcamento.valor_desconto)}</span>
             </div>
           )}
-          <div className="border-t border-border pt-1 mt-1"></div>
+          <div className="border-t border-border pt-0.5 mt-0.5"></div>
           <div className="flex justify-between font-bold text-sm">
             <span>TOTAL:</span>
             <span>{formatCurrency(orcamento.valor_final)}</span>
@@ -211,22 +211,22 @@ export function OrcamentoPrint({ orcamento, empresa }: OrcamentoPrintProps) {
 
       {/* Observações e Validade */}
       <section className="print-section">
-        <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
+        <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
           Observações e Condições
         </h3>
-        <div className="space-y-2 text-xs">
+        <div className="space-y-1 text-xs">
           <p><span className="font-medium">Validade do Orçamento:</span> {format(new Date(orcamento.validade), 'dd/MM/yyyy', { locale: ptBR })}</p>
           
           {orcamento.observacoes && (
             <div>
-              <p className="font-medium mb-1">Observações:</p>
-              <p className="whitespace-pre-wrap bg-muted/20 p-2 rounded border">{orcamento.observacoes}</p>
+              <p className="font-medium mb-0.5">Observações:</p>
+              <p className="whitespace-pre-wrap bg-muted/20 p-1 rounded border">{orcamento.observacoes}</p>
             </div>
           )}
 
-          <div className="bg-muted/20 p-2 rounded border">
-            <p className="font-medium mb-1">Condições Gerais:</p>
-            <ul className="space-y-0.5 text-xs list-disc list-inside">
+          <div className="bg-muted/20 p-1 rounded border">
+            <p className="font-medium mb-0.5">Condições Gerais:</p>
+            <ul className="space-y-0 text-xs list-disc list-inside">
               <li>Este orçamento tem validade até a data indicada acima</li>
               <li>Os preços podem sofrer alteração sem aviso prévio</li>
               <li>A empresa se reserva o direito de verificar as condições do veículo antes do início dos serviços</li>

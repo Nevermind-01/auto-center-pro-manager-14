@@ -80,8 +80,8 @@ export function OSPrint({ os, empresa }: OSPrintProps) {
     >
       {/* Status da OS */}
       <section className="print-section">
-        <div className="bg-muted/20 p-2 rounded border text-center">
-          <p className="text-base font-semibold">
+        <div className="bg-muted/20 p-1 rounded border text-center">
+          <p className="text-sm font-semibold">
             <span className="text-muted-foreground">Status:</span> {getStatusText(os.status)}
           </p>
         </div>
@@ -89,10 +89,10 @@ export function OSPrint({ os, empresa }: OSPrintProps) {
 
       {/* Dados do Cliente */}
       <section className="print-section">
-        <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
+        <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
           Dados do Cliente
         </h3>
-        <div className="grid grid-cols-2 gap-3 text-xs">
+        <div className="grid grid-cols-2 gap-2 text-xs">
           <div>
             <p><span className="font-medium">Nome:</span> {os.cliente_nome}</p>
             {os.cliente?.cpf && (
@@ -119,10 +119,10 @@ export function OSPrint({ os, empresa }: OSPrintProps) {
       {/* Dados do Veículo */}
       {os.veiculo && (
         <section className="print-section">
-          <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
+          <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
             Dados do Veículo
           </h3>
-          <div className="grid grid-cols-2 gap-3 text-xs">
+          <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
               <p><span className="font-medium">Marca/Modelo:</span> {os.veiculo.marca} {os.veiculo.modelo}</p>
               <p><span className="font-medium">Ano:</span> {os.veiculo.ano || 'N/A'}</p>
@@ -143,7 +143,7 @@ export function OSPrint({ os, empresa }: OSPrintProps) {
       {/* Mecânico Responsável */}
       {os.mecanico && (
         <section className="print-section">
-          <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
+          <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
             Mecânico Responsável
           </h3>
           <div className="text-xs">
@@ -157,39 +157,39 @@ export function OSPrint({ os, empresa }: OSPrintProps) {
 
       {/* Serviços e Peças */}
       <section className="print-section">
-        <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
+        <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
           Serviços e Peças
         </h3>
         
         <table className="w-full border-collapse border border-border text-xs">
           <thead>
             <tr className="bg-muted/30">
-              <th className="border border-border p-1.5 text-left">Descrição</th>
-              <th className="border border-border p-1.5 text-center w-16">Qtd.</th>
-              <th className="border border-border p-1.5 text-right w-24">Valor Unit.</th>
-              <th className="border border-border p-1.5 text-right w-24">Subtotal</th>
+              <th className="border border-border p-1 text-left">Descrição</th>
+              <th className="border border-border p-1 text-center w-12">Qtd.</th>
+              <th className="border border-border p-1 text-right w-20">Valor Unit.</th>
+              <th className="border border-border p-1 text-right w-20">Subtotal</th>
             </tr>
           </thead>
           <tbody>
             {(os.venda_produtos || []).map((produto, index) => (
               <tr key={`produto-${index}`}>
-                <td className="border border-border p-1.5">{produto.produto_nome}</td>
-                <td className="border border-border p-1.5 text-center">{produto.quantidade}</td>
-                <td className="border border-border p-1.5 text-right">{formatCurrency(produto.preco_unitario)}</td>
-                <td className="border border-border p-1.5 text-right">{formatCurrency(produto.preco_total)}</td>
+                <td className="border border-border p-1">{produto.produto_nome}</td>
+                <td className="border border-border p-1 text-center">{produto.quantidade}</td>
+                <td className="border border-border p-1 text-right">{formatCurrency(produto.preco_unitario)}</td>
+                <td className="border border-border p-1 text-right">{formatCurrency(produto.preco_total)}</td>
               </tr>
             ))}
             {(os.venda_servicos || []).map((servico, index) => (
               <tr key={`servico-${index}`}>
-                <td className="border border-border p-1.5">{servico.servico_nome}</td>
-                <td className="border border-border p-1.5 text-center">1</td>
-                <td className="border border-border p-1.5 text-right">{formatCurrency(servico.preco)}</td>
-                <td className="border border-border p-1.5 text-right">{formatCurrency(servico.preco)}</td>
+                <td className="border border-border p-1">{servico.servico_nome}</td>
+                <td className="border border-border p-1 text-center">1</td>
+                <td className="border border-border p-1 text-right">{formatCurrency(servico.preco)}</td>
+                <td className="border border-border p-1 text-right">{formatCurrency(servico.preco)}</td>
               </tr>
             ))}
             {(os.venda_produtos || []).length === 0 && (os.venda_servicos || []).length === 0 && (
               <tr>
-                <td colSpan={4} className="border border-border p-3 text-center text-muted-foreground">
+                <td colSpan={4} className="border border-border p-2 text-center text-muted-foreground">
                   Nenhum item encontrado
                 </td>
               </tr>
@@ -200,10 +200,10 @@ export function OSPrint({ os, empresa }: OSPrintProps) {
 
       {/* Resumo Financeiro */}
       <section className="print-section">
-        <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
+        <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
           Resumo Financeiro
         </h3>
-        <div className="space-y-1 text-xs max-w-sm ml-auto">
+        <div className="space-y-0.5 text-xs max-w-xs ml-auto">
           {subtotalProdutos > 0 && (
             <div className="flex justify-between">
               <span>Subtotal Peças:</span>
@@ -226,7 +226,7 @@ export function OSPrint({ os, empresa }: OSPrintProps) {
               <span>- {formatCurrency(os.valor_desconto)}</span>
             </div>
           )}
-          <div className="border-t border-border pt-1 mt-1"></div>
+          <div className="border-t border-border pt-0.5 mt-0.5"></div>
           <div className="flex justify-between font-bold text-sm">
             <span>TOTAL:</span>
             <span>{formatCurrency(os.valor_final)}</span>
@@ -237,10 +237,10 @@ export function OSPrint({ os, empresa }: OSPrintProps) {
       {/* Observações */}
       {os.observacoes && (
         <section className="print-section">
-          <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
+          <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
             Observações
           </h3>
-          <div className="bg-muted/20 p-2 rounded border">
+          <div className="bg-muted/20 p-1 rounded border">
             <p className="whitespace-pre-wrap text-xs">{os.observacoes}</p>
           </div>
         </section>
@@ -248,27 +248,27 @@ export function OSPrint({ os, empresa }: OSPrintProps) {
 
       {/* Controle de Qualidade */}
       <section className="print-section">
-        <h3 className="text-base font-semibold mb-2 text-primary border-b border-border pb-1">
+        <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
           Controle de Qualidade
         </h3>
-        <div className="grid grid-cols-2 gap-4 text-xs">
-          <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="space-y-1">
             <div>
-              <p className="font-medium mb-1">□ Revisão Inicial</p>
+              <p className="font-medium mb-0.5">□ Revisão Inicial</p>
               <p className="text-xs text-muted-foreground">Verificação das condições gerais</p>
             </div>
             <div>
-              <p className="font-medium mb-1">□ Execução dos Serviços</p>
+              <p className="font-medium mb-0.5">□ Execução dos Serviços</p>
               <p className="text-xs text-muted-foreground">Conformidade com o especificado</p>
             </div>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1">
             <div>
-              <p className="font-medium mb-1">□ Teste Final</p>
+              <p className="font-medium mb-0.5">□ Teste Final</p>
               <p className="text-xs text-muted-foreground">Verificação do funcionamento</p>
             </div>
             <div>
-              <p className="font-medium mb-1">□ Entrega</p>
+              <p className="font-medium mb-0.5">□ Entrega</p>
               <p className="text-xs text-muted-foreground">Cliente satisfeito com o serviço</p>
             </div>
           </div>

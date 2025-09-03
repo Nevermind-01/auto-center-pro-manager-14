@@ -31,7 +31,8 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
     queryFn: async () => {
       if (!empresaId) return [];
 
-      let query = supabase
+      // Query para buscar vendas
+      let vendasQuery = supabase
         .from('vendas')
         .select(`
           id,
@@ -42,8 +43,7 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
           valor_desconto,
           valor_final,
           forma_pagamento,
-          status,
-          comissoes_mecanicos(valor_final)
+          status
         `)
         .eq('empresa_id', empresaId)
         .not('finalizado_em', 'is', null)
@@ -52,15 +52,32 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
         .order('finalizado_em', { ascending: false });
 
       if (numeroOS) {
-        query = query.ilike('numero_os', `%${numeroOS}%`);
+        vendasQuery = vendasQuery.ilike('numero_os', `%${numeroOS}%`);
       }
 
-      const { data, error } = await query;
+      // Query para buscar comissões
+      const comissoesQuery = supabase
+        .from('comissoes_mecanicos')
+        .select('venda_id, valor_final')
+        .eq('empresa_id', empresaId);
 
-      if (error) throw error;
+      // Executar queries em paralelo
+      const [vendasResult, comissoesResult] = await Promise.all([
+        vendasQuery,
+        comissoesQuery
+      ]);
 
-      // Formatar dados para incluir valor da comissão
-      return data.map((venda: any) => ({
+      if (vendasResult.error) throw vendasResult.error;
+      if (comissoesResult.error) throw comissoesResult.error;
+
+      // Criar mapa de comissões por venda_id
+      const comissoesMap = new Map<string, number>();
+      comissoesResult.data?.forEach((comissao) => {
+        comissoesMap.set(comissao.venda_id, comissao.valor_final || 0);
+      });
+
+      // Combinar dados de vendas com comissões
+      return vendasResult.data.map((venda: any) => ({
         id: venda.id,
         numero_os: venda.numero_os,
         finalizado_em: venda.finalizado_em,
@@ -70,7 +87,7 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
         valor_final: venda.valor_final,
         forma_pagamento: venda.forma_pagamento,
         status: venda.status,
-        valor_comissao: venda.comissoes_mecanicos?.[0]?.valor_final || 0,
+        valor_comissao: comissoesMap.get(venda.id) || 0,
       })) as HistoricoVenda[];
     },
     enabled: !!empresaId,

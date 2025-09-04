@@ -67,104 +67,109 @@ export function OrcamentoPrint({ orcamento, empresa }: OrcamentoPrintProps) {
       documentNumber={`Nº ${orcamento.numero_orcamento}`}
       documentDate={`Emitido em: ${format(new Date(orcamento.created_at), 'dd/MM/yyyy', { locale: ptBR })}`}
     >
-      {/* Dados do Cliente */}
+      {/* Dados do Cliente e Veículo */}
       <section className="print-section">
-        <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
-          Dados do Cliente
-        </h3>
-        <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="print-compact-grid">
+          {/* Cliente */}
           <div>
-            <p><span className="font-medium">Nome:</span> {orcamento.cliente_nome}</p>
-            {orcamento.cliente?.cpf && (
-              <p><span className="font-medium">CPF:</span> {maskCPF(orcamento.cliente.cpf)}</p>
-            )}
-            {orcamento.cliente?.cnpj && (
-              <p><span className="font-medium">CNPJ:</span> {maskCNPJ(orcamento.cliente.cnpj)}</p>
-            )}
+            <h3 className="text-sm font-semibold text-primary border-b border-border pb-0.5 mb-1">
+              Dados do Cliente
+            </h3>
+            <div className="text-xs space-y-0.5">
+              <div className="print-inline-data">
+                <span className="print-inline-item"><strong>Nome:</strong> {orcamento.cliente_nome}</span>
+              </div>
+              <div className="print-inline-data">
+                {orcamento.cliente?.cpf && (
+                  <span className="print-inline-item"><strong>CPF:</strong> {maskCPF(orcamento.cliente.cpf)}</span>
+                )}
+                {orcamento.cliente?.cnpj && (
+                  <span className="print-inline-item"><strong>CNPJ:</strong> {maskCNPJ(orcamento.cliente.cnpj)}</span>
+                )}
+                {orcamento.cliente?.telefone && (
+                  <span className="print-inline-item"><strong>Tel:</strong> {maskPhone(orcamento.cliente.telefone)}</span>
+                )}
+              </div>
+              {orcamento.cliente?.email && (
+                <p><strong>Email:</strong> {maskEmail(orcamento.cliente.email)}</p>
+              )}
+              {orcamento.cliente?.endereco && (
+                <p><strong>Endereço:</strong> {orcamento.cliente.endereco}</p>
+              )}
+            </div>
           </div>
-          <div>
-            {orcamento.cliente?.telefone && (
-              <p><span className="font-medium">Telefone:</span> {maskPhone(orcamento.cliente.telefone)}</p>
-            )}
-            {orcamento.cliente?.email && (
-              <p><span className="font-medium">Email:</span> {maskEmail(orcamento.cliente.email)}</p>
-            )}
-            {orcamento.cliente?.endereco && (
-              <p><span className="font-medium">Endereço:</span> {orcamento.cliente.endereco}</p>
-            )}
-          </div>
+
+          {/* Veículo */}
+          {orcamento.veiculo && (
+            <div>
+              <h3 className="text-sm font-semibold text-primary border-b border-border pb-0.5 mb-1">
+                Dados do Veículo
+              </h3>
+              <div className="text-xs space-y-0.5">
+                <div className="print-inline-data">
+                  <span className="print-inline-item"><strong>Marca/Modelo:</strong> {orcamento.veiculo.marca} {orcamento.veiculo.modelo}</span>
+                  <span className="print-inline-item"><strong>Ano:</strong> {orcamento.veiculo.ano || 'N/A'}</span>
+                </div>
+                <div className="print-inline-data">
+                  <span className="print-inline-item"><strong>Placa:</strong> {orcamento.veiculo.placa}</span>
+                  {orcamento.veiculo.cor && (
+                    <span className="print-inline-item"><strong>Cor:</strong> {orcamento.veiculo.cor}</span>
+                  )}
+                </div>
+                {orcamento.veiculo.km_atual !== undefined && orcamento.veiculo.km_atual > 0 && (
+                  <p><strong>KM Atual:</strong> {orcamento.veiculo.km_atual.toLocaleString('pt-BR')} km</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </section>
-
-      {/* Dados do Veículo */}
-      {orcamento.veiculo && (
-        <section className="print-section">
-          <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
-            Dados do Veículo
-          </h3>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <p><span className="font-medium">Marca/Modelo:</span> {orcamento.veiculo.marca} {orcamento.veiculo.modelo}</p>
-              <p><span className="font-medium">Ano:</span> {orcamento.veiculo.ano || 'N/A'}</p>
-              <p><span className="font-medium">Placa:</span> {orcamento.veiculo.placa}</p>
-            </div>
-            <div>
-              {orcamento.veiculo.cor && (
-                <p><span className="font-medium">Cor:</span> {orcamento.veiculo.cor}</p>
-              )}
-              {orcamento.veiculo.km_atual !== undefined && orcamento.veiculo.km_atual > 0 && (
-                <p><span className="font-medium">KM Atual:</span> {orcamento.veiculo.km_atual.toLocaleString('pt-BR')} km</p>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Mecânico Responsável */}
       {orcamento.mecanico && (
         <section className="print-section">
-          <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
+          <h3 className="text-sm font-semibold text-primary border-b border-border pb-0.5 mb-1">
             Mecânico Responsável
           </h3>
-          <p className="text-xs"><span className="font-medium">Nome:</span> {orcamento.mecanico.nome}</p>
+          <p className="text-xs"><strong>Nome:</strong> {orcamento.mecanico.nome}</p>
         </section>
       )}
 
       {/* Itens do Orçamento */}
       <section className="print-section">
-        <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
+        <h3 className="text-sm font-semibold text-primary border-b border-border pb-0.5 mb-1">
           Itens do Orçamento
         </h3>
         
         <table className="w-full border-collapse border border-border text-xs">
           <thead>
             <tr className="bg-muted/30">
-              <th className="border border-border p-1 text-left">Descrição</th>
-              <th className="border border-border p-1 text-center w-12">Qtd.</th>
-              <th className="border border-border p-1 text-right w-20">Valor Unit.</th>
-              <th className="border border-border p-1 text-right w-20">Subtotal</th>
+              <th className="border border-border p-0.5 text-left w-2/5">Descrição</th>
+              <th className="border border-border p-0.5 text-center w-1/12">Qtd.</th>
+              <th className="border border-border p-0.5 text-right w-1/4">Valor Unit.</th>
+              <th className="border border-border p-0.5 text-right w-1/4">Subtotal</th>
             </tr>
           </thead>
           <tbody>
             {orcamento.produtos.map((produto, index) => (
               <tr key={`produto-${index}`}>
-                <td className="border border-border p-1">{produto.produto_nome}</td>
-                <td className="border border-border p-1 text-center">{produto.quantidade}</td>
-                <td className="border border-border p-1 text-right">{formatCurrency(produto.preco_unitario)}</td>
-                <td className="border border-border p-1 text-right">{formatCurrency(produto.preco_total)}</td>
+                <td className="border border-border p-0.5">[P] {produto.produto_nome}</td>
+                <td className="border border-border p-0.5 text-center">{produto.quantidade}</td>
+                <td className="border border-border p-0.5 text-right">{formatCurrency(produto.preco_unitario)}</td>
+                <td className="border border-border p-0.5 text-right">{formatCurrency(produto.preco_total)}</td>
               </tr>
             ))}
             {orcamento.servicos.map((servico, index) => (
               <tr key={`servico-${index}`}>
-                <td className="border border-border p-1">{servico.servico_nome}</td>
-                <td className="border border-border p-1 text-center">1</td>
-                <td className="border border-border p-1 text-right">{formatCurrency(servico.preco)}</td>
-                <td className="border border-border p-1 text-right">{formatCurrency(servico.preco)}</td>
+                <td className="border border-border p-0.5">[S] {servico.servico_nome}</td>
+                <td className="border border-border p-0.5 text-center">1</td>
+                <td className="border border-border p-0.5 text-right">{formatCurrency(servico.preco)}</td>
+                <td className="border border-border p-0.5 text-right">{formatCurrency(servico.preco)}</td>
               </tr>
             ))}
             {orcamento.produtos.length === 0 && orcamento.servicos.length === 0 && (
               <tr>
-                <td colSpan={4} className="border border-border p-2 text-center text-muted-foreground">
+                <td colSpan={4} className="border border-border p-1 text-center text-muted-foreground">
                   Nenhum item encontrado
                 </td>
               </tr>

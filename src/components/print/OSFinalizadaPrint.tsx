@@ -93,82 +93,94 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
         </div>
       </section>
 
-      {/* Dados do Cliente */}
+      {/* Dados do Cliente e Veículo */}
       <section className="print-section">
-        <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
-          Dados do Cliente
-        </h3>
-        <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="print-compact-grid">
+          {/* Cliente */}
           <div>
-            <p><span className="font-medium">Nome:</span> {os.cliente_nome}</p>
-            {os.cliente?.cpf && (
-              <p><span className="font-medium">CPF:</span> {maskCPF(os.cliente.cpf)}</p>
-            )}
-            {os.cliente?.cnpj && (
-              <p><span className="font-medium">CNPJ:</span> {maskCNPJ(os.cliente.cnpj)}</p>
-            )}
+            <h3 className="text-sm font-semibold text-primary border-b border-border pb-0.5 mb-1">
+              Dados do Cliente
+            </h3>
+            <div className="text-xs space-y-0.5">
+              <div className="print-inline-data">
+                <span className="print-inline-item"><strong>Nome:</strong> {os.cliente_nome}</span>
+              </div>
+              <div className="print-inline-data">
+                {os.cliente?.cpf && (
+                  <span className="print-inline-item"><strong>CPF:</strong> {maskCPF(os.cliente.cpf)}</span>
+                )}
+                {os.cliente?.cnpj && (
+                  <span className="print-inline-item"><strong>CNPJ:</strong> {maskCNPJ(os.cliente.cnpj)}</span>
+                )}
+                {os.cliente?.telefone && (
+                  <span className="print-inline-item"><strong>Tel:</strong> {maskPhone(os.cliente.telefone)}</span>
+                )}
+              </div>
+              {os.cliente?.email && (
+                <p><strong>Email:</strong> {maskEmail(os.cliente.email)}</p>
+              )}
+              {os.cliente?.endereco && (
+                <p><strong>Endereço:</strong> {os.cliente.endereco}</p>
+              )}
+            </div>
           </div>
-          <div>
-            {os.cliente?.telefone && (
-              <p><span className="font-medium">Telefone:</span> {maskPhone(os.cliente.telefone)}</p>
-            )}
-            {os.cliente?.email && (
-              <p><span className="font-medium">Email:</span> {maskEmail(os.cliente.email)}</p>
-            )}
-            {os.cliente?.endereco && (
-              <p><span className="font-medium">Endereço:</span> {os.cliente.endereco}</p>
-            )}
-          </div>
+
+          {/* Veículo */}
+          {os.veiculo && (
+            <div>
+              <h3 className="text-sm font-semibold text-primary border-b border-border pb-0.5 mb-1">
+                Dados do Veículo
+              </h3>
+              <div className="text-xs space-y-0.5">
+                <div className="print-inline-data">
+                  <span className="print-inline-item"><strong>Marca/Modelo:</strong> {os.veiculo.marca} {os.veiculo.modelo}</span>
+                  <span className="print-inline-item"><strong>Ano:</strong> {os.veiculo.ano || 'N/A'}</span>
+                </div>
+                <div className="print-inline-data">
+                  <span className="print-inline-item"><strong>Placa:</strong> {os.veiculo.placa}</span>
+                  {os.veiculo.cor && (
+                    <span className="print-inline-item"><strong>Cor:</strong> {os.veiculo.cor}</span>
+                  )}
+                </div>
+                {os.veiculo.km_atual !== undefined && os.veiculo.km_atual > 0 && (
+                  <p><strong>KM Atual:</strong> {os.veiculo.km_atual.toLocaleString('pt-BR')} km</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Dados do Veículo */}
-      {os.veiculo && (
-        <section className="print-section">
-          <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
-            Dados do Veículo
-          </h3>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <p><span className="font-medium">Marca/Modelo:</span> {os.veiculo.marca} {os.veiculo.modelo}</p>
-              <p><span className="font-medium">Ano:</span> {os.veiculo.ano || 'N/A'}</p>
-              <p><span className="font-medium">Placa:</span> {os.veiculo.placa}</p>
-            </div>
-            <div>
-              {os.veiculo.cor && (
-                <p><span className="font-medium">Cor:</span> {os.veiculo.cor}</p>
-              )}
-              {os.veiculo.km_atual !== undefined && os.veiculo.km_atual > 0 && (
-                <p><span className="font-medium">KM Atual:</span> {os.veiculo.km_atual.toLocaleString('pt-BR')} km</p>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Mecânico Responsável */}
-      {os.mecanico && (
-        <section className="print-section">
-          <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
-            Mecânico Responsável
-          </h3>
-          <div className="text-xs">
-            <p><span className="font-medium">Nome:</span> {os.mecanico.nome}</p>
-            {os.mecanico.especialidade && (
-              <p><span className="font-medium">Especialidade:</span> {os.mecanico.especialidade}</p>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Período de Execução */}
+      {/* Mecânico e Período de Execução */}
       <section className="print-section">
-        <h3 className="text-sm font-semibold mb-1 text-primary border-b border-border pb-0.5">
-          Período de Execução
-        </h3>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <p><span className="font-medium">Início:</span> {format(new Date(os.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
-          <p><span className="font-medium">Conclusão:</span> {format(new Date(os.finalizado_em), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
+        <div className="print-compact-grid">
+          {/* Mecânico */}
+          {os.mecanico && (
+            <div>
+              <h3 className="text-sm font-semibold text-primary border-b border-border pb-0.5 mb-1">
+                Mecânico Responsável
+              </h3>
+              <div className="text-xs">
+                <div className="print-inline-data">
+                  <span className="print-inline-item"><strong>Nome:</strong> {os.mecanico.nome}</span>
+                  {os.mecanico.especialidade && (
+                    <span className="print-inline-item"><strong>Especialidade:</strong> {os.mecanico.especialidade}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Período */}
+          <div>
+            <h3 className="text-sm font-semibold text-primary border-b border-border pb-0.5 mb-1">
+              Período de Execução
+            </h3>
+            <div className="text-xs space-y-0.5">
+              <p><strong>Início:</strong> {format(new Date(os.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
+              <p><strong>Conclusão:</strong> {format(new Date(os.finalizado_em), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -181,32 +193,32 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
         <table className="w-full border-collapse border border-border text-xs">
           <thead>
             <tr className="bg-muted/30">
-              <th className="border border-border p-1 text-left">Descrição</th>
-              <th className="border border-border p-1 text-center w-12">Qtd.</th>
-              <th className="border border-border p-1 text-right w-20">Valor Unit.</th>
-              <th className="border border-border p-1 text-right w-20">Subtotal</th>
+              <th className="border border-border p-0.5 text-left w-2/5">Descrição</th>
+              <th className="border border-border p-0.5 text-center w-1/12">Qtd.</th>
+              <th className="border border-border p-0.5 text-right w-1/4">Valor Unit.</th>
+              <th className="border border-border p-0.5 text-right w-1/4">Subtotal</th>
             </tr>
           </thead>
           <tbody>
             {(os.venda_produtos || []).map((produto, index) => (
               <tr key={`produto-${index}`}>
-                <td className="border border-border p-1">{produto.produto_nome}</td>
-                <td className="border border-border p-1 text-center">{produto.quantidade}</td>
-                <td className="border border-border p-1 text-right">{formatCurrency(produto.preco_unitario)}</td>
-                <td className="border border-border p-1 text-right">{formatCurrency(produto.preco_total)}</td>
+                <td className="border border-border p-0.5">[P] {produto.produto_nome}</td>
+                <td className="border border-border p-0.5 text-center">{produto.quantidade}</td>
+                <td className="border border-border p-0.5 text-right">{formatCurrency(produto.preco_unitario)}</td>
+                <td className="border border-border p-0.5 text-right">{formatCurrency(produto.preco_total)}</td>
               </tr>
             ))}
             {(os.venda_servicos || []).map((servico, index) => (
               <tr key={`servico-${index}`}>
-                <td className="border border-border p-1">{servico.servico_nome}</td>
-                <td className="border border-border p-1 text-center">1</td>
-                <td className="border border-border p-1 text-right">{formatCurrency(servico.preco)}</td>
-                <td className="border border-border p-1 text-right">{formatCurrency(servico.preco)}</td>
+                <td className="border border-border p-0.5">[S] {servico.servico_nome}</td>
+                <td className="border border-border p-0.5 text-center">1</td>
+                <td className="border border-border p-0.5 text-right">{formatCurrency(servico.preco)}</td>
+                <td className="border border-border p-0.5 text-right">{formatCurrency(servico.preco)}</td>
               </tr>
             ))}
             {(os.venda_produtos || []).length === 0 && (os.venda_servicos || []).length === 0 && (
               <tr>
-                <td colSpan={4} className="border border-border p-2 text-center text-muted-foreground">
+                <td colSpan={4} className="border border-border p-1 text-center text-muted-foreground">
                   Nenhum item encontrado
                 </td>
               </tr>

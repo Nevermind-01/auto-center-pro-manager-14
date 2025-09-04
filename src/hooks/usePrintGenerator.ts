@@ -228,7 +228,7 @@ export const usePrintGenerator = () => {
           ${styles}
           @media print {
             body { margin: 0; padding: 0; }
-            .print-container { margin: 0; padding: 20mm; }
+            .print-container { margin: 0; padding: 5mm; }
           }
         </style>
       `;

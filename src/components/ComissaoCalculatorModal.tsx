@@ -15,6 +15,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
+import { mapVendaToCaixaFormaPagamento, type VendaFormaPagamento } from "@/lib/paymentMethodMapper";
+import { useCaixa } from "@/hooks/useCaixa";
 
 interface ComissaoCalculatorModalProps {
   isOpen: boolean;
@@ -53,6 +56,8 @@ export const ComissaoCalculatorModal = ({
   osData
 }: ComissaoCalculatorModalProps) => {
   const { toast } = useToast();
+  const { criarMovimentacaoAsync } = useMovimentacoesCaixa();
+  const { caixaAtual } = useCaixa();
 
   const [tipoCalculo, setTipoCalculo] = useState<"percentual" | "fixo">("percentual");
   const [baseCalculo, setBaseCalculo] = useState<"servicos" | "total" | "manual">("servicos");
@@ -97,8 +102,10 @@ export const ComissaoCalculatorModal = ({
         throw new Error("Dados da OS não fornecidos");
       }
 
-      const { clienteSelecionado, veiculoSelecionado, servicosSelecionados, produtosSelecionados, 
+      const { clienteSelecionado, veiculoSelecionado, servicosSelecionados, produtosSelecionados,
               formaPagamento, parcelas, valorDesconto, observacoes, numeroOS } = osData;
+
+      const valorFinal = valorTotal - (valorDesconto || 0);
 
       // Validações obrigatórias mais específicas
       if (!clienteSelecionado?.id || !clienteSelecionado?.nome) {
@@ -155,7 +162,7 @@ export const ComissaoCalculatorModal = ({
         userId: user.data.user.id,
         valorTotal: valorTotal,
         valorDesconto: valorDesconto || 0,
-        valorFinal: valorTotal - (valorDesconto || 0),
+        valorFinal,
         formaPagamento,
         parcelas: parcelas || 1,
         observacoes: observacoes || "",
@@ -194,6 +201,37 @@ export const ComissaoCalculatorModal = ({
       const resultadoData = resultado as any;
       if (!resultadoData?.success) {
         throw new Error(resultadoData?.error || "Falha ao processar finalização da OS");
+      }
+
+      // Registrar movimentação no caixa
+      try {
+        if (!caixaAtual) {
+          toast({
+            title: "Atenção",
+            description: "OS finalizada com sucesso, mas não há caixa aberto para registrar a movimentação.",
+            variant: "destructive",
+          });
+        } else {
+          const caixaFormaPagamento = mapVendaToCaixaFormaPagamento(formaPagamento as VendaFormaPagamento);
+          await criarMovimentacaoAsync({
+            tipo: 'entrada',
+            tipo_origem: 'OS',
+            forma_pagamento: caixaFormaPagamento,
+            valor_bruto: valorFinal,
+            valor_liquido: valorFinal,
+            descricao: `OS ${numeroOS} - ${clienteSelecionado.nome}`,
+            referencia_id: resultadoData.vendaId,
+          });
+        }
+      } catch (caixaError: any) {
+        console.error("Erro ao registrar movimentação no caixa:", caixaError);
+        toast({
+          title: "Atenção",
+          description: caixaError?.message
+            ? `OS finalizada, mas erro ao registrar no caixa: ${caixaError.message}`
+            : "OS finalizada, mas não foi possível registrar no caixa.",
+          variant: "destructive",
+        });
       }
 
       // Sucesso

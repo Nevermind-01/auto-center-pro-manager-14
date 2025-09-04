@@ -26,6 +26,7 @@ import {
   History
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { getFormaPagamentoDescription } from '@/lib/paymentMethodMapper';
 
 export default function Caixa() {
   const { caixaAtual, isLoading } = useCaixa();
@@ -241,7 +242,7 @@ export default function Caixa() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {Object.entries(resumoPorForma).map(([forma, dados]: [string, any]) => (
                       <div key={forma} className="p-4 border rounded-lg">
-                        <h4 className="font-medium capitalize mb-2">{forma}</h4>
+                        <h4 className="font-medium mb-2">{getFormaPagamentoDescription(forma as any)}</h4>
                         <div className="space-y-1 text-sm">
                           <div className="flex justify-between">
                             <span className="text-green-600">Entradas:</span>
@@ -282,7 +283,7 @@ export default function Caixa() {
                     {movimentacoes.slice(0, 10).map((mov) => (
                       <div key={mov.id} className="flex justify-between items-center p-3 border rounded-lg">
                         <div>
-                          <p className="font-medium capitalize">{mov.forma_pagamento}</p>
+                          <p className="font-medium">{getFormaPagamentoDescription(mov.forma_pagamento as any)}</p>
                           <p className="text-sm text-muted-foreground">
                             {mov.descricao || `${mov.tipo_origem} - ${mov.tipo}`}
                           </p>

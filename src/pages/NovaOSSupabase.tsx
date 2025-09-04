@@ -32,6 +32,7 @@ import { generateSequentialOSNumber } from "@/lib/utils";
 import { useEmpresaContext } from "@/hooks/useEmpresaContext";
 import { useMultipleAsyncActions } from "@/hooks/useAsyncAction";
 import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
+import { useCaixa } from "@/hooks/useCaixa";
 import { mapVendaToCaixaFormaPagamento, type VendaFormaPagamento, isValidVendaFormaPagamento } from "@/lib/paymentMethodMapper";
 import { 
   Plus, 
@@ -96,6 +97,7 @@ const NovaOSSupabase = () => {
   const { createVeiculo } = useVeiculoMutations();
   const { createLog } = useLogMovimentacaoMutations();
   const { criarMovimentacaoAsync } = useMovimentacoesCaixa();
+  const { caixaAtual } = useCaixa();
   
   // Validation
   const { validateClienteData } = useClienteValidation();
@@ -1039,25 +1041,84 @@ const NovaOSSupabase = () => {
         numeroOSFinal  // Use o número final correto
       );
 
-      // Registrar movimentação no caixa
+      // Registrar movimentação no caixa - com logging detalhado
+      console.log('🔍 Iniciando registro de movimentação no caixa:', {
+        numeroOS: numeroOSFinal,
+        vendaId,
+        formaPagamento,
+        valorFinal,
+        caixaAtual: caixaAtual?.id,
+        empresaId
+      });
+
+      // Validar pré-requisitos antes de criar movimentação
+      if (!caixaAtual) {
+        console.error('❌ Caixa não está aberto para registrar movimentação');
+        toast({
+          title: "Atenção",
+          description: "OS finalizada com sucesso, mas não há caixa aberto para registrar a movimentação.",
+          variant: "destructive",
+        });
+        return; // Skip cash movement creation
+      }
+
+      if (!empresaId) {
+        console.error('❌ Empresa não selecionada para registrar movimentação');
+        toast({
+          title: "Atenção", 
+          description: "OS finalizada com sucesso, mas não foi possível registrar no caixa (empresa não selecionada).",
+          variant: "destructive",
+        });
+        return; // Skip cash movement creation
+      }
+
       const caixaFormaPagamento = mapVendaToCaixaFormaPagamento(formaPagamento as VendaFormaPagamento);
+      console.log('🔄 Forma de pagamento mapeada:', { 
+        original: formaPagamento, 
+        mapeada: caixaFormaPagamento 
+      });
+
       try {
-        await criarMovimentacaoAsync({
-          tipo: 'entrada',
-          tipo_origem: 'OS',
+        const movimentacaoData = {
+          tipo: 'entrada' as const,
+          tipo_origem: 'OS' as const,
           forma_pagamento: caixaFormaPagamento,
           valor_bruto: valorFinal,
           valor_liquido: valorFinal,
           descricao: `OS ${numeroOSFinal} - ${clienteSelecionado.nome}`,
           referencia_id: vendaId,
+        };
+
+        console.log('📝 Dados da movimentação a ser criada:', movimentacaoData);
+        
+        await criarMovimentacaoAsync(movimentacaoData);
+        
+        console.log('✅ Movimentação registrada com sucesso no caixa');
+        
+      } catch (caixaError: any) {
+        console.error('❌ Erro detalhado ao registrar movimentação no caixa:', {
+          error: caixaError,
+          message: caixaError?.message,
+          stack: caixaError?.stack,
+          numeroOS: numeroOSFinal,
+          vendaId,
+          caixaId: caixaAtual?.id
         });
-      } catch (caixaError) {
-        console.error('Erro ao registrar movimentação no caixa:', caixaError);
-        // Note: We don't throw here to avoid full rollback, just log the error
-        // The OS is already finalized successfully
+        
+        // Mostrar erro específico baseado no tipo
+        let errorMessage = "OS finalizada com sucesso, mas houve um problema ao registrar no caixa.";
+        
+        if (caixaError?.message?.includes('Forma de pagamento inválida')) {
+          errorMessage = `OS finalizada, mas forma de pagamento "${caixaFormaPagamento}" não é válida para o caixa.`;
+        } else if (caixaError?.message?.includes('Nenhum caixa aberto')) {
+          errorMessage = "OS finalizada, mas não há caixa aberto para registrar a movimentação.";
+        } else if (caixaError?.message) {
+          errorMessage = `OS finalizada, mas erro no caixa: ${caixaError.message}`;
+        }
+        
         toast({
           title: "Atenção",
-          description: "OS finalizada com sucesso, mas houve um problema ao registrar no caixa. Verifique as movimentações.",
+          description: errorMessage + " Verifique as movimentações em Sistema de Caixa.",
           variant: "destructive",
         });
       }

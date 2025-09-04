@@ -97,13 +97,29 @@ export function useMovimentacoesCaixa() {
   // Mutation para criar movimentação
   const criarMovimentacao = useMutation({
     mutationFn: async (data: CriarMovimentacaoData) => {
-      if (!caixaAtual) throw new Error('Nenhum caixa aberto encontrado');
-      if (!empresaId) throw new Error('Empresa não selecionada');
+      console.log('🏦 [useMovimentacoesCaixa] Iniciando criação de movimentação:', {
+        data,
+        caixaAtual: caixaAtual?.id,
+        empresaId
+      });
+
+      if (!caixaAtual) {
+        console.error('❌ [useMovimentacoesCaixa] Nenhum caixa aberto encontrado');
+        throw new Error('Nenhum caixa aberto encontrado');
+      }
+      
+      if (!empresaId) {
+        console.error('❌ [useMovimentacoesCaixa] Empresa não selecionada');
+        throw new Error('Empresa não selecionada');
+      }
 
       // Validar forma de pagamento antes de inserir
       if (!isValidCaixaFormaPagamento(data.forma_pagamento)) {
-        throw new Error(`Forma de pagamento inválida: ${data.forma_pagamento}`);
+        console.error('❌ [useMovimentacoesCaixa] Forma de pagamento inválida:', data.forma_pagamento);
+        throw new Error(`Forma de pagamento inválida: ${data.forma_pagamento}. Valores aceitos: dinheiro, pix, debito, credito, cheque, boleto, outros`);
       }
+
+      console.log('✅ [useMovimentacoesCaixa] Validações passaram, prosseguindo com inserção');
 
       const valorLiquido = data.valor_liquido || data.valor_bruto;
 
@@ -125,21 +141,31 @@ export function useMovimentacoesCaixa() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [useMovimentacoesCaixa] Erro ao inserir na tabela movimentacoes_caixa:', error);
+        throw error;
+      }
+
+      console.log('✅ [useMovimentacoesCaixa] Movimentação inserida com sucesso:', novaMovimentacao);
 
       // Registrar na auditoria
-      await supabase.from('auditoria_caixa').insert({
-        empresa_id: empresaId,
-        caixa_id: caixaAtual.id,
-        acao: 'MOVIMENTACAO_CRIADA',
-        detalhes: {
-          tipo: data.tipo,
-          forma_pagamento: data.forma_pagamento,
-          valor: valorLiquido,
-          descricao: data.descricao,
-        },
-        user_id: (await supabase.auth.getUser()).data.user?.id,
-      });
+      try {
+        await supabase.from('auditoria_caixa').insert({
+          empresa_id: empresaId,
+          caixa_id: caixaAtual.id,
+          acao: 'MOVIMENTACAO_CRIADA',
+          detalhes: {
+            tipo: data.tipo,
+            forma_pagamento: data.forma_pagamento,
+            valor: valorLiquido,
+            descricao: data.descricao,
+          },
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+        });
+        console.log('✅ [useMovimentacoesCaixa] Auditoria registrada com sucesso');
+      } catch (auditError) {
+        console.warn('⚠️ [useMovimentacoesCaixa] Falha ao registrar auditoria (não crítico):', auditError);
+      }
 
       return novaMovimentacao;
     },

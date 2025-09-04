@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresaContext } from '@/hooks/useEmpresaContext';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays } from 'date-fns';
+import { getFormaPagamentoDescription, type VendaFormaPagamento } from '@/lib/paymentMethodMapper';
 
 export interface HistoricoVenda {
   id: string;
@@ -85,7 +86,7 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
         valor_total: venda.valor_total,
         valor_desconto: venda.valor_desconto || 0,
         valor_final: venda.valor_final,
-        forma_pagamento: venda.forma_pagamento,
+        forma_pagamento: getFormaPagamentoDescription(venda.forma_pagamento as VendaFormaPagamento),
         status: venda.status,
         valor_comissao: comissoesMap.get(venda.id) || 0,
       })) as HistoricoVenda[];

@@ -33,7 +33,7 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
   const { updateVenda } = useVendaMutations();
   const { createLog } = useLogMovimentacaoMutations();
   const { createComissao } = useComissoesMutations();
-  const { criarMovimentacao } = useMovimentacoesCaixa();
+  const { criarMovimentacaoAsync } = useMovimentacoesCaixa();
   const estoqueManager = useSupabaseEstoque();
 
   // Estados para a finalização
@@ -261,7 +261,7 @@ const valorFinal = valorTotal - valorDesconto;
         const caixaFormaPagamento = mapVendaToCaixaFormaPagamento(formaPagamento as VendaFormaPagamento);
         
         try {
-          await criarMovimentacao({
+          await criarMovimentacaoAsync({
             tipo: 'entrada',
             tipo_origem: 'OS',
             forma_pagamento: caixaFormaPagamento,

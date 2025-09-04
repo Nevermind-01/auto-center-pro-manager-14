@@ -32,7 +32,7 @@ import { generateSequentialOSNumber } from "@/lib/utils";
 import { useEmpresaContext } from "@/hooks/useEmpresaContext";
 import { useMultipleAsyncActions } from "@/hooks/useAsyncAction";
 import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
-import { mapVendaToCaixaFormaPagamento, type VendaFormaPagamento, isValidCaixaFormaPagamento } from "@/lib/paymentMethodMapper";
+import { mapVendaToCaixaFormaPagamento, type VendaFormaPagamento, isValidVendaFormaPagamento } from "@/lib/paymentMethodMapper";
 import { 
   Plus, 
   Search, 
@@ -95,7 +95,7 @@ const NovaOSSupabase = () => {
   const { createVenda, createVendaProduto, createVendaServico, updateVenda, deleteVendaProdutos, deleteVendaServicos } = useVendaMutations();
   const { createVeiculo } = useVeiculoMutations();
   const { createLog } = useLogMovimentacaoMutations();
-  const { criarMovimentacao } = useMovimentacoesCaixa();
+  const { criarMovimentacaoAsync } = useMovimentacoesCaixa();
   
   // Validation
   const { validateClienteData } = useClienteValidation();
@@ -911,10 +911,9 @@ const NovaOSSupabase = () => {
         return;
       }
 
-      // Validar se a forma de pagamento é válida para o caixa
-      const caixaFormaPagamento = mapVendaToCaixaFormaPagamento(formaPagamento as VendaFormaPagamento);
-      if (!isValidCaixaFormaPagamento(caixaFormaPagamento)) {
-        console.error('Forma de pagamento inválida para caixa:', caixaFormaPagamento);
+      // Validar se a forma de pagamento é válida para vendas
+      if (!isValidVendaFormaPagamento(formaPagamento)) {
+        console.error('Forma de pagamento inválida para vendas:', formaPagamento);
         toast({
           title: "Erro",
           description: "Forma de pagamento inválida. Tente novamente.",
@@ -1041,8 +1040,9 @@ const NovaOSSupabase = () => {
       );
 
       // Registrar movimentação no caixa
+      const caixaFormaPagamento = mapVendaToCaixaFormaPagamento(formaPagamento as VendaFormaPagamento);
       try {
-        await criarMovimentacao({
+        await criarMovimentacaoAsync({
           tipo: 'entrada',
           tipo_origem: 'OS',
           forma_pagamento: caixaFormaPagamento,

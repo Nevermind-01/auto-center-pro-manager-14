@@ -43,6 +43,16 @@ export function isValidCaixaFormaPagamento(formaPagamento: string): formaPagamen
 }
 
 /**
+ * Validates if a payment method is valid for vendas table
+ * @param formaPagamento - Payment method to validate
+ * @returns true if valid, false otherwise
+ */
+export function isValidVendaFormaPagamento(formaPagamento: string): formaPagamento is VendaFormaPagamento {
+  const validMethods: VendaFormaPagamento[] = ['dinheiro', 'pix', 'cheque', 'cartao', 'parcelado'];
+  return validMethods.includes(formaPagamento as VendaFormaPagamento);
+}
+
+/**
  * Gets a human-readable description for payment methods
  * @param formaPagamento - Payment method
  * @returns Human-readable description

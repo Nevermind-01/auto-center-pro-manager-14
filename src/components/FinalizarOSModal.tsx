@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PrintModal } from "@/components/print/PrintModal";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
-import { mapVendaToCaixaFormaPagamento, type VendaFormaPagamento } from "@/lib/paymentMethodMapper";
+import { mapVendaToCaixaFormaPagamento, type VendaFormaPagamento, isValidVendaFormaPagamento } from "@/lib/paymentMethodMapper";
 
 interface FinalizarOSModalProps {
   open: boolean;
@@ -230,13 +230,23 @@ const valorFinal = valorTotal - valorDesconto;
           }
         }
 
+        // Validar forma de pagamento antes de salvar
+        if (!isValidVendaFormaPagamento(formaPagamento)) {
+          toast({
+            title: "Erro",
+            description: "Forma de pagamento inválida.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         // Atualizar a venda com os novos valores e status finalizada
         await updateVenda.mutateAsync({
           id: venda.id,
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: formaPagamento as any,
+          forma_pagamento: formaPagamento,
           parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
           observacoes: observacoes || null,
           status: 'finalizada',

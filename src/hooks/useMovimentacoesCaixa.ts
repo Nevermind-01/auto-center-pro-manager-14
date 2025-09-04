@@ -12,7 +12,7 @@ export interface MovimentacaoCaixa {
   tipo_origem: 'OS' | 'VENDA' | 'MANUAL';
   referencia_id?: string;
   tipo: 'entrada' | 'saida';
-  forma_pagamento: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'cheque' | 'boleto' | 'outros';
+  forma_pagamento: CaixaFormaPagamento;
   valor_bruto: number;
   valor_liquido: number;
   data_hora: string;
@@ -28,7 +28,7 @@ export interface CriarMovimentacaoData {
   tipo_origem: 'OS' | 'VENDA' | 'MANUAL';
   referencia_id?: string;
   tipo: 'entrada' | 'saida';
-  forma_pagamento: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'cheque' | 'boleto' | 'outros';
+  forma_pagamento: CaixaFormaPagamento;
   valor_bruto: number;
   valor_liquido?: number;
   descricao?: string;

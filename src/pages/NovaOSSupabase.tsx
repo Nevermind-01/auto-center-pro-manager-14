@@ -157,7 +157,7 @@ const NovaOSSupabase = () => {
 
   // Pagamento e finalizacao
   const [desconto, setDesconto] = useState(0);
-  const [formaPagamento, setFormaPagamento] = useState("");
+  const [formaPagamento, setFormaPagamento] = useState<VendaFormaPagamento | "">("");
   const [parcelas, setParcelas] = useState(1);
   const [observacoes, setObservacoes] = useState("");
   const [numeroOS, setNumeroOS] = useState("");
@@ -2023,18 +2023,18 @@ const NovaOSSupabase = () => {
             {/* Forma de pagamento */}
             <div>
               <Label htmlFor="forma-pagamento">Forma de Pagamento</Label>
-              <Select value={formaPagamento} onValueChange={setFormaPagamento}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                  <SelectItem value="cartao">Cartão</SelectItem>
-                  <SelectItem value="pix">PIX</SelectItem>
-                  <SelectItem value="cheque">Cheque</SelectItem>
-                  <SelectItem value="parcelado">Parcelado</SelectItem>
-                </SelectContent>
-              </Select>
+                <Select value={formaPagamento} onValueChange={(value) => setFormaPagamento(value as VendaFormaPagamento | "")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                    <SelectItem value="cartao">Cartão</SelectItem>
+                    <SelectItem value="pix">PIX</SelectItem>
+                    <SelectItem value="cheque">Cheque</SelectItem>
+                    <SelectItem value="parcelado">Parcelado</SelectItem>
+                  </SelectContent>
+                </Select>
             </div>
 
             {/* Parcelas (se parcelado) */}

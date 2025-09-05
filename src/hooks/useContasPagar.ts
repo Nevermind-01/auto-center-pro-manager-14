@@ -201,13 +201,72 @@ export function useContasPagar() {
     fetchContas();
   }, [filters]);
 
+  const updateConta = async (id: string, contaData: Partial<ContaPagar>) => {
+    try {
+      const { data, error } = await supabase
+        .from('contas_a_pagar')
+        .update({
+          ...contaData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await fetchContas();
+      toast({
+        title: "Sucesso",
+        description: "Conta atualizada com sucesso!"
+      });
+
+      return data;
+    } catch (error) {
+      console.error('Erro ao atualizar conta:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Erro ao atualizar conta."
+      });
+      throw error;
+    }
+  };
+
+  const deleteConta = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('contas_a_pagar')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await fetchContas();
+      toast({
+        title: "Sucesso",
+        description: "Conta excluída com sucesso!"
+      });
+    } catch (error) {
+      console.error('Erro ao excluir conta:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Erro ao excluir conta."
+      });
+      throw error;
+    }
+  };
+
   return {
     contas,
     loading,
     filters,
     setFilters,
     createConta,
+    updateConta,
     updateContaStatus,
+    deleteConta,
     uploadComprovante,
     refetch: fetchContas
   };

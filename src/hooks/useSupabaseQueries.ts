@@ -132,15 +132,38 @@ export const useProdutoMutations = () => {
 
   const createProduto = useMutation({
     mutationFn: async (produto: Omit<ProdutoInsert, 'user_id' | 'empresa_id'>) => {
-      if (!user || !empresaId) throw new Error('User not authenticated or no empresa selected');
+      console.log('=== DEBUG: createProduto mutation ===');
+      console.log('User:', user);
+      console.log('EmpresaId:', empresaId);
+      console.log('Produto:', produto);
+
+      if (!user) {
+        const errorMsg = 'Usuário não autenticado. Faça login novamente.';
+        console.error('ERROR:', errorMsg);
+        throw new Error(errorMsg);
+      }
+      
+      if (!empresaId) {
+        const errorMsg = 'Nenhuma empresa selecionada. Configure sua empresa primeiro.';
+        console.error('ERROR:', errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      const insertData = { ...produto, user_id: user.id, empresa_id: empresaId };
+      console.log('Insert data:', insertData);
       
       const { data, error } = await supabase
         .from('produtos')
-        .insert({ ...produto, user_id: user.id, empresa_id: empresaId })
+        .insert(insertData)
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw new Error(`Erro do banco de dados: ${error.message}`);
+      }
+      
+      console.log('SUCCESS: Produto created:', data);
       return data;
     },
     onSuccess: () => {

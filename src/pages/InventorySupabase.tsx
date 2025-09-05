@@ -16,9 +16,13 @@ import { useEstoqueOperations } from '@/hooks/useSupabaseQueries';
 import { ProdutoComCategoria } from '@/lib/supabaseEstoque';
 import MovementHistoryModal from '@/components/MovementHistoryModal';
 import { useMultipleAsyncActions } from '@/hooks/useAsyncAction';
+import { useAuth } from '@/hooks/useAuth';
+import { useEmpresaContext } from '@/hooks/useEmpresaContext';
 
 const InventorySupabase = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { empresaId } = useEmpresaContext();
   
   // Queries
   const { data: produtos = [], isLoading: loadingProdutos, refetch: refetchProdutos } = useProdutos();
@@ -112,6 +116,50 @@ const InventorySupabase = () => {
 
   // Handlers
   async function handleAddProduct() {
+    // Pre-validation with detailed debugging
+    console.log('=== DEBUG: Tentando adicionar produto ===');
+    console.log('User:', user);
+    console.log('EmpresaId:', empresaId);
+    console.log('Produto data:', newProduct);
+
+    // Validate required fields
+    if (!newProduct.nome?.trim()) {
+      toast({
+        title: "Erro de validação",
+        description: "Nome do produto é obrigatório.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!newProduct.preco_venda || parseFloat(newProduct.preco_venda) <= 0) {
+      toast({
+        title: "Erro de validação", 
+        description: "Preço de venda deve ser maior que zero.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check authentication state
+    if (!user) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Usuário não está autenticado. Faça login novamente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!empresaId) {
+      toast({
+        title: "Erro de configuração",
+        description: "Nenhuma empresa selecionada. Configure sua empresa primeiro.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       await createProduto.mutateAsync({
         nome: newProduct.nome,
@@ -126,6 +174,8 @@ const InventorySupabase = () => {
         quantidade: parseInt(newProduct.quantidade) || 0,
         estoque_minimo: parseInt(newProduct.estoque_minimo) || 5
       });
+
+      console.log('=== DEBUG: Produto adicionado com sucesso ===');
 
       toast({
         title: "Produto adicionado",
@@ -147,9 +197,17 @@ const InventorySupabase = () => {
       });
       setShowNewProductModal(false);
     } catch (error) {
+      console.error('=== DEBUG: Erro ao adicionar produto ===');
+      console.error('Error details:', error);
+      
+      // Show specific error message
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Erro desconhecido ao adicionar produto.';
+      
       toast({
-        title: "Erro",
-        description: "Erro ao adicionar produto.",
+        title: "Erro ao adicionar produto",
+        description: errorMessage,
         variant: "destructive",
       });
     }

@@ -42,6 +42,7 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
 
   const loadEmpresaData = useCallback(async () => {
     if (!user) {
+      console.log('=== DEBUG: No user found, skipping empresa data load ===');
       setEmpresaId(null);
       setEmpresaRole(null);
       setEmpresas([]);
@@ -51,33 +52,44 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
+      console.log('=== DEBUG: Loading empresa data for user ===', user.id);
       setLoading(true);
 
       // Buscar empresa atual do usuário
       const empresaAtualId = await supabase.rpc('get_current_empresa_id');
+      console.log('=== DEBUG: get_current_empresa_id result ===');
+      console.log('EmpresaId:', empresaAtualId.data);
+      console.log('Error:', empresaAtualId.error);
+      
       logger.debug('Empresa atual ID:', empresaAtualId.data);
 
       // Se não tem empresa, verificar se precisa criar uma a partir do metadata
       if (!empresaAtualId.data) {
+        console.log('=== DEBUG: Usuário sem empresa, verificando se precisa criar ===');
         logger.debug('Usuário sem empresa, verificando se precisa criar...');
         
         try {
           const { data: result } = await supabase.rpc('create_empresa_from_metadata');
+          console.log('=== DEBUG: create_empresa_from_metadata result ===', result);
           
           if (result && typeof result === 'object' && (result as any).success) {
             logger.info('Empresa criada automaticamente a partir do metadata:', result);
+            console.log('=== DEBUG: Empresa criada, recarregando dados ===');
             // Recarregar dados após criação
             setTimeout(() => loadEmpresaData(), 500);
             return;
           } else if (result && typeof result === 'object' && (result as any).error && (result as any).error !== 'Usuário não precisa de empresa') {
             logger.error('Erro ao criar empresa do metadata:', (result as any).error);
+            console.error('=== DEBUG: Erro ao criar empresa ===', (result as any).error);
           }
         } catch (error) {
           logger.error('Erro ao tentar criar empresa do metadata:', error);
+          console.error('=== DEBUG: Exception ao criar empresa ===', error);
         }
       }
 
       if (empresaAtualId.data) {
+        console.log('=== DEBUG: Setting empresaId ===', empresaAtualId.data);
         setEmpresaId(empresaAtualId.data);
 
         // Buscar role do usuário na empresa atual
@@ -89,6 +101,7 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
           .eq('ativo', true)
           .single();
 
+        console.log('=== DEBUG: User role ===', empresaUsuario?.role);
         if (empresaUsuario) {
           setEmpresaRole(empresaUsuario.role as EmpresaRole);
         }
@@ -100,9 +113,12 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
           .eq('id', empresaAtualId.data)
           .single();
 
+        console.log('=== DEBUG: Empresa atual ===', empresa);
         if (empresa) {
           setEmpresaAtual(empresa);
         }
+      } else {
+        console.log('=== DEBUG: No empresaId found, user may not have a company ===');
       }
 
       // Buscar todas as empresas do usuário
@@ -112,6 +128,8 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
         .eq('user_id', user.id)
         .eq('ativo', true);
 
+      console.log('=== DEBUG: Empresas do usuário ===', empresasDoUsuario);
+
       if (empresasDoUsuario && empresasDoUsuario.length > 0) {
         const empresaIds = empresasDoUsuario.map(eu => eu.empresa_id);
         
@@ -120,14 +138,20 @@ export const EmpresaProvider = ({ children }: { children: ReactNode }) => {
           .select('id, nome, cnpj, email')
           .in('id', empresaIds);
 
+        console.log('=== DEBUG: Dados das empresas ===', todasEmpresas);
         if (todasEmpresas) {
           setEmpresas(todasEmpresas);
         }
+      } else {
+        console.log('=== DEBUG: Usuário não está vinculado a nenhuma empresa ===');
+        setEmpresas([]);
       }
     } catch (error) {
+      console.error('=== DEBUG: Erro ao carregar dados da empresa ===', error);
       logger.error('Erro ao carregar dados da empresa:', error);
     } finally {
       setLoading(false);
+      console.log('=== DEBUG: loadEmpresaData completed ===');
     }
   }, [user]);
 

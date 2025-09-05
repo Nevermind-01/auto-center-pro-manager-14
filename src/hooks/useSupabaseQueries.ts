@@ -987,7 +987,27 @@ export const useEstoqueOperations = () => {
 
 // Log movimentações hooks
 export const useLogMovimentacoes = () => {
-  const { empresaId } = useEmpresaContext();
+  // Safe context access with fallback
+  let empresaId: string | null = null;
+  let loading = true;
+  
+  try {
+    const context = useEmpresaContext();
+    empresaId = context.empresaId;
+    loading = context.loading;
+  } catch (error) {
+    console.error('EmpresaContext not available in useLogMovimentacoes:', error);
+    // Return a default query result when context is not available
+    return {
+      data: [],
+      isLoading: false,
+      error: new Error('EmpresaContext not available'),
+      isError: true,
+      refetch: () => Promise.resolve({ data: [], error: null }),
+      isFetching: false,
+      status: 'error' as const
+    };
+  }
   
   return useQuery({
     queryKey: ['log_movimentacoes', empresaId],
@@ -1006,7 +1026,7 @@ export const useLogMovimentacoes = () => {
       if (error) throw error;
       return data;
     },
-    enabled: !!empresaId,
+    enabled: !!empresaId && !loading,
   });
 };
 

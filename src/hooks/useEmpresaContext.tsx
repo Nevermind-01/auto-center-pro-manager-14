@@ -27,6 +27,8 @@ const EmpresaContext = createContext<EmpresaContextType | undefined>(undefined);
 export const useEmpresaContext = (): EmpresaContextType => {
   const context = useContext(EmpresaContext);
   if (context === undefined) {
+    console.error('useEmpresaContext called outside of EmpresaProvider');
+    console.trace();
     throw new Error('useEmpresaContext must be used within an EmpresaProvider');
   }
   return context;

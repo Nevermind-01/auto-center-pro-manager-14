@@ -45,6 +45,9 @@ const InventorySupabase = () => {
     nome: '',
     marca: '',
     codigo: '',
+    codigo_interno: '',
+    ncm_sh: '',
+    codigo_barras: '',
     categoria_id: '',
     preco_custo: '',
     preco_venda: '',
@@ -57,6 +60,9 @@ const InventorySupabase = () => {
     nome: '',
     marca: '',
     codigo: '',
+    codigo_interno: '',
+    ncm_sh: '',
+    codigo_barras: '',
     categoria_id: '',
     preco_custo: '',
     preco_venda: '',
@@ -111,6 +117,9 @@ const InventorySupabase = () => {
         nome: newProduct.nome,
         marca: newProduct.marca || null,
         codigo: newProduct.codigo || null,
+        codigo_interno: newProduct.codigo_interno || null,
+        ncm_sh: newProduct.ncm_sh || null,
+        codigo_barras: newProduct.codigo_barras || null,
         categoria_id: newProduct.categoria_id || null,
         preco_custo: parseFloat(newProduct.preco_custo) || 0,
         preco_venda: parseFloat(newProduct.preco_venda),
@@ -127,6 +136,9 @@ const InventorySupabase = () => {
         nome: '',
         marca: '',
         codigo: '',
+        codigo_interno: '',
+        ncm_sh: '',
+        codigo_barras: '',
         categoria_id: '',
         preco_custo: '',
         preco_venda: '',
@@ -175,6 +187,9 @@ const InventorySupabase = () => {
         nome: editProduct.nome,
         marca: editProduct.marca || null,
         codigo: editProduct.codigo || null,
+        codigo_interno: editProduct.codigo_interno || null,
+        ncm_sh: editProduct.ncm_sh || null,
+        codigo_barras: editProduct.codigo_barras || null,
         categoria_id: editProduct.categoria_id || null,
         preco_custo: parseFloat(editProduct.preco_custo) || 0,
         preco_venda: parseFloat(editProduct.preco_venda),
@@ -191,6 +206,9 @@ const InventorySupabase = () => {
         nome: '',
         marca: '',
         codigo: '',
+        codigo_interno: '',
+        ncm_sh: '',
+        codigo_barras: '',
         categoria_id: '',
         preco_custo: '',
         preco_venda: '',
@@ -373,6 +391,33 @@ const InventorySupabase = () => {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="product-internal-code">Código Interno</Label>
+                  <Input
+                    id="product-internal-code"
+                    value={newProduct.codigo_interno}
+                    onChange={(e) => setNewProduct({ ...newProduct, codigo_interno: e.target.value })}
+                    placeholder="Código interno"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="product-ncm">NCM/SH</Label>
+                  <Input
+                    id="product-ncm"
+                    value={newProduct.ncm_sh}
+                    onChange={(e) => setNewProduct({ ...newProduct, ncm_sh: e.target.value })}
+                    placeholder="NCM/SH"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="product-barcode">Código de Barras</Label>
+                  <Input
+                    id="product-barcode"
+                    value={newProduct.codigo_barras}
+                    onChange={(e) => setNewProduct({ ...newProduct, codigo_barras: e.target.value })}
+                    placeholder="Código de barras"
+                  />
+                </div>
+                <div>
                   <Label htmlFor="product-category">Categoria</Label>
                   <Select value={newProduct.categoria_id} onValueChange={(value) => setNewProduct({ ...newProduct, categoria_id: value })}>
                     <SelectTrigger>
@@ -407,6 +452,16 @@ const InventorySupabase = () => {
                     value={newProduct.preco_venda}
                     onChange={(e) => setNewProduct({ ...newProduct, preco_venda: e.target.value })}
                     placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="product-average">Preço Médio</Label>
+                  <Input
+                    id="product-average"
+                    type="number"
+                    step="0.01"
+                    value="0"
+                    readOnly
                   />
                 </div>
                 <div>
@@ -588,6 +643,9 @@ const InventorySupabase = () => {
                                 nome: produto.nome,
                                 marca: produto.marca || '',
                                 codigo: produto.codigo || '',
+                                codigo_interno: produto.codigo_interno || '',
+                                ncm_sh: produto.ncm_sh || '',
+                                codigo_barras: produto.codigo_barras || '',
                                 categoria_id: produto.categoria_id || '',
                                 preco_custo: produto.preco_custo?.toString() || '',
                                 preco_venda: produto.preco_venda?.toString() || '',
@@ -730,6 +788,33 @@ const InventorySupabase = () => {
               />
             </div>
             <div>
+              <Label htmlFor="edit-product-internal-code">Código Interno</Label>
+              <Input
+                id="edit-product-internal-code"
+                value={editProduct.codigo_interno}
+                onChange={(e) => setEditProduct({ ...editProduct, codigo_interno: e.target.value })}
+                placeholder="Código interno"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-product-ncm">NCM/SH</Label>
+              <Input
+                id="edit-product-ncm"
+                value={editProduct.ncm_sh}
+                onChange={(e) => setEditProduct({ ...editProduct, ncm_sh: e.target.value })}
+                placeholder="NCM/SH"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-product-barcode">Código de Barras</Label>
+              <Input
+                id="edit-product-barcode"
+                value={editProduct.codigo_barras}
+                onChange={(e) => setEditProduct({ ...editProduct, codigo_barras: e.target.value })}
+                placeholder="Código de barras"
+              />
+            </div>
+            <div>
               <Label htmlFor="edit-product-category">Categoria</Label>
               <Select value={editProduct.categoria_id} onValueChange={(value) => setEditProduct({ ...editProduct, categoria_id: value })}>
                 <SelectTrigger>
@@ -764,6 +849,16 @@ const InventorySupabase = () => {
                 value={editProduct.preco_venda}
                 onChange={(e) => setEditProduct({ ...editProduct, preco_venda: e.target.value })}
                 placeholder="0.00"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-product-average">Preço Médio</Label>
+              <Input
+                id="edit-product-average"
+                type="number"
+                step="0.01"
+                value={selectedProduct?.preco_medio?.toString() || '0'}
+                readOnly
               />
             </div>
             <div>

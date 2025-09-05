@@ -6,8 +6,8 @@ import { Database } from '@/integrations/supabase/types';
 
 // Types
 type Produto = Database['public']['Tables']['produtos']['Row'];
-type ProdutoInsert = Database['public']['Tables']['produtos']['Insert'];
-type ProdutoUpdate = Database['public']['Tables']['produtos']['Update'];
+type ProdutoInsert = Omit<Database['public']['Tables']['produtos']['Insert'], 'preco_medio'>;
+type ProdutoUpdate = Omit<Database['public']['Tables']['produtos']['Update'], 'preco_medio'>;
 
 type Categoria = Database['public']['Tables']['categorias']['Row'];
 type CategoriaInsert = Database['public']['Tables']['categorias']['Insert'];
@@ -51,7 +51,25 @@ export const useProdutos = () => {
       const { data, error } = await supabase
         .from('produtos')
         .select(`
-          *,
+          id,
+          nome,
+          marca,
+          codigo,
+          codigo_interno,
+          ncm_sh,
+          codigo_barras,
+          categoria_id,
+          empresa_id,
+          preco_custo,
+          preco_medio,
+          preco_venda,
+          quantidade,
+          estoque_minimo,
+          data_entrada,
+          status,
+          created_at,
+          updated_at,
+          user_id,
           categoria:categorias(nome)
         `)
         .eq('empresa_id', empresaId)
@@ -75,7 +93,25 @@ export const useProdutoById = (id: string) => {
       const { data, error } = await supabase
         .from('produtos')
         .select(`
-          *,
+          id,
+          nome,
+          marca,
+          codigo,
+          codigo_interno,
+          ncm_sh,
+          codigo_barras,
+          categoria_id,
+          empresa_id,
+          preco_custo,
+          preco_medio,
+          preco_venda,
+          quantidade,
+          estoque_minimo,
+          data_entrada,
+          status,
+          created_at,
+          updated_at,
+          user_id,
           categoria:categorias(nome)
         `)
         .eq('id', id)

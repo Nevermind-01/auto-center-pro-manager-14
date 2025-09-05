@@ -989,6 +989,9 @@ export type Database = {
         Row: {
           categoria_id: string | null
           codigo: string | null
+          codigo_interno: string | null
+          ncm_sh: string | null
+          codigo_barras: string | null
           created_at: string
           data_entrada: string | null
           empresa_id: string | null
@@ -997,6 +1000,7 @@ export type Database = {
           marca: string | null
           nome: string
           preco_custo: number | null
+          preco_medio: number | null
           preco_venda: number
           quantidade: number
           status: Database["public"]["Enums"]["produto_status"] | null
@@ -1006,6 +1010,9 @@ export type Database = {
         Insert: {
           categoria_id?: string | null
           codigo?: string | null
+          codigo_interno?: string | null
+          ncm_sh?: string | null
+          codigo_barras?: string | null
           created_at?: string
           data_entrada?: string | null
           empresa_id?: string | null
@@ -1014,6 +1021,7 @@ export type Database = {
           marca?: string | null
           nome: string
           preco_custo?: number | null
+          preco_medio?: number | null
           preco_venda: number
           quantidade?: number
           status?: Database["public"]["Enums"]["produto_status"] | null
@@ -1023,6 +1031,9 @@ export type Database = {
         Update: {
           categoria_id?: string | null
           codigo?: string | null
+          codigo_interno?: string | null
+          ncm_sh?: string | null
+          codigo_barras?: string | null
           created_at?: string
           data_entrada?: string | null
           empresa_id?: string | null
@@ -1031,6 +1042,7 @@ export type Database = {
           marca?: string | null
           nome?: string
           preco_custo?: number | null
+          preco_medio?: number | null
           preco_venda?: number
           quantidade?: number
           status?: Database["public"]["Enums"]["produto_status"] | null

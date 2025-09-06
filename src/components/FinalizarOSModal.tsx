@@ -21,6 +21,10 @@ import { PrintModal } from "@/components/print/PrintModal";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
 import { mapVendaToCaixaFormaPagamento, type VendaFormaPagamento, isValidVendaFormaPagamento } from "@/lib/paymentMethodMapper";
+import { ProdutoOnlyWarningModal } from "@/components/ProdutoOnlyWarningModal";
+import { ServiceWarningModal } from "@/components/ServiceWarningModal";
+import { MecanicoWarningModal } from "@/components/MecanicoWarningModal";
+import { ComissaoWarningModal } from "@/components/ComissaoWarningModal";
 
 interface FinalizarOSModalProps {
   open: boolean;
@@ -55,6 +59,13 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
   const [imprimirAposFinalizacao, setImprimirAposFinalizacao] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [osFinalizadaData, setOsFinalizadaData] = useState(null);
+
+  // Estados para modais de confirmação
+  const [showProdutoOnlyWarning, setShowProdutoOnlyWarning] = useState(false);
+  const [showServiceWarning, setShowServiceWarning] = useState(false);
+  const [showMecanicoWarning, setShowMecanicoWarning] = useState(false);
+  const [showComissaoWarning, setShowComissaoWarning] = useState(false);
+  const [pendingFinalization, setPendingFinalization] = useState(false);
 
   // Resetar valores quando a modal abrir/fechar ou venda mudar
   useEffect(() => {
@@ -142,22 +153,38 @@ const valorFinal = valorTotal - valorDesconto;
         return;
       }
 
-      if (!hasServicos) {
-        toast({
-          title: "Erro", 
-          description: "A OS deve ter pelo menos um serviço para ser finalizada.",
-          variant: "destructive",
-        });
-        return;
-      }
+      const produtos = venda?.venda_produtos || [];
+      const hasProdutos = produtos.length > 0;
 
-      if (!hasMecanico) {
-        toast({
-          title: "Erro", 
-          description: "A OS deve ter um mecânico vinculado para ser finalizada.",
-          variant: "destructive",
-        });
-        return;
+      // Validações inteligentes - mostrar modais de confirmação ao invés de bloquear
+      if (!pendingFinalization) {
+        // Cenário 1: Apenas produtos (sem serviços e sem mecânico)
+        if (hasProdutos && !hasServicos && !hasMecanico) {
+          setShowProdutoOnlyWarning(true);
+          setPendingFinalization(true);
+          return;
+        }
+        
+        // Cenário 2: Tem serviços mas não tem mecânico
+        if (hasServicos && !hasMecanico) {
+          setShowServiceWarning(true);
+          setPendingFinalization(true);
+          return;
+        }
+        
+        // Cenário 3: Tem mecânico mas não tem serviços
+        if (hasMecanico && !hasServicos) {
+          setShowMecanicoWarning(true);
+          setPendingFinalization(true);
+          return;
+        }
+        
+        // Cenário 4: Tem mecânico e serviços mas comissão não está marcada
+        if (hasMecanico && hasServicos && !registrarComissao && !temComissaoRegistrada) {
+          setShowComissaoWarning(true);
+          setPendingFinalization(true);
+          return;
+        }
       }
 
       // Validações de comissão apenas se estiver habilitada
@@ -345,6 +372,51 @@ const valorFinal = valorTotal - valorDesconto;
   );
 
   const handleFinalizarOS = () => executarFinalizacao();
+
+  // Handlers para modais de confirmação
+  const handleConfirmProdutoOnly = () => {
+    setShowProdutoOnlyWarning(false);
+    setPendingFinalization(false);
+    executarFinalizacao();
+  };
+
+  const handleRejectProdutoOnly = () => {
+    setShowProdutoOnlyWarning(false);
+    setPendingFinalization(false);
+  };
+
+  const handleConfirmService = () => {
+    setShowServiceWarning(false);
+    setPendingFinalization(false);
+    executarFinalizacao();
+  };
+
+  const handleRejectService = () => {
+    setShowServiceWarning(false);
+    setPendingFinalization(false);
+  };
+
+  const handleConfirmMecanico = () => {
+    setShowMecanicoWarning(false);
+    setPendingFinalization(false);
+    executarFinalizacao();
+  };
+
+  const handleRejectMecanico = () => {
+    setShowMecanicoWarning(false);
+    setPendingFinalization(false);
+  };
+
+  const handleConfirmComissao = () => {
+    setShowComissaoWarning(false);
+    setPendingFinalization(false);
+    executarFinalizacao();
+  };
+
+  const handleRejectComissao = () => {
+    setShowComissaoWarning(false);
+    setPendingFinalization(false);
+  };
 
   if (!venda) {
     return (
@@ -702,7 +774,7 @@ const valorFinal = valorTotal - valorDesconto;
           </Button>
           <Button 
             onClick={handleFinalizarOS} 
-            disabled={!formaPagamento || !hasServicos || !hasMecanico || finalizandoOS}
+            disabled={!formaPagamento || finalizandoOS}
           >
             {finalizandoOS ? "Finalizando..." : (registrarComissao && tipoCalculo ? "Finalizar OS e Registrar Comissão" : "Finalizar OS")}
           </Button>
@@ -715,6 +787,36 @@ const valorFinal = valorTotal - valorDesconto;
           type="os_finalizada"
           data={osFinalizadaData}
           title={`Fatura de OS ${venda?.numero_os}`}
+        />
+
+        {/* Warning Modals */}
+        <ProdutoOnlyWarningModal
+          isOpen={showProdutoOnlyWarning}
+          onClose={handleRejectProdutoOnly}
+          onConfirm={handleConfirmProdutoOnly}
+          onReject={handleRejectProdutoOnly}
+        />
+
+        <ServiceWarningModal
+          isOpen={showServiceWarning}
+          onClose={handleRejectService}
+          onConfirm={handleConfirmService}
+          onReject={handleRejectService}
+        />
+
+        <MecanicoWarningModal
+          isOpen={showMecanicoWarning}
+          onClose={handleRejectMecanico}
+          onConfirm={handleConfirmMecanico}
+          onReject={handleRejectMecanico}
+        />
+
+        <ComissaoWarningModal
+          isOpen={showComissaoWarning}
+          onClose={handleRejectComissao}
+          onConfirm={handleConfirmComissao}
+          onReject={handleRejectComissao}
+          mecanicoNome={venda?.mecanico_nome}
         />
       </DialogContent>
     </Dialog>

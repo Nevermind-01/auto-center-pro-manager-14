@@ -945,7 +945,8 @@ const NovaOSSupabase = () => {
           forma_pagamento: formaPagamento as VendaFormaPagamento,
           parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
           observacoes: observacoes || null,
-          status: 'finalizada'
+          status: 'finalizada',
+          finalizado_em: new Date().toISOString()
         });
 
         vendaId = editingVenda.id;
@@ -980,7 +981,8 @@ const NovaOSSupabase = () => {
           forma_pagamento: formaPagamento as VendaFormaPagamento,
           parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
           observacoes: observacoes || null,
-          status: 'finalizada'
+          status: 'finalizada',
+          finalizado_em: new Date().toISOString()
         });
 
         

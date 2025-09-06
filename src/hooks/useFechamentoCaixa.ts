@@ -141,6 +141,16 @@ export function useFechamentoCaixa() {
     mutationFn: async (dados: DadosFechamento) => {
       if (!empresaId) throw new Error('Empresa não selecionada');
 
+      // Verificar se caixa ainda está aberto
+      const { data: caixaAtual, error: caixaError } = await supabase
+        .from('caixas')
+        .select('status')
+        .eq('id', dados.caixa_id)
+        .single();
+
+      if (caixaError) throw new Error('Caixa não encontrado');
+      if (caixaAtual.status === 'fechado') throw new Error('Este caixa já foi fechado');
+
       const calculados = await calcularValoresEsperados(dados.caixa_id);
 
       const totalContado = dados.contagem_dinheiro + dados.contagem_pix + 
@@ -187,6 +197,18 @@ export function useFechamentoCaixa() {
 
       if (error) throw error;
 
+      // Fechar o caixa atualizando status
+      const { error: fechamentoError } = await supabase
+        .from('caixas')
+        .update({
+          status: 'fechado',
+          fechado_em: new Date().toISOString(),
+          fechado_por: user.data.user.id,
+        })
+        .eq('id', dados.caixa_id);
+
+      if (fechamentoError) throw fechamentoError;
+
       // Registrar na auditoria
       await supabase.from('auditoria_caixa').insert({
         empresa_id: empresaId,
@@ -209,12 +231,16 @@ export function useFechamentoCaixa() {
                     `faltou R$ ${Math.abs(fechamento.diferenca).toFixed(2)}`;
 
       toast({
-        title: "Fechamento processado",
+        title: "Caixa fechado com sucesso",
         description: `O fechamento foi processado - ${status}.`,
         variant: fechamento.diferenca === 0 ? "default" : "destructive",
       });
       
+      // Invalidar queries para atualizar UI
       queryClient.invalidateQueries({ queryKey: ['fechamentos-caixa'] });
+      queryClient.invalidateQueries({ queryKey: ['caixa-atual'] });
+      queryClient.invalidateQueries({ queryKey: ['historico-caixas'] });
+      queryClient.invalidateQueries({ queryKey: ['movimentacoes-caixa'] });
     },
     onError: (error: any) => {
       toast({
@@ -231,5 +257,6 @@ export function useFechamentoCaixa() {
     processarFechamento: processarFechamento.mutate,
     isProcessandoFechamento: processarFechamento.isPending,
     calcularValoresEsperados,
+    isSuccess: processarFechamento.isSuccess,
   };
 }

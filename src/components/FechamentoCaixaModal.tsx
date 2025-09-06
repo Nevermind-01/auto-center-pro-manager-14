@@ -17,7 +17,7 @@ interface FechamentoCaixaModalProps {
 
 export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModalProps) {
   const { caixaAtual } = useCaixa();
-  const { processarFechamento, isProcessandoFechamento, calcularValoresEsperados } = useFechamentoCaixa();
+  const { processarFechamento, isProcessandoFechamento, calcularValoresEsperados, isSuccess } = useFechamentoCaixa();
   
   const [contagemDinheiro, setContagemDinheiro] = useState('');
   const [contagemPix, setContagemPix] = useState('');
@@ -71,16 +71,23 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
     });
   };
 
-  // Reset form when modal closes or operation succeeds
+  // Reset form when modal closes and close modal on success
   useEffect(() => {
-    if (!open || !isProcessandoFechamento) {
+    if (!open) {
       setContagemDinheiro('');
       setContagemPix('');
       setContagemDebito('');
       setContagemCredito('');
       setValoresEsperados(null);
     }
-  }, [open, isProcessandoFechamento]);
+  }, [open]);
+
+  // Close modal after successful processing
+  useEffect(() => {
+    if (isSuccess) {
+      onOpenChange(false);
+    }
+  }, [isSuccess, onOpenChange]);
 
   if (!caixaAtual) {
     return (

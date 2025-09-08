@@ -9,14 +9,18 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useVendaMutations, useLogMovimentacaoMutations } from "@/hooks/useSupabaseQueries";
+import { useSupabaseEstoque } from "@/lib/supabaseEstoque";
 import { DollarSign, Package, Wrench, ShoppingCart, AlertTriangle, User, FileText, Calculator } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
+import { useComissoesMutations } from "@/hooks/useComissoes";
+import { useMecanicos } from "@/hooks/useMecanicos";
 import { supabase } from "@/integrations/supabase/client";
 import { PrintModal } from "@/components/print/PrintModal";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
 import { mapVendaToCaixaFormaPagamento, type VendaFormaPagamento, isValidVendaFormaPagamento } from "@/lib/paymentMethodMapper";
-import { useCaixa } from "@/hooks/useCaixa";
 import { ProdutoOnlyWarningModal } from "@/components/ProdutoOnlyWarningModal";
 import { ServiceWarningModal } from "@/components/ServiceWarningModal";
 import { MecanicoWarningModal } from "@/components/MecanicoWarningModal";
@@ -30,13 +34,18 @@ interface FinalizarOSModalProps {
 
 export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModalProps) => {
   const { toast } = useToast();
-  const { caixaAtual } = useCaixa();
+  const { updateVenda } = useVendaMutations();
+  const { createLog } = useLogMovimentacaoMutations();
+  const { createComissao } = useComissoesMutations();
+  const { criarMovimentacaoAsync } = useMovimentacoesCaixa();
+  const estoqueManager = useSupabaseEstoque();
 
   // Estados para a finalização
   const [desconto, setDesconto] = useState(0);
   const [formaPagamento, setFormaPagamento] = useState("");
   const [parcelas, setParcelas] = useState(1);
   const [observacoes, setObservacoes] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   // Estados para comissão do mecânico
   const [registrarComissao, setRegistrarComissao] = useState(false);
@@ -210,7 +219,44 @@ const valorFinal = valorTotal - valorDesconto;
         }
       }
 
+      setIsLoading(true);
+
       try {
+        // Validar estoque dos produtos
+        if (produtos.length > 0) {
+          for (const item of produtos) {
+            const temEstoque = await estoqueManager.verificarEstoque(item.produto_id, item.quantidade);
+            if (!temEstoque) {
+              const produto = await estoqueManager.buscarProdutoPorId(item.produto_id);
+              toast({
+                title: "Estoque insuficiente",
+                description: `Não há estoque suficiente para o produto ${produto?.nome || item.produto_nome}. Disponível: ${produto?.quantidade || 0}, Necessário: ${item.quantidade}`,
+                variant: "destructive",
+              });
+              return;
+            }
+          }
+
+          // Dar baixa no estoque
+          const produtosParaBaixa = produtos.map((item: any) => ({
+            id: item.produto_id,
+            nome: item.produto_nome,
+            marca: null,
+            valor: item.preco_unitario,
+            quantidade: item.quantidade
+          }));
+
+          const sucessoEstoque = await estoqueManager.processarVenda(produtosParaBaixa, venda.numero_os);
+          if (!sucessoEstoque) {
+            toast({
+              title: "Erro no estoque",
+              description: "Erro ao dar baixa no estoque. Tente novamente.",
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+
         // Validar forma de pagamento antes de salvar
         if (!isValidVendaFormaPagamento(formaPagamento)) {
           toast({
@@ -220,60 +266,93 @@ const valorFinal = valorTotal - valorDesconto;
           });
           return;
         }
-        // Construir payload para RPC
-        const payload: any = {
-          numeroOS: venda.numero_os,
-          clienteId: venda.cliente_id,
-          veiculoId: venda.veiculo_id,
-          mecanicoId: venda.mecanico_id,
-          valorTotal,
-          valorDesconto,
-          valorFinal,
-          formaPagamento,
+
+        // Atualizar a venda com os novos valores e status finalizada
+        await updateVenda.mutateAsync({
+          id: venda.id,
+          valor_total: valorTotal,
+          valor_desconto: valorDesconto,
+          valor_final: valorFinal,
+          forma_pagamento: formaPagamento,
           parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
           observacoes: observacoes || null,
-          produtos: produtos.map((item: any) => ({
-            id: item.produto_id,
-            nome: item.produto_nome,
-            valor: item.preco_unitario,
-            quantidade: item.quantidade,
-          })),
-          servicos: servicos.map((item: any) => ({
-            id: item.servico_id,
-            nome: item.servico_nome,
-            valor: item.preco,
-          })),
-          comissao: registrarComissao && tipoCalculo && hasMecanico ? {
-            tipoCalculo,
-            percentual: tipoCalculo === 'percentual' ? Number(valorPercentual) : null,
-            valorFixo: tipoCalculo === 'fixo' ? Number(valorFixo) : null,
-            observacoes: obsComissao || null,
-          } : null,
-          caixa: caixaAtual ? {
-            caixaId: caixaAtual.id,
-            formaPagamento: mapVendaToCaixaFormaPagamento(formaPagamento as VendaFormaPagamento),
-          } : null,
-        };
-
-        const { data: resultado, error: rpcError } = await supabase.rpc('rpc_finalizar_os_com_comissao', { payload });
-
-        if (rpcError || !resultado?.success) {
-          const errorMessage = (resultado as any)?.error || rpcError?.message || 'Erro ao finalizar a OS.';
-          toast({
-            title: 'Erro',
-            description: errorMessage,
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        toast({
-          title: 'Sucesso',
-          description: `OS ${venda.numero_os} foi finalizada com sucesso.`,
+          status: 'finalizada',
+          finalizado_em: new Date().toISOString()
         });
 
+        // Registrar comissão se especificada
+        if (registrarComissao && tipoCalculo && hasMecanico) {
+          await createComissao.mutateAsync({
+            venda_id: venda.id,
+            mecanico_id: venda.mecanico_id,
+            tipo_calculo: tipoCalculo,
+            percentual: tipoCalculo === 'percentual' ? Number(valorPercentual) : null,
+            valor_fixo: tipoCalculo === 'fixo' ? Number(valorFixo) : null,
+            valor_final: comissaoPreview,
+            base_calculo: baseCalculo,
+            observacoes: obsComissao || null
+          });
+        }
+
+        // Registrar movimentação no caixa
+        const caixaFormaPagamento = mapVendaToCaixaFormaPagamento(formaPagamento as VendaFormaPagamento);
+        
+        try {
+          await criarMovimentacaoAsync({
+            tipo: 'entrada',
+            tipo_origem: 'OS',
+            forma_pagamento: caixaFormaPagamento,
+            valor_bruto: valorFinal,
+            valor_liquido: valorFinal,
+            descricao: `OS ${venda.numero_os} - ${venda.cliente_nome}`,
+            referencia_id: venda.id,
+          });
+        } catch (caixaError) {
+          console.error('Erro ao registrar movimentação no caixa:', caixaError);
+          // Note: We don't throw here to avoid full rollback, just log the error
+          // The OS is already finalized successfully
+          toast({
+            title: "Atenção",
+            description: "OS finalizada com sucesso, mas houve um problema ao registrar no caixa. Verifique as movimentações.",
+            variant: "destructive",
+          });
+        }
+
+        // Registrar log de finalização
+        const logDescricao = registrarComissao && tipoCalculo
+          ? `OS ${venda.numero_os} finalizada com comissão registrada - ${formaPagamento}${formaPagamento === 'parcelado' ? ` (${parcelas}x)` : ''}`
+          : `OS ${venda.numero_os} finalizada via modal - ${formaPagamento}${formaPagamento === 'parcelado' ? ` (${parcelas}x)` : ''}`;
+
+        await createLog.mutateAsync({
+          os_id: venda.id,
+          tipo: 'finalizacao',
+          usuario: 'Admin',
+          observacoes: logDescricao
+        });
+
+        const successMessage = registrarComissao && tipoCalculo
+          ? `OS ${venda.numero_os} finalizada e comissão registrada com sucesso.`
+          : `OS ${venda.numero_os} foi finalizada com sucesso.`;
+
+        toast({
+          title: "Sucesso",
+          description: successMessage,
+        });
+
+        // Preparar dados da OS finalizada para impressão
         if (imprimirAposFinalizacao) {
-          setOsFinalizadaData(resultado);
+          const osData = {
+            ...venda,
+            valor_total: valorTotal,
+            valor_desconto: valorDesconto,
+            valor_final: valorFinal,
+            forma_pagamento: formaPagamento,
+            parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+            observacoes: observacoes || null,
+            status: 'finalizada',
+            finalizado_em: new Date().toISOString()
+          };
+          setOsFinalizadaData(osData);
           setShowPrintModal(true);
         }
 

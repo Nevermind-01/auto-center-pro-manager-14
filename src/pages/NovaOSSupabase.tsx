@@ -31,12 +31,12 @@ import { sanitizeClienteData } from "@/lib/inputSanitizer";
 import { generateSequentialOSNumber } from "@/lib/utils";
 import { useEmpresaContext } from "@/hooks/useEmpresaContext";
 import { useMultipleAsyncActions } from "@/hooks/useAsyncAction";
+import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
 import { useCaixa } from "@/hooks/useCaixa";
-import { type VendaFormaPagamento, isValidVendaFormaPagamento } from "@/lib/paymentMethodMapper";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  Plus,
-  Search,
+import { mapVendaToCaixaFormaPagamento, type VendaFormaPagamento, isValidVendaFormaPagamento } from "@/lib/paymentMethodMapper";
+import { 
+  Plus, 
+  Search, 
   Users,
   DollarSign,
   Calendar,
@@ -96,6 +96,7 @@ const NovaOSSupabase = () => {
   const { createVenda, createVendaProduto, createVendaServico, updateVenda, deleteVendaProdutos, deleteVendaServicos } = useVendaMutations();
   const { createVeiculo } = useVeiculoMutations();
   const { createLog } = useLogMovimentacaoMutations();
+  const { criarMovimentacaoAsync } = useMovimentacoesCaixa();
   const { caixaAtual } = useCaixa();
   
   // Validation
@@ -923,83 +924,220 @@ const NovaOSSupabase = () => {
         return;
       }
 
-      // Determinar número da OS
+      let vendaId: string;
       let numeroOSFinal = numeroOS;
+
       if (isEditing && editingVenda) {
+        // Modo edição - atualizar venda existente
+        // Deletar produtos e serviços antigos
+        await deleteVendaProdutos.mutateAsync(editingVenda.id);
+        await deleteVendaServicos.mutateAsync(editingVenda.id);
+
+        // Atualizar venda existente para finalizada
+        const vendaAtualizada = await updateVenda.mutateAsync({
+          id: editingVenda.id,
+          cliente_id: clienteSelecionado.id,
+          cliente_nome: clienteSelecionado.nome,
+          veiculo_id: veiculoSelecionado?.id || null,
+          valor_total: valorTotal,
+          valor_desconto: valorDesconto,
+          valor_final: valorFinal,
+          forma_pagamento: formaPagamento as VendaFormaPagamento,
+          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+          observacoes: observacoes || null,
+          status: 'finalizada',
+          finalizado_em: new Date().toISOString()
+        });
+
+        vendaId = editingVenda.id;
         numeroOSFinal = editingVenda.numero_os;
-      } else if (!numeroOSFinal) {
-        numeroOSFinal = await generateSequentialOSNumber(empresaId!);
+
+        // Registrar log de edição
+        await createLog.mutateAsync({
+          os_id: editingVenda.id,
+          tipo: 'edicao',
+          usuario: 'Admin',
+          observacoes: `OS ${numeroOSFinal} editada`,
+          dados_anteriores: originalData,
+          dados_novos: vendaAtualizada
+        });
+      } else {
+        // Gerar número sequencial de OS apenas se não tiver
+        if (!numeroOSFinal) {
+          numeroOSFinal = await generateSequentialOSNumber(empresaId!);
+          setNumeroOS(numeroOSFinal);
+        }
+        
+        // Modo criação - usar numeração sequencial
+        const venda = await createVenda.mutateAsync({
+          numero_os: numeroOSFinal,
+          cliente_id: clienteSelecionado.id,
+          cliente_nome: clienteSelecionado.nome,
+          veiculo_id: veiculoSelecionado?.id || null,
+          mecanico_id: mecanicoSelecionado === "none" ? null : mecanicoSelecionado || null,
+          valor_total: valorTotal,
+          valor_desconto: valorDesconto,
+          valor_final: valorFinal,
+          forma_pagamento: formaPagamento as VendaFormaPagamento,
+          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+          observacoes: observacoes || null,
+          status: 'finalizada',
+          finalizado_em: new Date().toISOString()
+        });
+
+        
+        // Atualizar o estado com o número final usado
         setNumeroOS(numeroOSFinal);
-      }
+        vendaId = venda.id;
 
-      // Montar payload para RPC
-      const payload: any = {
-        numeroOS: numeroOSFinal.trim(),
-        clienteId: clienteSelecionado.id,
-        veiculoId: veiculoSelecionado?.id || null,
-        valorTotal,
-        valorDesconto: valorDesconto || 0,
-        valorFinal,
-        formaPagamento,
-        parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
-        observacoes: observacoes || '',
-        produtos: produtosSelecionados.map(p => ({
-          id: p.id,
-          nome: p.nome,
-          valor: p.valor,
-          quantidade: p.quantidade,
-        })),
-        servicos: servicosSelecionados.map(s => ({
-          id: s.id || null,
-          nome: s.nome,
-          valor: s.valor,
-        })),
-      };
+        // Registrar log de criação
+        await createLog.mutateAsync({
+          os_id: venda.id,
+          tipo: 'criacao',
+          usuario: 'Admin',
+          observacoes: `OS ${numeroOSFinal} criada`
+        });
 
-      if (mecanicoSelecionado && mecanicoSelecionado !== 'none') {
-        payload.mecanicoId = mecanicoSelecionado;
-      }
-
-      if (caixaAtual?.id) {
-        payload.caixa = { caixaId: caixaAtual.id };
-      }
-
-      if (isEditing && editingVenda) {
-        payload.vendaId = editingVenda.id;
-      }
-
-      const { data: resultado, error: rpcError } = await supabase.rpc(
-        'rpc_finalizar_os_com_comissao',
-        { payload }
-      );
-
-      if (rpcError) {
-        console.error('Erro no RPC:', rpcError);
-        throw new Error(rpcError.message || 'Erro ao finalizar a OS');
-      }
-
-      const resultadoData = resultado as any;
-      if (!resultadoData?.success) {
-        throw new Error('Falha ao processar finalização da OS');
-      }
-
-      toast({
-        title: 'OS finalizada',
-        description: `OS ${resultadoData.numeroOS} foi finalizada com sucesso${resultadoData.valorComissao ? ` e comissão de R$ ${Number(resultadoData.valorComissao).toFixed(2)}` : ''}.`,
-      });
-
-      if (!resultadoData.caixaRegistrado) {
-        toast({
-          title: 'Atenção',
-          description: 'OS finalizada, mas não foi possível registrar no caixa.',
-          variant: 'destructive',
+        // Registrar log de finalização separadamente
+        await createLog.mutateAsync({
+          os_id: venda.id,
+          tipo: 'finalizacao',
+          usuario: 'Admin',
+          observacoes: `OS ${numeroOSFinal} finalizada`
         });
       }
 
+      // Adicionar produtos da venda
+      for (const produto of produtosSelecionados) {
+        await createVendaProduto.mutateAsync({
+          venda_id: vendaId,
+          produto_id: produto.id,
+          produto_nome: produto.nome,
+          quantidade: produto.quantidade,
+          preco_unitario: produto.valor,
+          preco_total: produto.valor * produto.quantidade,
+          empresa_id: '00000000-0000-0000-0000-000000000000' // Será definido pelo trigger
+        });
+      }
+
+      // Adicionar serviços da venda
+      for (const servico of servicosSelecionados) {
+        await createVendaServico.mutateAsync({
+          venda_id: vendaId,
+          servico_id: servico.id || null,
+          servico_nome: servico.nome,
+          preco: servico.valor,
+          empresa_id: '00000000-0000-0000-0000-000000000000' // Será definido pelo trigger
+        });
+      }
+
+      // Dar baixa no estoque
+      await estoqueManager.processarVenda(
+        produtosSelecionados.map(p => ({
+          id: p.id,
+          nome: p.nome,
+          marca: p.marca,
+          valor: p.valor,
+          quantidade: p.quantidade
+        })),
+        numeroOSFinal  // Use o número final correto
+      );
+
+      // Registrar movimentação no caixa - com logging detalhado
+      console.log('🔍 Iniciando registro de movimentação no caixa:', {
+        numeroOS: numeroOSFinal,
+        vendaId,
+        formaPagamento,
+        valorFinal,
+        caixaAtual: caixaAtual?.id,
+        empresaId
+      });
+
+      // Validar pré-requisitos antes de criar movimentação
+      if (!caixaAtual) {
+        console.error('❌ Caixa não está aberto para registrar movimentação');
+        toast({
+          title: "Atenção",
+          description: "OS finalizada com sucesso, mas não há caixa aberto para registrar a movimentação.",
+          variant: "destructive",
+        });
+        return; // Skip cash movement creation
+      }
+
+      if (!empresaId) {
+        console.error('❌ Empresa não selecionada para registrar movimentação');
+        toast({
+          title: "Atenção", 
+          description: "OS finalizada com sucesso, mas não foi possível registrar no caixa (empresa não selecionada).",
+          variant: "destructive",
+        });
+        return; // Skip cash movement creation
+      }
+
+      const caixaFormaPagamento = mapVendaToCaixaFormaPagamento(formaPagamento as VendaFormaPagamento);
+      console.log('🔄 Forma de pagamento mapeada:', { 
+        original: formaPagamento, 
+        mapeada: caixaFormaPagamento 
+      });
+
+      try {
+        const movimentacaoData = {
+          tipo: 'entrada' as const,
+          tipo_origem: 'OS' as const,
+          forma_pagamento: caixaFormaPagamento,
+          valor_bruto: valorFinal,
+          valor_liquido: valorFinal,
+          descricao: `OS ${numeroOSFinal} - ${clienteSelecionado.nome}`,
+          referencia_id: vendaId,
+        };
+
+        console.log('📝 Dados da movimentação a ser criada:', movimentacaoData);
+        
+        await criarMovimentacaoAsync(movimentacaoData);
+        
+        console.log('✅ Movimentação registrada com sucesso no caixa');
+        
+      } catch (caixaError: any) {
+        console.error('❌ Erro detalhado ao registrar movimentação no caixa:', {
+          error: caixaError,
+          message: caixaError?.message,
+          stack: caixaError?.stack,
+          numeroOS: numeroOSFinal,
+          vendaId,
+          caixaId: caixaAtual?.id
+        });
+        
+        // Mostrar erro específico baseado no tipo
+        let errorMessage = "OS finalizada com sucesso, mas houve um problema ao registrar no caixa.";
+        
+        if (caixaError?.message?.includes('Forma de pagamento inválida')) {
+          errorMessage = `OS finalizada, mas forma de pagamento "${caixaFormaPagamento}" não é válida para o caixa.`;
+        } else if (caixaError?.message?.includes('Nenhum caixa aberto')) {
+          errorMessage = "OS finalizada, mas não há caixa aberto para registrar a movimentação.";
+        } else if (caixaError?.message) {
+          errorMessage = `OS finalizada, mas erro no caixa: ${caixaError.message}`;
+        }
+        
+        toast({
+          title: "Atenção",
+          description: errorMessage + " Verifique as movimentações em Sistema de Caixa.",
+          variant: "destructive",
+        });
+      }
+
+      toast({
+        title: "OS finalizada",
+        description: `OS ${numeroOSFinal} foi finalizada com sucesso.`,
+      });
+
+      // Se não vai calcular comissão, fazer o reset/navegação normal
+      console.log("🔍 Verificando se deve resetar formulário. ShowComissaoCalculator:", showComissaoCalculator);
       if (!showComissaoCalculator) {
         if (isEditing) {
+          // Se estava editando, voltar para o histórico
           navigate('/history');
         } else {
+          // Se era nova OS, limpar formulário para criar outra
           resetarFormulario();
         }
       }
@@ -1007,9 +1145,9 @@ const NovaOSSupabase = () => {
     } catch (error) {
       console.error('Erro ao finalizar OS:', error);
       toast({
-        title: 'Erro',
-        description: 'Erro ao finalizar a OS. Tente novamente.',
-        variant: 'destructive',
+        title: "Erro",
+        description: "Erro ao finalizar a OS. Tente novamente.",
+        variant: "destructive",
       });
     }
   };

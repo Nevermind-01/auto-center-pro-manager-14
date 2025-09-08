@@ -15,7 +15,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
 import { mapVendaToCaixaFormaPagamento, type VendaFormaPagamento } from "@/lib/paymentMethodMapper";
 import { useCaixa } from "@/hooks/useCaixa";
 
@@ -56,7 +55,6 @@ export const ComissaoCalculatorModal = ({
   osData
 }: ComissaoCalculatorModalProps) => {
   const { toast } = useToast();
-  const { criarMovimentacaoAsync } = useMovimentacoesCaixa();
   const { caixaAtual } = useCaixa();
 
   const [tipoCalculo, setTipoCalculo] = useState<"percentual" | "fixo">("percentual");
@@ -154,7 +152,11 @@ export const ComissaoCalculatorModal = ({
       }
 
       // Preparar payload para o RPC
-      const payload = {
+      const caixaFormaPagamento = mapVendaToCaixaFormaPagamento(
+        formaPagamento as VendaFormaPagamento
+      );
+
+      const payload: any = {
         numeroOS: numeroOS.trim(),
         clienteId: clienteSelecionado.id,
         veiculoId: veiculoSelecionado?.id || null,
@@ -166,24 +168,31 @@ export const ComissaoCalculatorModal = ({
         formaPagamento,
         parcelas: parcelas || 1,
         observacoes: observacoes || "",
-        produtos: (produtosSelecionados || []).map(p => ({
+        produtos: (produtosSelecionados || []).map((p) => ({
           id: p.id,
           nome: p.nome,
           valor: Number(p.valor) || 0,
-          quantidade: Number(p.quantidade) || 0
+          quantidade: Number(p.quantidade) || 0,
         })),
-        servicos: servicosSelecionados.map(s => ({
+        servicos: servicosSelecionados.map((s) => ({
           id: s.id || null,
           nome: s.nome,
-          valor: Number(s.valor) || 0
+          valor: Number(s.valor) || 0,
         })),
         comissao: {
           tipoCalculo,
           percentual: tipoCalculo === "percentual" ? percentual : null,
           valorFixo: tipoCalculo === "fixo" ? valorFixo : null,
-          observacoes: observacoes || ""
-        }
+          observacoes: observacoes || "",
+        },
       };
+
+      if (caixaAtual?.id) {
+        payload.caixa = {
+          caixaId: caixaAtual.id,
+          formaPagamento: caixaFormaPagamento,
+        };
+      }
 
       console.log("📋 Enviando payload para RPC:", payload);
 
@@ -200,44 +209,25 @@ export const ComissaoCalculatorModal = ({
 
       const resultadoData = resultado as any;
       if (!resultadoData?.success) {
-        throw new Error(resultadoData?.error || "Falha ao processar finalização da OS");
+        throw new Error(
+          resultadoData?.error || "Falha ao processar finalização da OS",
+        );
       }
 
-      // Registrar movimentação no caixa
-      try {
-        if (!caixaAtual) {
-          toast({
-            title: "Atenção",
-            description: "OS finalizada com sucesso, mas não há caixa aberto para registrar a movimentação.",
-            variant: "destructive",
-          });
-        } else {
-          const caixaFormaPagamento = mapVendaToCaixaFormaPagamento(formaPagamento as VendaFormaPagamento);
-          await criarMovimentacaoAsync({
-            tipo: 'entrada',
-            tipo_origem: 'OS',
-            forma_pagamento: caixaFormaPagamento,
-            valor_bruto: valorFinal,
-            valor_liquido: valorFinal,
-            descricao: `OS ${numeroOS} - ${clienteSelecionado.nome}`,
-            referencia_id: resultadoData.vendaId,
-          });
-        }
-      } catch (caixaError: any) {
-        console.error("Erro ao registrar movimentação no caixa:", caixaError);
+      if (!resultadoData.caixaRegistrado) {
         toast({
           title: "Atenção",
-          description: caixaError?.message
-            ? `OS finalizada, mas erro ao registrar no caixa: ${caixaError.message}`
-            : "OS finalizada, mas não foi possível registrar no caixa.",
+          description:
+            "OS finalizada, mas não foi possível registrar movimentação no caixa.",
           variant: "destructive",
         });
       }
 
-      // Sucesso
       toast({
         title: "Sucesso",
-        description: `OS ${numeroOS} finalizada com comissão de R$ ${resultadoData.valorComissao?.toFixed(2) || '0.00'}`,
+        description: `OS ${resultadoData.numeroOS} finalizada. Venda ${resultadoData.vendaId} registrada com comissão de R$ ${Number(
+          resultadoData.valorComissao,
+        ).toFixed(2)}`,
       });
 
       onFinalized();

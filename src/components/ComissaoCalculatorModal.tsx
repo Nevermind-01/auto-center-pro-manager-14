@@ -245,29 +245,17 @@ export const ComissaoCalculatorModal = ({
     } catch (error) {
       console.error("Erro ao finalizar OS com comissão:", error);
       
-      let errorMessage = "Erro desconhecido";
-      if (error instanceof Error) {
-        errorMessage = error.message;
+      // Análise inteligente do erro
+      const { analyzeError, getErrorToastConfig } = await import('@/lib/errorHandler');
+      
+      const analysis = analyzeError(error);
+      const toastConfig = getErrorToastConfig(analysis);
+      
+      toast(toastConfig);
+      
+      if (analysis.details) {
+        console.warn('Detalhes do erro:', analysis.details);
       }
-
-      // Mensagens específicas para erros comuns
-      if (errorMessage.includes("estoque insuficiente")) {
-        errorMessage = "Estoque insuficiente para um ou mais produtos";
-      } else if (errorMessage.includes("já existe")) {
-        errorMessage = "Esta OS já foi finalizada";
-      } else if (errorMessage.includes("não encontrado")) {
-        errorMessage = "Dados não encontrados no sistema";
-      } else if (errorMessage.includes("row-level security")) {
-        errorMessage = "Erro de permissão. Verifique se você tem acesso aos dados da empresa";
-      } else if (errorMessage.includes("não selecionado") || errorMessage.includes("não foi gerado")) {
-        errorMessage = "Dados obrigatórios não preenchidos: " + errorMessage;
-      }
-
-      toast({
-        title: "Erro ao finalizar OS",
-        description: errorMessage,
-        variant: "destructive",
-      });
     } finally {
       setIsProcessing(false);
     }

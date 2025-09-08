@@ -27,6 +27,7 @@ function isValidUUID(uuid: string): boolean {
 /**
  * Gera um número sequencial de OS no formato OS01, OS02, etc.
  * Usa função PostgreSQL para garantir atomicidade e evitar conflitos
+ * Inclui retry inteligente para conflitos de numeração
  */
 export async function generateSequentialOSNumber(empresaId: string, maxTentativas: number = 5): Promise<string> {
   // Validação do empresaId
@@ -36,59 +37,53 @@ export async function generateSequentialOSNumber(empresaId: string, maxTentativa
     throw error;
   }
 
-  let tentativas = 0;
-  
-  while (tentativas < maxTentativas) {
-    try {
-      logger.debug(`Tentativa ${tentativas + 1}/${maxTentativas} para gerar número sequencial de OS`, { empresaId });
-      
-      const { data, error } = await supabase.rpc('get_next_sequential_number_safe', {
-        p_empresa_id: empresaId,
-        p_tipo: 'os'
-      });
+  // Importar dinamicamente para evitar circular dependencies
+  const { retryWithBackoff } = await import('@/lib/errorHandler');
 
-      if (error) {
-        throw error;
-      }
+  const gerarNumero = async (): Promise<string> => {
+    logger.debug('Tentando gerar número sequencial de OS', { empresaId });
+    
+    const { data, error } = await supabase.rpc('get_next_sequential_number_safe', {
+      p_empresa_id: empresaId,
+      p_tipo: 'os'
+    });
 
-      if (!data) {
-        throw new Error('Função não retornou número válido');
-      }
-
-      logger.info('Número OS sequencial gerado com sucesso', { numero: data, empresaId });
-      return data;
-
-    } catch (error: unknown) {
-      tentativas++;
-      logger.warn(`Tentativa ${tentativas}/${maxTentativas} falhou ao gerar número OS`, { 
+    if (error) {
+      logger.error('Erro no RPC get_next_sequential_number_safe:', { 
         empresaId, 
-        error: getErrorMessage(error),
-        tentativa: tentativas 
-      });
-      
-      if (tentativas < maxTentativas) {
-        // Aguardar um tempo aleatório maior a cada tentativa (backoff exponencial)
-        const baseDelay = 200;
-        const delay = baseDelay * Math.pow(2, tentativas - 1) + Math.random() * 300;
-        logger.debug(`Aguardando ${Math.round(delay)}ms antes da próxima tentativa`, { delay });
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-      
-      // Para outros erros ou se esgotaram as tentativas, lança o erro
-      logger.error('Erro não recuperável ao gerar número OS - tentativas esgotadas', { 
-        empresaId, 
-        maxTentativas, 
-        error: getErrorMessage(error) 
+        error: error.message,
+        code: error.code 
       });
       throw error;
     }
+
+    if (!data) {
+      const error = new Error('Função não retornou número válido');
+      logger.error('RPC retornou dados vazios:', { empresaId });
+      throw error;
+    }
+
+    logger.info('Número OS sequencial gerado com sucesso', { numero: data, empresaId });
+    return data;
+  };
+
+  try {
+    // Usar retry inteligente com backoff exponencial
+    return await retryWithBackoff(gerarNumero, maxTentativas, 300);
+  } catch (error: unknown) {
+    logger.error('Erro não recuperável ao gerar número OS - tentativas esgotadas', { 
+      empresaId, 
+      maxTentativas, 
+      error: getErrorMessage(error) 
+    });
+    throw error;
   }
 }
 
 /**
  * Gera um número sequencial de orçamento no formato ORC01, ORC02, etc.
  * Usa função PostgreSQL para garantir atomicidade e evitar conflitos
+ * Inclui retry inteligente para conflitos de numeração
  */
 export async function generateSequentialOrcamentoNumber(empresaId: string, maxTentativas: number = 5): Promise<string> {
   // Validação do empresaId
@@ -98,53 +93,46 @@ export async function generateSequentialOrcamentoNumber(empresaId: string, maxTe
     throw error;
   }
 
-  let tentativas = 0;
-  
-  while (tentativas < maxTentativas) {
-    try {
-      logger.debug(`Tentativa ${tentativas + 1}/${maxTentativas} para gerar número sequencial de orçamento`, { empresaId });
-      
-      const { data, error } = await supabase.rpc('get_next_sequential_number_safe', {
-        p_empresa_id: empresaId,
-        p_tipo: 'orcamento'
-      });
+  // Importar dinamicamente para evitar circular dependencies
+  const { retryWithBackoff } = await import('@/lib/errorHandler');
 
-      if (error) {
-        throw error;
-      }
+  const gerarNumero = async (): Promise<string> => {
+    logger.debug('Tentando gerar número sequencial de orçamento', { empresaId });
+    
+    const { data, error } = await supabase.rpc('get_next_sequential_number_safe', {
+      p_empresa_id: empresaId,
+      p_tipo: 'orcamento'
+    });
 
-      if (!data) {
-        throw new Error('Função não retornou número válido');
-      }
-
-      logger.info('Número orçamento sequencial gerado com sucesso', { numero: data, empresaId });
-      return data;
-
-    } catch (error: unknown) {
-      tentativas++;
-      logger.warn(`Tentativa ${tentativas}/${maxTentativas} falhou ao gerar número orçamento`, { 
+    if (error) {
+      logger.error('Erro no RPC get_next_sequential_number_safe:', { 
         empresaId, 
-        error: getErrorMessage(error),
-        tentativa: tentativas 
-      });
-      
-      if (tentativas < maxTentativas) {
-        // Aguardar um tempo aleatório maior a cada tentativa (backoff exponencial)
-        const baseDelay = 200;
-        const delay = baseDelay * Math.pow(2, tentativas - 1) + Math.random() * 300;
-        logger.debug(`Aguardando ${Math.round(delay)}ms antes da próxima tentativa`, { delay });
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-      
-      // Para outros erros ou se esgotaram as tentativas, lança o erro
-      logger.error('Erro não recuperável ao gerar número orçamento - tentativas esgotadas', { 
-        empresaId, 
-        maxTentativas, 
-        error: getErrorMessage(error) 
+        error: error.message,
+        code: error.code 
       });
       throw error;
     }
+
+    if (!data) {
+      const error = new Error('Função não retornou número válido');
+      logger.error('RPC retornou dados vazios:', { empresaId });
+      throw error;
+    }
+
+    logger.info('Número orçamento sequencial gerado com sucesso', { numero: data, empresaId });
+    return data;
+  };
+
+  try {
+    // Usar retry inteligente com backoff exponencial
+    return await retryWithBackoff(gerarNumero, maxTentativas, 300);
+  } catch (error: unknown) {
+    logger.error('Erro não recuperável ao gerar número orçamento - tentativas esgotadas', { 
+      empresaId, 
+      maxTentativas, 
+      error: getErrorMessage(error) 
+    });
+    throw error;
   }
 }
 

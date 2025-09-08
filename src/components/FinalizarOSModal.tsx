@@ -360,11 +360,23 @@ const valorFinal = valorTotal - valorDesconto;
 
       } catch (error) {
         console.error('Erro ao finalizar OS:', error);
-        toast({
-          title: "Erro",
-          description: "Erro ao finalizar a OS. Tente novamente.",
-          variant: "destructive",
-        });
+        
+        // Importar dinamicamente para evitar circular dependencies
+        const { analyzeError, getErrorToastConfig } = await import('@/lib/errorHandler');
+        
+        const analysis = analyzeError(error);
+        const toastConfig = getErrorToastConfig(analysis);
+        
+        // Para erros de conflito de numeração, não mostra erro pois vai tentar novamente automaticamente
+        if (analysis.type !== 'duplicate_os') {
+          toast(toastConfig);
+        }
+        
+        // Log detalhado para debugging
+        if (analysis.details) {
+          console.warn('Detalhes do erro:', analysis.details);
+        }
+        
         throw error;
       }
     },

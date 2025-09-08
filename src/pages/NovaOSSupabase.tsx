@@ -838,11 +838,41 @@ const NovaOSSupabase = () => {
       }
     } catch (error) {
       console.error('Erro ao salvar OS:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao salvar a OS. Tente novamente.",
-        variant: "destructive",
-      });
+      
+      // Análise inteligente do erro
+      const { analyzeError, getErrorToastConfig, retryWithBackoff } = await import('@/lib/errorHandler');
+      
+      const analysis = analyzeError(error);
+      
+      // Para conflitos de numeração, tentar novamente automaticamente
+      if (analysis.type === 'duplicate_os' && analysis.canRetry) {
+        console.log('🔄 Conflito de numeração detectado, tentando novamente...');
+        try {
+          // Gerar novo número e tentar salvar novamente
+          const novoNumeroOS = await generateSequentialOSNumber(empresaId!);
+          setNumeroOS(novoNumeroOS);
+          
+          toast({
+            title: "Conflito de Numeração",
+            description: `Gerando novo número: ${novoNumeroOS}`,
+          });
+          
+          // Tentar salvar novamente com o novo número
+          return await salvarOS();
+        } catch (retryError) {
+          const retryAnalysis = analyzeError(retryError);
+          const retryToastConfig = getErrorToastConfig(retryAnalysis);
+          toast(retryToastConfig);
+        }
+      } else {
+        // Para outros tipos de erro, mostrar mensagem específica
+        const toastConfig = getErrorToastConfig(analysis);
+        toast(toastConfig);
+        
+        if (analysis.details) {
+          console.warn('Detalhes do erro:', analysis.details);
+        }
+      }
     }
   };
 
@@ -1144,11 +1174,26 @@ const NovaOSSupabase = () => {
 
     } catch (error) {
       console.error('Erro ao finalizar OS:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao finalizar a OS. Tente novamente.",
-        variant: "destructive",
-      });
+      
+      // Análise inteligente do erro
+      const { analyzeError, getErrorToastConfig } = await import('@/lib/errorHandler');
+      
+      const analysis = analyzeError(error);
+      const toastConfig = getErrorToastConfig(analysis);
+      
+      // Para erros de caixa, usar mensagem menos severa pois a OS foi finalizada
+      if (analysis.type === 'cashier') {
+        toast({
+          ...toastConfig,
+          variant: "default" // Menos severo
+        });
+      } else {
+        toast(toastConfig);
+      }
+      
+      if (analysis.details) {
+        console.warn('Detalhes do erro:', analysis.details);
+      }
     }
   };
 
@@ -1216,11 +1261,19 @@ const NovaOSSupabase = () => {
           console.log("✅ Número OS gerado para comissão:", numeroOSFinal);
         } catch (error) {
           console.error('Erro ao gerar número de OS:', error);
-          toast({
-            title: "Erro",
-            description: "Erro ao gerar número da OS. Tente novamente.",
-            variant: "destructive",
-          });
+          
+          // Análise inteligente do erro de numeração
+          const { analyzeError, getErrorToastConfig } = await import('@/lib/errorHandler');
+          
+          const analysis = analyzeError(error);
+          const toastConfig = getErrorToastConfig(analysis);
+          
+          toast(toastConfig);
+          
+          if (analysis.details) {
+            console.warn('Detalhes do erro:', analysis.details);
+          }
+          
           return;
         }
       }
@@ -1241,11 +1294,18 @@ const NovaOSSupabase = () => {
       
     } catch (error) {
       console.error("Erro ao preparar comissão:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao preparar cálculo de comissão. Tente novamente.",
-        variant: "destructive",
-      });
+      
+      // Análise inteligente do erro
+      const { analyzeError, getErrorToastConfig } = await import('@/lib/errorHandler');
+      
+      const analysis = analyzeError(error);
+      const toastConfig = getErrorToastConfig(analysis);
+      
+      toast(toastConfig);
+      
+      if (analysis.details) {
+        console.warn('Detalhes do erro:', analysis.details);
+      }
     }
   };
 

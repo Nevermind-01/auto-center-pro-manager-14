@@ -989,15 +989,15 @@ export type Database = {
         Row: {
           categoria_id: string | null
           codigo: string | null
-          codigo_interno: string | null
-          ncm_sh: string | null
           codigo_barras: string | null
+          codigo_interno: string | null
           created_at: string
           data_entrada: string | null
           empresa_id: string | null
           estoque_minimo: number | null
           id: string
           marca: string | null
+          ncm_sh: string | null
           nome: string
           preco_custo: number | null
           preco_medio: number | null
@@ -1010,15 +1010,15 @@ export type Database = {
         Insert: {
           categoria_id?: string | null
           codigo?: string | null
-          codigo_interno?: string | null
-          ncm_sh?: string | null
           codigo_barras?: string | null
+          codigo_interno?: string | null
           created_at?: string
           data_entrada?: string | null
           empresa_id?: string | null
           estoque_minimo?: number | null
           id?: string
           marca?: string | null
+          ncm_sh?: string | null
           nome: string
           preco_custo?: number | null
           preco_medio?: number | null
@@ -1031,15 +1031,15 @@ export type Database = {
         Update: {
           categoria_id?: string | null
           codigo?: string | null
-          codigo_interno?: string | null
-          ncm_sh?: string | null
           codigo_barras?: string | null
+          codigo_interno?: string | null
           created_at?: string
           data_entrada?: string | null
           empresa_id?: string | null
           estoque_minimo?: number | null
           id?: string
           marca?: string | null
+          ncm_sh?: string | null
           nome?: string
           preco_custo?: number | null
           preco_medio?: number | null
@@ -1515,6 +1515,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _estoque_ate: {
+        Args: { ate: string; empresa: string; produto: string }
+        Returns: number
+      }
       create_empresa_from_metadata: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -1559,6 +1563,10 @@ export type Database = {
           p_veiculo_id: string
         }
         Returns: string
+      }
+      ean13_is_valid: {
+        Args: { code: string }
+        Returns: boolean
       }
       get_current_empresa_id: {
         Args: Record<PropertyKey, never>
@@ -1635,6 +1643,10 @@ export type Database = {
       migrate_user_data_to_empresa: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      recalc_preco_medio: {
+        Args: { empresa: string; produto: string }
+        Returns: undefined
       }
       rpc_finalizar_os_com_comissao: {
         Args: { payload: Json }

@@ -208,16 +208,27 @@ const Historico = () => {
     if (!vendaParaExcluir) return;
 
     try {
+      console.log('🚀 Iniciando exclusão de OS:', {
+        osId: vendaParaExcluir.id,
+        numeroOS: vendaParaExcluir.numero_os
+      });
+
       // Registrar log de exclusão ANTES de excluir (para manter referência válida)
+      console.log('📝 Tentando criar log de exclusão...');
+      
       await createLog.mutateAsync({
         os_id: vendaParaExcluir.id,
         tipo: 'exclusao',
         usuario: 'Admin',
         observacoes: `OS ${vendaParaExcluir.numero_os} excluída permanentemente - Todos os dados relacionados foram removidos`
       });
+      
+      console.log('✅ Log de exclusão criado com sucesso');
 
       // Agora fazer a exclusão
+      console.log('🗑️ Iniciando exclusão da OS...');
       await deleteVenda.mutateAsync(vendaParaExcluir.id);
+      console.log('✅ OS excluída com sucesso');
       
       toast({
         title: "OS excluída",
@@ -227,7 +238,13 @@ const Historico = () => {
       setShowDeleteModal(false);
       setVendaParaExcluir(null);
     } catch (error: any) {
-      console.error('Erro ao excluir OS:', error);
+      console.error('❌ Erro completo ao excluir OS:', {
+        error: error,
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        code: error?.code
+      });
       
       let errorMessage = "Erro ao excluir a OS. Tente novamente.";
       if (error?.message) {

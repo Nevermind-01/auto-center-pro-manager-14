@@ -32,21 +32,21 @@ export function ConfirmDeleteModal({
             Excluir OS {osNumero}
           </AlertDialogTitle>
           <AlertDialogDescription className="text-left space-y-2">
-            <p>
+            <div>
               <strong>Esta ação não pode ser desfeita.</strong>
-            </p>
-            <p>
+            </div>
+            <div>
               A OS <strong>{osNumero}</strong> e todos os dados relacionados serão excluídos permanentemente:
-            </p>
-            <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>Produtos e serviços da OS</li>
-              <li>Comissões associadas</li>
-              <li>Movimentações de caixa relacionadas</li>
-              <li>Histórico de movimentações</li>
-            </ul>
-            <p className="text-sm text-muted-foreground mt-3">
+            </div>
+            <div className="ml-4 space-y-1">
+              <div>• Produtos e serviços da OS</div>
+              <div>• Comissões associadas</div>
+              <div>• Movimentações de caixa relacionadas</div>
+              <div>• Histórico de movimentações</div>
+            </div>
+            <div className="text-sm text-muted-foreground mt-3">
               Apenas OS canceladas podem ser excluídas.
-            </p>
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

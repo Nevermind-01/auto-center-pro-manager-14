@@ -918,7 +918,6 @@ export const useVendaMutations = () => {
       queryClient.invalidateQueries({ queryKey: ['vendas', undefined, empresaId] });
       queryClient.invalidateQueries({ queryKey: ['movimentacoes_caixa'] });
       queryClient.invalidateQueries({ queryKey: ['comissoes_mecanico'] });
-      queryClient.invalidateQueries({ queryKey: ['log_movimentacoes', empresaId] });
       
       // Log de auditoria para rastreabilidade
       supabase.from('audit_logs').insert({
@@ -1115,16 +1114,7 @@ export const useLogMovimentacaoMutations = () => {
 
   const createLog = useMutation({
     mutationFn: async (log: Omit<LogMovimentacaoInsert, 'user_id' | 'empresa_id'>) => {
-      if (!user || !empresaId) {
-        console.error('❌ User or empresaId missing:', { user: !!user, empresaId });
-        throw new Error('User not authenticated or no empresa selected');
-      }
-      
-      console.log('📝 Criando log com dados:', {
-        ...log,
-        user_id: user.id,
-        empresa_id: empresaId
-      });
+      if (!user || !empresaId) throw new Error('User not authenticated or no empresa selected');
       
       const { data, error } = await supabase
         .from('log_movimentacoes')
@@ -1132,12 +1122,7 @@ export const useLogMovimentacaoMutations = () => {
         .select()
         .single();
       
-      if (error) {
-        console.error('❌ Erro ao criar log:', error);
-        throw error;
-      }
-      
-      console.log('✅ Log criado com sucesso:', data);
+      if (error) throw error;
       return data;
     },
     onSuccess: () => {

@@ -25,6 +25,7 @@ import {
 import { useMecanicos } from "@/hooks/useMecanicos";
 import { ComissaoConfirmModal } from "@/components/ComissaoConfirmModal";
 import { ComissaoCalculatorModal } from "@/components/ComissaoCalculatorModal";
+import { ServiceWarningModal } from "@/components/ServiceWarningModal";
 import { useSupabaseEstoque, ProdutoComCategoria } from "@/lib/supabaseEstoque";
 import { useClienteValidation } from "@/hooks/useClienteValidation";
 import { sanitizeClienteData } from "@/lib/inputSanitizer";
@@ -172,6 +173,9 @@ const NovaOSSupabase = () => {
   const [showComissaoConfirm, setShowComissaoConfirm] = useState(false);
   const [showComissaoCalculator, setShowComissaoCalculator] = useState(false);
   const [vendaIdForComissao, setVendaIdForComissao] = useState<string>("");
+  
+  // Estado para warning de serviço sem mecânico
+  const [showServiceWarning, setShowServiceWarning] = useState(false);
   
   // Estados para preservar valores durante cálculo de comissão
   const [valorServicosParaComissao, setValorServicosParaComissao] = useState<number>(0);
@@ -891,6 +895,12 @@ const NovaOSSupabase = () => {
     const temServicos = servicosSelecionados.length > 0;
     const temMecanico = mecanicoSelecionado && mecanicoSelecionado !== "none";
     
+    // Verificar se tem serviços mas não tem mecânico
+    if (temServicos && !temMecanico) {
+      setShowServiceWarning(true);
+      return;
+    }
+    
     if (temServicos && temMecanico && !isEditing) {
       // Abrir modal de confirmação de comissão
       setShowComissaoConfirm(true);
@@ -1164,6 +1174,18 @@ const NovaOSSupabase = () => {
     setShowComissaoConfirm(false);
     // Finalizar sem comissão
     processarFinalizacao();
+  };
+
+  // Handlers para warning de serviço sem mecânico
+  const handleServiceWarningConfirm = () => {
+    setShowServiceWarning(false);
+    // Prosseguir com a finalização mesmo sem mecânico
+    processarFinalizacao();
+  };
+
+  const handleServiceWarningReject = () => {
+    setShowServiceWarning(false);
+    // Não finalizar - usuário cancelou
   };
 
   const processarFinalizacaoComComissao = async () => {
@@ -2214,6 +2236,14 @@ const NovaOSSupabase = () => {
           isEditing,
           editingVenda
         }}
+      />
+
+      {/* Modal de warning para serviço sem mecânico */}
+      <ServiceWarningModal
+        isOpen={showServiceWarning}
+        onClose={() => setShowServiceWarning(false)}
+        onConfirm={handleServiceWarningConfirm}
+        onReject={handleServiceWarningReject}
       />
 
       {/* Modal para atualizar KM do veículo */}

@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useVendas, useVendaMutations, useLogMovimentacaoMutations } from "@/hooks/useSupabaseQueries";
 import { useSupabaseEstoque } from "@/lib/supabaseEstoque";
 import { ConfirmCancelModal } from "@/components/ConfirmCancelModal";
+import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
 import { FinalizarOSModal } from "@/components/FinalizarOSModal";
 import { VisualizarOSModal } from "@/components/VisualizarOSModal";
 import { 
@@ -23,7 +24,8 @@ import {
   FileText,
   Car,
   CheckCircle,
-  Wrench
+  Wrench,
+  Trash2
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -63,11 +65,13 @@ const Historico = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [vendaParaFinalizar, setVendaParaFinalizar] = useState<any>(null);
   const [showFinalizarModal, setShowFinalizarModal] = useState(false);
+  const [vendaParaExcluir, setVendaParaExcluir] = useState<any>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [osParaVisualizar, setOsParaVisualizar] = useState<string | null>(null);
   const [showVisualizarModal, setShowVisualizarModal] = useState(false);
   
   const { data: vendas = [], isLoading } = useVendas();
-  const { updateVenda } = useVendaMutations();
+  const { updateVenda, deleteVenda } = useVendaMutations();
   const { createLog } = useLogMovimentacaoMutations();
   const estoqueManager = useSupabaseEstoque();
   
@@ -184,6 +188,49 @@ const Historico = () => {
   const handleViewDetails = (venda: any) => {
     setOsParaVisualizar(venda.id);
     setShowVisualizarModal(true);
+  };
+
+  const handleDeleteOS = (venda: any) => {
+    if (venda.status !== 'cancelada') {
+      toast({
+        title: "Ação não permitida",
+        description: "Apenas OS canceladas podem ser excluídas.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setVendaParaExcluir(venda);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteOS = async () => {
+    if (!vendaParaExcluir) return;
+
+    try {
+      await deleteVenda.mutateAsync(vendaParaExcluir.id);
+      
+      toast({
+        title: "OS excluída",
+        description: `OS ${vendaParaExcluir.numero_os} foi excluída permanentemente.`,
+      });
+
+      setShowDeleteModal(false);
+      setVendaParaExcluir(null);
+    } catch (error: any) {
+      console.error('Erro ao excluir OS:', error);
+      
+      let errorMessage = "Erro ao excluir a OS. Tente novamente.";
+      if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        title: "Erro",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -342,6 +389,17 @@ const Historico = () => {
                             Ver
                           </Button>
                           
+                          {venda.status === 'cancelada' && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteOS(venda)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Excluir
+                            </Button>
+                          )}
+                          
                           {venda.status === 'pendente' && (
                             <Button
                               variant="outline"
@@ -391,6 +449,14 @@ const Historico = () => {
         onOpenChange={setShowCancelModal}
         onConfirm={confirmCancelOS}
         osNumero={vendaParaCancelar?.numero_os || ''}
+      />
+      
+      {/* Modal de confirmação de exclusão */}
+      <ConfirmDeleteModal
+        open={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
+        onConfirm={confirmDeleteOS}
+        osNumero={vendaParaExcluir?.numero_os || ''}
       />
       
       {/* Modal de finalização */}

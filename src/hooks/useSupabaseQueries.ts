@@ -855,13 +855,90 @@ export const useVendaMutations = () => {
     }
   });
 
+  const deleteVenda = useMutation({
+    mutationFn: async (vendaId: string) => {
+      if (!empresaId) throw new Error('Empresa não selecionada');
+      
+      // Verificar se a OS está cancelada antes de permitir exclusão
+      const { data: venda, error: vendaError } = await supabase
+        .from('vendas')
+        .select('status, numero_os')
+        .eq('id', vendaId)
+        .eq('empresa_id', empresaId)
+        .single();
+        
+      if (vendaError) throw vendaError;
+      if (!venda) throw new Error('OS não encontrada');
+      if (venda.status !== 'cancelada') {
+        throw new Error('Apenas OS canceladas podem ser excluídas');
+      }
+
+      // Deletar em ordem de dependência (do mais dependente para o menos)
+      
+      // 1. Deletar produtos da venda
+      const { error: produtosError } = await supabase
+        .from('venda_produtos')
+        .delete()
+        .eq('venda_id', vendaId);
+      if (produtosError) throw produtosError;
+
+      // 2. Deletar serviços da venda
+      const { error: servicosError } = await supabase
+        .from('venda_servicos')
+        .delete()
+        .eq('venda_id', vendaId);
+      if (servicosError) throw servicosError;
+
+      // 3. Deletar comissões relacionadas
+      const { error: comissoesError } = await supabase
+        .from('comissoes_mecanicos')
+        .delete()
+        .eq('venda_id', vendaId);
+      if (comissoesError) throw comissoesError;
+
+      // 4. Deletar movimentações de caixa relacionadas
+      const { error: movimentacoesError } = await supabase
+        .from('movimentacoes_caixa')
+        .delete()
+        .eq('referencia_id', vendaId)
+        .eq('tipo_origem', 'OS');
+      if (movimentacoesError) throw movimentacoesError;
+
+      // 5. Deletar a venda principal
+      const { error: vendaDeleteError } = await supabase
+        .from('vendas')
+        .delete()
+        .eq('id', vendaId)
+        .eq('empresa_id', empresaId);
+      if (vendaDeleteError) throw vendaDeleteError;
+
+      return { vendaId, numeroOS: venda.numero_os };
+    },
+    onSuccess: ({ vendaId, numeroOS }) => {
+      queryClient.invalidateQueries({ queryKey: ['vendas', undefined, empresaId] });
+      queryClient.invalidateQueries({ queryKey: ['movimentacoes_caixa'] });
+      queryClient.invalidateQueries({ queryKey: ['comissoes_mecanico'] });
+      
+      // Log de auditoria para rastreabilidade
+      supabase.from('audit_logs').insert({
+        user_id: user?.id,
+        empresa_id: empresaId,
+        action: 'DELETE',
+        resource_type: 'venda',
+        resource_id: vendaId,
+        details: { numeroOS, action: 'OS_EXCLUIDA' }
+      });
+    }
+  });
+
   return { 
     createVenda, 
     createVendaProduto, 
     createVendaServico, 
     updateVenda,
     deleteVendaProdutos,
-    deleteVendaServicos
+    deleteVendaServicos,
+    deleteVenda
   };
 };
 

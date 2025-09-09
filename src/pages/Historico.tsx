@@ -210,6 +210,14 @@ const Historico = () => {
     try {
       await deleteVenda.mutateAsync(vendaParaExcluir.id);
       
+      // Registrar log de exclusão
+      await createLog.mutateAsync({
+        os_id: vendaParaExcluir.id,
+        tipo: 'exclusao',
+        usuario: 'Admin',
+        observacoes: `OS ${vendaParaExcluir.numero_os} excluída permanentemente - Todos os dados relacionados foram removidos`
+      });
+      
       toast({
         title: "OS excluída",
         description: `OS ${vendaParaExcluir.numero_os} foi excluída permanentemente.`,

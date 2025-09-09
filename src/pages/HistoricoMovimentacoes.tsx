@@ -16,14 +16,15 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-type TipoFilter = 'todos' | 'criacao' | 'edicao' | 'cancelamento' | 'finalizacao';
+type TipoFilter = 'todos' | 'criacao' | 'edicao' | 'cancelamento' | 'finalizacao' | 'exclusao';
 
 const tipoOptions = [
   { value: 'todos', label: 'Todos' },
   { value: 'criacao', label: 'Criação' },
   { value: 'edicao', label: 'Edição' },
   { value: 'cancelamento', label: 'Cancelamento' },
-  { value: 'finalizacao', label: 'Finalização' }
+  { value: 'finalizacao', label: 'Finalização' },
+  { value: 'exclusao', label: 'Exclusão' }
 ];
 
 const getTipoBadge = (tipo: string) => {
@@ -31,7 +32,8 @@ const getTipoBadge = (tipo: string) => {
     criacao: { variant: 'default' as const, label: 'Criação' },
     edicao: { variant: 'secondary' as const, label: 'Edição' },
     cancelamento: { variant: 'destructive' as const, label: 'Cancelamento' },
-    finalizacao: { variant: 'outline' as const, label: 'Finalização' }
+    finalizacao: { variant: 'outline' as const, label: 'Finalização' },
+    exclusao: { variant: 'destructive' as const, label: 'Exclusão' }
   };
   
   const config = tipoConfig[tipo as keyof typeof tipoConfig] || 

@@ -918,6 +918,7 @@ export const useVendaMutations = () => {
       queryClient.invalidateQueries({ queryKey: ['vendas', undefined, empresaId] });
       queryClient.invalidateQueries({ queryKey: ['movimentacoes_caixa'] });
       queryClient.invalidateQueries({ queryKey: ['comissoes_mecanico'] });
+      queryClient.invalidateQueries({ queryKey: ['log_movimentacoes', empresaId] });
       
       // Log de auditoria para rastreabilidade
       supabase.from('audit_logs').insert({

@@ -1671,7 +1671,17 @@ export type Database = {
       app_role: "admin" | "user"
       caixa_status: "aberto" | "fechado"
       empresa_role: "owner" | "admin" | "user"
-      forma_pagamento: "dinheiro" | "cartao" | "pix" | "cheque" | "parcelado"
+      forma_pagamento:
+        | "dinheiro"
+        | "cartao"
+        | "pix"
+        | "cheque"
+        | "parcelado"
+        | "debito"
+        | "credito"
+        | "boleto"
+        | "carteira"
+        | "outros"
       forma_pagamento_caixa:
         | "dinheiro"
         | "pix"
@@ -1816,7 +1826,18 @@ export const Constants = {
       app_role: ["admin", "user"],
       caixa_status: ["aberto", "fechado"],
       empresa_role: ["owner", "admin", "user"],
-      forma_pagamento: ["dinheiro", "cartao", "pix", "cheque", "parcelado"],
+      forma_pagamento: [
+        "dinheiro",
+        "cartao",
+        "pix",
+        "cheque",
+        "parcelado",
+        "debito",
+        "credito",
+        "boleto",
+        "carteira",
+        "outros",
+      ],
       forma_pagamento_caixa: [
         "dinheiro",
         "pix",

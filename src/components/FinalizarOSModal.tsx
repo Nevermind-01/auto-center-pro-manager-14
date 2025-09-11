@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PrintModal } from "@/components/print/PrintModal";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
-import { mapVendaToCaixaFormaPagamento, type VendaFormaPagamento, isValidVendaFormaPagamento } from "@/lib/paymentMethodMapper";
+import { type FormaPagamento, isValidFormaPagamento, getAvailablePaymentMethods } from "@/lib/paymentMethodMapper";
 import { ProdutoOnlyWarningModal } from "@/components/ProdutoOnlyWarningModal";
 import { ServiceWarningModal } from "@/components/ServiceWarningModal";
 import { MecanicoWarningModal } from "@/components/MecanicoWarningModal";
@@ -258,7 +258,7 @@ const valorFinal = valorTotal - valorDesconto;
         }
 
         // Validar forma de pagamento antes de salvar
-        if (!isValidVendaFormaPagamento(formaPagamento)) {
+        if (!isValidFormaPagamento(formaPagamento)) {
           toast({
             title: "Erro",
             description: "Forma de pagamento inválida.",
@@ -274,7 +274,7 @@ const valorFinal = valorTotal - valorDesconto;
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
           forma_pagamento: formaPagamento,
-          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+          parcelas: formaPagamento === 'credito' ? parcelas : 1,
           observacoes: observacoes || null,
           status: 'finalizada',
           finalizado_em: new Date().toISOString()
@@ -294,14 +294,13 @@ const valorFinal = valorTotal - valorDesconto;
           });
         }
 
-        // Registrar movimentação no caixa
-        const caixaFormaPagamento = mapVendaToCaixaFormaPagamento(formaPagamento as VendaFormaPagamento);
+        // Usar forma de pagamento direta (agora unificada)
         
         try {
           await criarMovimentacaoAsync({
             tipo: 'entrada',
             tipo_origem: 'OS',
-            forma_pagamento: caixaFormaPagamento,
+            forma_pagamento: formaPagamento as FormaPagamento,
             valor_bruto: valorFinal,
             valor_liquido: valorFinal,
             descricao: `OS ${venda.numero_os} - ${venda.cliente_nome}`,
@@ -320,8 +319,8 @@ const valorFinal = valorTotal - valorDesconto;
 
         // Registrar log de finalização
         const logDescricao = registrarComissao && tipoCalculo
-          ? `OS ${venda.numero_os} finalizada com comissão registrada - ${formaPagamento}${formaPagamento === 'parcelado' ? ` (${parcelas}x)` : ''}`
-          : `OS ${venda.numero_os} finalizada via modal - ${formaPagamento}${formaPagamento === 'parcelado' ? ` (${parcelas}x)` : ''}`;
+          ? `OS ${venda.numero_os} finalizada com comissão registrada - ${formaPagamento}${formaPagamento === 'credito' ? ` (${parcelas}x)` : ''}`
+          : `OS ${venda.numero_os} finalizada via modal - ${formaPagamento}${formaPagamento === 'credito' ? ` (${parcelas}x)` : ''}`;
 
         await createLog.mutateAsync({
           os_id: venda.id,
@@ -347,7 +346,7 @@ const valorFinal = valorTotal - valorDesconto;
             valor_desconto: valorDesconto,
             valor_final: valorFinal,
             forma_pagamento: formaPagamento,
-            parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+            parcelas: formaPagamento === 'credito' ? parcelas : 1,
             observacoes: observacoes || null,
             status: 'finalizada',
             finalizado_em: new Date().toISOString()
@@ -703,16 +702,19 @@ const valorFinal = valorTotal - valorDesconto;
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                    <SelectItem value="cartao">Cartão</SelectItem>
                     <SelectItem value="pix">PIX</SelectItem>
+                    <SelectItem value="debito">Cartão de Débito</SelectItem>
+                    <SelectItem value="credito">Cartão de Crédito</SelectItem>
                     <SelectItem value="cheque">Cheque</SelectItem>
-                    <SelectItem value="parcelado">Parcelado</SelectItem>
+                    <SelectItem value="boleto">Boleto Bancário</SelectItem>
+                    <SelectItem value="carteira">Carteira Digital</SelectItem>
+                    <SelectItem value="outros">Outros</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Parcelas (se parcelado) */}
-              {formaPagamento === "parcelado" && (
+              {/* Parcelas (se cartão de crédito) */}
+              {formaPagamento === "credito" && (
                 <div>
                   <Label htmlFor="parcelas">Número de Parcelas</Label>
                   <Select value={parcelas.toString()} onValueChange={(value) => setParcelas(parseInt(value))}>

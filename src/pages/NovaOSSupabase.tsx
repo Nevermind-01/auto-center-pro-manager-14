@@ -34,7 +34,7 @@ import { useEmpresaContext } from "@/hooks/useEmpresaContext";
 import { useMultipleAsyncActions } from "@/hooks/useAsyncAction";
 import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
 import { useCaixa } from "@/hooks/useCaixa";
-import { mapVendaToCaixaFormaPagamento, type VendaFormaPagamento, isValidVendaFormaPagamento } from "@/lib/paymentMethodMapper";
+import { type FormaPagamento, isValidFormaPagamento, getAvailablePaymentMethods } from "@/lib/paymentMethodMapper";
 import { 
   Plus, 
   Search, 
@@ -160,7 +160,7 @@ const NovaOSSupabase = () => {
 
   // Pagamento e finalizacao
   const [desconto, setDesconto] = useState(0);
-  const [formaPagamento, setFormaPagamento] = useState<VendaFormaPagamento | "">("");
+  const [formaPagamento, setFormaPagamento] = useState<FormaPagamento | "">("");
   const [parcelas, setParcelas] = useState(1);
   const [observacoes, setObservacoes] = useState("");
   const [numeroOS, setNumeroOS] = useState("");
@@ -227,7 +227,14 @@ const NovaOSSupabase = () => {
             : 0;
           setDesconto(descontoPercentual);
           
-          setFormaPagamento(vendaParaEditar.forma_pagamento || '');
+          // Mapear forma de pagamento antiga para nova (se necessário)
+          const formaPagamentoMapeada = (() => {
+            const fpOriginal = vendaParaEditar.forma_pagamento || '';
+            if (fpOriginal === 'cartao' || fpOriginal === 'parcelado') return 'credito';
+            if (!isValidFormaPagamento(fpOriginal)) return '';
+            return fpOriginal;
+          })();
+          setFormaPagamento(formaPagamentoMapeada);
           setParcelas(vendaParaEditar.parcelas || 1);
           setObservacoes(vendaParaEditar.observacoes || '');
           
@@ -726,8 +733,8 @@ const NovaOSSupabase = () => {
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: (formaPagamento || 'dinheiro') as VendaFormaPagamento,
-          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+          forma_pagamento: (formaPagamento || 'dinheiro') as FormaPagamento,
+          parcelas: formaPagamento === 'credito' ? parcelas : 1,
           observacoes: observacoes || null
         });
 
@@ -790,8 +797,8 @@ const NovaOSSupabase = () => {
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: (formaPagamento || 'dinheiro') as VendaFormaPagamento,
-          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+          forma_pagamento: (formaPagamento || 'dinheiro') as FormaPagamento,
+          parcelas: formaPagamento === 'credito' ? parcelas : 1,
           observacoes: observacoes || null,
           status: 'pendente'
         });
@@ -924,7 +931,7 @@ const NovaOSSupabase = () => {
       }
 
       // Validar se a forma de pagamento é válida para vendas
-      if (!isValidVendaFormaPagamento(formaPagamento)) {
+      if (!isValidFormaPagamento(formaPagamento)) {
         console.error('Forma de pagamento inválida para vendas:', formaPagamento);
         toast({
           title: "Erro",
@@ -952,8 +959,8 @@ const NovaOSSupabase = () => {
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: formaPagamento as VendaFormaPagamento,
-          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+          forma_pagamento: formaPagamento as FormaPagamento,
+          parcelas: formaPagamento === 'credito' ? parcelas : 1,
           observacoes: observacoes || null,
           status: 'finalizada',
           finalizado_em: new Date().toISOString()
@@ -988,8 +995,8 @@ const NovaOSSupabase = () => {
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: formaPagamento as VendaFormaPagamento,
-          parcelas: formaPagamento === 'parcelado' ? parcelas : 1,
+          forma_pagamento: formaPagamento as FormaPagamento,
+          parcelas: formaPagamento === 'credito' ? parcelas : 1,
           observacoes: observacoes || null,
           status: 'finalizada',
           finalizado_em: new Date().toISOString()
@@ -1086,18 +1093,15 @@ const NovaOSSupabase = () => {
         skipCaixaMovement = true;
       }
 
-      const caixaFormaPagamento = mapVendaToCaixaFormaPagamento(formaPagamento as VendaFormaPagamento);
-      console.log('🔄 Forma de pagamento mapeada:', { 
-        original: formaPagamento, 
-        mapeada: caixaFormaPagamento 
-      });
+      // Usar forma de pagamento direta (agora unificada)
+      console.log('🔄 Forma de pagamento:', formaPagamento);
 
       if (!skipCaixaMovement) {
         try {
           const movimentacaoData = {
             tipo: 'entrada' as const,
             tipo_origem: 'OS' as const,
-            forma_pagamento: caixaFormaPagamento,
+            forma_pagamento: formaPagamento as FormaPagamento,
             valor_bruto: valorFinal,
             valor_liquido: valorFinal,
             descricao: `OS ${numeroOSFinal} - ${clienteSelecionado.nome}`,
@@ -1124,7 +1128,7 @@ const NovaOSSupabase = () => {
           let errorMessage = "OS finalizada com sucesso, mas houve um problema ao registrar no caixa.";
           
           if (caixaError?.message?.includes('Forma de pagamento inválida')) {
-            errorMessage = `OS finalizada, mas forma de pagamento "${caixaFormaPagamento}" não é válida para o caixa.`;
+            errorMessage = `OS finalizada, mas forma de pagamento "${formaPagamento}" não é válida para o caixa.`;
           } else if (caixaError?.message?.includes('Nenhum caixa aberto')) {
             errorMessage = "OS finalizada, mas não há caixa aberto para registrar a movimentação.";
           } else if (caixaError?.message) {
@@ -2112,22 +2116,25 @@ const NovaOSSupabase = () => {
             {/* Forma de pagamento */}
             <div>
               <Label htmlFor="forma-pagamento">Forma de Pagamento</Label>
-                <Select value={formaPagamento} onValueChange={(value) => setFormaPagamento(value as VendaFormaPagamento | "")}>
+                <Select value={formaPagamento} onValueChange={(value) => setFormaPagamento(value as FormaPagamento | "")}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                    <SelectItem value="cartao">Cartão</SelectItem>
                     <SelectItem value="pix">PIX</SelectItem>
+                    <SelectItem value="debito">Cartão de Débito</SelectItem>
+                    <SelectItem value="credito">Cartão de Crédito</SelectItem>
                     <SelectItem value="cheque">Cheque</SelectItem>
-                    <SelectItem value="parcelado">Parcelado</SelectItem>
+                    <SelectItem value="boleto">Boleto Bancário</SelectItem>
+                    <SelectItem value="carteira">Carteira Digital</SelectItem>
+                    <SelectItem value="outros">Outros</SelectItem>
                   </SelectContent>
                 </Select>
             </div>
 
-            {/* Parcelas (se parcelado) */}
-            {formaPagamento === "parcelado" && (
+            {/* Parcelas (se cartão de crédito) */}
+            {formaPagamento === "credito" && (
               <div>
                 <Label htmlFor="parcelas">Número de Parcelas</Label>
                 <Select value={parcelas.toString()} onValueChange={(value) => setParcelas(parseInt(value))}>

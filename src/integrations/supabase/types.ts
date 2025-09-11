@@ -741,7 +741,7 @@ export type Database = {
           data_hora: string
           descricao: string | null
           empresa_id: string
-          forma_pagamento: Database["public"]["Enums"]["forma_pagamento_caixa"]
+          forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
           id: string
           metadados: Json | null
           referencia_conciliacao: string | null
@@ -759,7 +759,7 @@ export type Database = {
           data_hora?: string
           descricao?: string | null
           empresa_id: string
-          forma_pagamento: Database["public"]["Enums"]["forma_pagamento_caixa"]
+          forma_pagamento?: Database["public"]["Enums"]["forma_pagamento"]
           id?: string
           metadados?: Json | null
           referencia_conciliacao?: string | null
@@ -777,7 +777,7 @@ export type Database = {
           data_hora?: string
           descricao?: string | null
           empresa_id?: string
-          forma_pagamento?: Database["public"]["Enums"]["forma_pagamento_caixa"]
+          forma_pagamento?: Database["public"]["Enums"]["forma_pagamento"]
           id?: string
           metadados?: Json | null
           referencia_conciliacao?: string | null
@@ -1682,14 +1682,6 @@ export type Database = {
         | "boleto"
         | "carteira"
         | "outros"
-      forma_pagamento_caixa:
-        | "dinheiro"
-        | "pix"
-        | "debito"
-        | "credito"
-        | "cheque"
-        | "boleto"
-        | "outros"
       movimentacao_caixa_origem: "OS" | "VENDA" | "MANUAL"
       movimentacao_caixa_tipo: "entrada" | "saida"
       movimentacao_tipo: "entrada" | "saida" | "ajuste"
@@ -1836,15 +1828,6 @@ export const Constants = {
         "credito",
         "boleto",
         "carteira",
-        "outros",
-      ],
-      forma_pagamento_caixa: [
-        "dinheiro",
-        "pix",
-        "debito",
-        "credito",
-        "cheque",
-        "boleto",
         "outros",
       ],
       movimentacao_caixa_origem: ["OS", "VENDA", "MANUAL"],

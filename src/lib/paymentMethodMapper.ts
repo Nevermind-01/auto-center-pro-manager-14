@@ -1,55 +1,19 @@
 /**
- * Utility functions to handle payment method enum mapping between different tables
+ * Unified payment method types and utilities
+ * After unification, both vendas and movimentacoes_caixa use the same enum
  */
 
-// Enum from vendas table - matching database enum exactly
-export type VendaFormaPagamento = 'dinheiro' | 'pix' | 'cheque' | 'cartao' | 'parcelado';
-
-// Enum from movimentacoes_caixa table  
-export type CaixaFormaPagamento = 'dinheiro' | 'pix' | 'debito' | 'credito' | 'cheque' | 'boleto' | 'outros';
+// Unified enum matching the database enum exactly
+export type FormaPagamento = 'dinheiro' | 'pix' | 'debito' | 'credito' | 'cheque' | 'boleto' | 'carteira' | 'outros';
 
 /**
- * Maps payment methods from vendas table to movimentacoes_caixa table
- * @param vendaFormaPagamento - Payment method from vendas table
- * @returns Corresponding payment method for movimentacoes_caixa table
- */
-export function mapVendaToCaixaFormaPagamento(vendaFormaPagamento: VendaFormaPagamento): CaixaFormaPagamento {
-  const mappingTable: Record<VendaFormaPagamento, CaixaFormaPagamento> = {
-    'dinheiro': 'dinheiro',
-    'pix': 'pix', 
-    'cartao': 'credito', // Default mapping: cartao → credito
-    'parcelado': 'credito', // Parcelado is usually credit card
-    'cheque': 'cheque'
-  };
-
-  const mapped = mappingTable[vendaFormaPagamento];
-  
-  if (!mapped) {
-    console.warn(`Payment method '${vendaFormaPagamento}' not found in mapping table, defaulting to 'outros'`);
-    return 'outros';
-  }
-
-  return mapped;
-}
-
-/**
- * Validates if a payment method is valid for movimentacoes_caixa table
+ * Validates if a payment method is valid
  * @param formaPagamento - Payment method to validate
  * @returns true if valid, false otherwise
  */
-export function isValidCaixaFormaPagamento(formaPagamento: string): formaPagamento is CaixaFormaPagamento {
-  const validMethods: CaixaFormaPagamento[] = ['dinheiro', 'pix', 'debito', 'credito', 'cheque', 'boleto', 'outros'];
-  return validMethods.includes(formaPagamento as CaixaFormaPagamento);
-}
-
-/**
- * Validates if a payment method is valid for vendas table
- * @param formaPagamento - Payment method to validate
- * @returns true if valid, false otherwise
- */
-export function isValidVendaFormaPagamento(formaPagamento: string): formaPagamento is VendaFormaPagamento {
-  const validMethods: VendaFormaPagamento[] = ['dinheiro', 'pix', 'cheque', 'cartao', 'parcelado'];
-  return validMethods.includes(formaPagamento as VendaFormaPagamento);
+export function isValidFormaPagamento(formaPagamento: string): formaPagamento is FormaPagamento {
+  const validMethods: FormaPagamento[] = ['dinheiro', 'pix', 'debito', 'credito', 'cheque', 'boleto', 'carteira', 'outros'];
+  return validMethods.includes(formaPagamento as FormaPagamento);
 }
 
 /**
@@ -57,20 +21,36 @@ export function isValidVendaFormaPagamento(formaPagamento: string): formaPagamen
  * @param formaPagamento - Payment method
  * @returns Human-readable description
  */
-export function getFormaPagamentoDescription(formaPagamento: VendaFormaPagamento | CaixaFormaPagamento): string {
-  const descriptions: Record<string, string> = {
+export function getFormaPagamentoDescription(formaPagamento: FormaPagamento): string {
+  const descriptions: Record<FormaPagamento, string> = {
     'dinheiro': 'Dinheiro',
     'pix': 'PIX',
     'debito': 'Cartão de Débito',
     'credito': 'Cartão de Crédito',
-    'cartao': 'Cartão',
-    'parcelado': 'Parcelado no Cartão',
     'cheque': 'Cheque',
     'boleto': 'Boleto Bancário',
+    'carteira': 'Carteira Digital',
     'outros': 'Outros'
   };
 
   return descriptions[formaPagamento] || formaPagamento;
+}
+
+/**
+ * Gets all available payment methods with their descriptions
+ * @returns Array of payment methods with descriptions
+ */
+export function getAvailablePaymentMethods(): Array<{ value: FormaPagamento, label: string }> {
+  return [
+    { value: 'dinheiro', label: 'Dinheiro' },
+    { value: 'pix', label: 'PIX' },
+    { value: 'debito', label: 'Cartão de Débito' },
+    { value: 'credito', label: 'Cartão de Crédito' },
+    { value: 'cheque', label: 'Cheque' },
+    { value: 'boleto', label: 'Boleto Bancário' },
+    { value: 'carteira', label: 'Carteira Digital' },
+    { value: 'outros', label: 'Outros' }
+  ];
 }
 
 /**
@@ -100,7 +80,7 @@ export async function auditarOSSemMovimentacao(supabase: any, empresaId: string,
       .from('movimentacoes_caixa')
       .select('referencia_id')
       .eq('empresa_id', empresaId)
-      .eq('tipo_origem', 'OS')
+      .eq('tipo_origem', 'os')
       .in('referencia_id', osIds);
 
     if (movError) throw movError;
@@ -150,8 +130,10 @@ export async function recuperarMovimentacoesPerdidas(
   
   for (const os of ossSemMovimentacao) {
     try {
-      // Mapear forma de pagamento
-      const caixaFormaPagamento = mapVendaToCaixaFormaPagamento(os.forma_pagamento);
+      // Validar forma de pagamento (agora unificada)
+      const formaPagamento = isValidFormaPagamento(os.forma_pagamento) 
+        ? os.forma_pagamento as FormaPagamento
+        : 'outros' as FormaPagamento;
       
       // Criar movimentação
       const { data: novaMovimentacao, error } = await supabase
@@ -159,10 +141,10 @@ export async function recuperarMovimentacoesPerdidas(
         .insert({
           empresa_id: empresaId,
           caixa_id: caixaId,
-          tipo_origem: 'OS',
+          tipo_origem: 'os',
           referencia_id: os.id,
           tipo: 'entrada',
-          forma_pagamento: caixaFormaPagamento,
+          forma_pagamento: formaPagamento,
           valor_bruto: os.valor_final,
           valor_liquido: os.valor_final,
           descricao: `OS ${os.numero_os} - ${os.cliente_nome} (RECUPERADA)`,

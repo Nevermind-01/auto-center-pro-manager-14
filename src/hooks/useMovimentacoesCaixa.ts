@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useEmpresaContext } from '@/hooks/useEmpresaContext';
 import { useCaixa } from './useCaixa';
-import { type CaixaFormaPagamento, isValidCaixaFormaPagamento } from '@/lib/paymentMethodMapper';
+import { type FormaPagamento, isValidFormaPagamento } from '@/lib/paymentMethodMapper';
 
 export interface MovimentacaoCaixa {
   id: string;
@@ -12,7 +12,7 @@ export interface MovimentacaoCaixa {
   tipo_origem: 'OS' | 'VENDA' | 'MANUAL';
   referencia_id?: string;
   tipo: 'entrada' | 'saida';
-  forma_pagamento: CaixaFormaPagamento;
+  forma_pagamento: FormaPagamento;
   valor_bruto: number;
   valor_liquido: number;
   data_hora: string;
@@ -28,7 +28,7 @@ export interface CriarMovimentacaoData {
   tipo_origem: 'OS' | 'VENDA' | 'MANUAL';
   referencia_id?: string;
   tipo: 'entrada' | 'saida';
-  forma_pagamento: CaixaFormaPagamento;
+  forma_pagamento: FormaPagamento;
   valor_bruto: number;
   valor_liquido?: number;
   descricao?: string;
@@ -114,7 +114,7 @@ export function useMovimentacoesCaixa() {
       }
 
       // Validar forma de pagamento antes de inserir
-      if (!isValidCaixaFormaPagamento(data.forma_pagamento)) {
+      if (!isValidFormaPagamento(data.forma_pagamento)) {
         console.error('❌ [useMovimentacoesCaixa] Forma de pagamento inválida:', data.forma_pagamento);
         throw new Error(`Forma de pagamento inválida: ${data.forma_pagamento}. Valores aceitos: dinheiro, pix, debito, credito, cheque, boleto, outros`);
       }

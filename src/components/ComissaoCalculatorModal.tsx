@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
-import { mapVendaToCaixaFormaPagamento, type VendaFormaPagamento } from "@/lib/paymentMethodMapper";
+import { type FormaPagamento } from "@/lib/paymentMethodMapper";
 import { useCaixa } from "@/hooks/useCaixa";
 
 interface ComissaoCalculatorModalProps {
@@ -212,11 +212,11 @@ export const ComissaoCalculatorModal = ({
             variant: "destructive",
           });
         } else {
-          const caixaFormaPagamento = mapVendaToCaixaFormaPagamento(formaPagamento as VendaFormaPagamento);
+          // Usar forma de pagamento direta (agora unificada)
           await criarMovimentacaoAsync({
             tipo: 'entrada',
             tipo_origem: 'OS',
-            forma_pagamento: caixaFormaPagamento,
+            forma_pagamento: formaPagamento as FormaPagamento,
             valor_bruto: valorFinal,
             valor_liquido: valorFinal,
             descricao: `OS ${numeroOS} - ${clienteSelecionado.nome}`,

@@ -63,12 +63,17 @@ export function OSFinalizadaPrint({ os, empresa }: OSFinalizadaPrintProps) {
   const getFormaPagamentoText = (forma: string): string => {
     const formaMap: Record<string, string> = {
       'dinheiro': 'Dinheiro',
+      'pix': 'PIX',
+      'debito': 'Cartão de Débito',
+      'credito': 'Cartão de Crédito',
+      'cheque': 'Cheque',
+      'boleto': 'Boleto Bancário',
+      'carteira': 'Carteira Digital',
+      'outros': 'Outros',
+      // Compatibilidade com valores antigos
       'cartao_credito': 'Cartão de Crédito',
       'cartao_debito': 'Cartão de Débito',
-      'pix': 'PIX',
-      'transferencia': 'Transferência Bancária',
-      'boleto': 'Boleto Bancário',
-      'cheque': 'Cheque'
+      'transferencia': 'Transferência Bancária'
     };
     return formaMap[forma] || forma;
   };

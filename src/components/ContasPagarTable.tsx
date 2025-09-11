@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getFormaPagamentoDescription } from '@/lib/paymentMethodMapper';
 import { 
   CheckCircle, 
   XCircle, 
@@ -136,7 +137,7 @@ export function ContasPagarTable({ contas, onStatusUpdate, onEdit }: ContasPagar
                   <TableCell>
                     <div className="space-y-1">
                       {conta.forma_pagamento && (
-                        <div className="text-sm capitalize">{conta.forma_pagamento}</div>
+                        <div className="text-sm">{getFormaPagamentoDescription(conta.forma_pagamento as any)}</div>
                       )}
                       {conta.data_pagamento && (
                         <div className="text-xs text-muted-foreground">

@@ -199,10 +199,13 @@ export function ContaEditModal({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                  <SelectItem value="cartao">Cartão</SelectItem>
                   <SelectItem value="pix">PIX</SelectItem>
-                  <SelectItem value="boleto">Boleto</SelectItem>
-                  <SelectItem value="transferencia">Transferência</SelectItem>
+                  <SelectItem value="debito">Cartão de Débito</SelectItem>
+                  <SelectItem value="credito">Cartão de Crédito</SelectItem>
+                  <SelectItem value="cheque">Cheque</SelectItem>
+                  <SelectItem value="boleto">Boleto Bancário</SelectItem>
+                  <SelectItem value="carteira">Carteira Digital</SelectItem>
+                  <SelectItem value="outros">Outros</SelectItem>
                 </SelectContent>
               </Select>
             </div>

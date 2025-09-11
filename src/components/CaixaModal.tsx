@@ -12,6 +12,7 @@ import { useSuprimentosCaixa } from '@/hooks/useSuprimentosCaixa';
 import { useSangriasCaixa } from '@/hooks/useSangriasCaixa';
 import { Wallet, Plus, Calculator, Clock, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
+import { getFormaPagamentoDescription } from '@/lib/paymentMethodMapper';
 
 interface CaixaModalProps {
   open: boolean;
@@ -234,7 +235,7 @@ export function CaixaModal({ open, onOpenChange }: CaixaModalProps) {
                     {movimentacoes.slice(0, 20).map((mov) => (
                       <div key={mov.id} className="flex justify-between items-center p-3 border rounded-lg">
                         <div>
-                          <p className="font-medium capitalize">{mov.forma_pagamento}</p>
+                          <p className="font-medium">{getFormaPagamentoDescription(mov.forma_pagamento as any)}</p>
                           <p className="text-sm text-muted-foreground">
                             {mov.descricao || `${mov.tipo_origem} - ${mov.tipo}`}
                           </p>

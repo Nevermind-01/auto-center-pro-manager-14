@@ -54,11 +54,17 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
   const formatarFormaPagamento = (forma: string) => {
     const formas: { [key: string]: string } = {
       'dinheiro': 'Dinheiro',
+      'pix': 'PIX',
+      'debito': 'Cartão de Débito',
+      'credito': 'Cartão de Crédito',
+      'cheque': 'Cheque',
+      'boleto': 'Boleto Bancário',
+      'carteira': 'Carteira Digital',
+      'outros': 'Outros',
+      // Compatibilidade com valores antigos
       'cartao_credito': 'Cartão de Crédito',
       'cartao_debito': 'Cartão de Débito',
-      'pix': 'PIX',
-      'transferencia': 'Transferência',
-      'cheque': 'Cheque'
+      'transferencia': 'Transferência'
     };
     return formas[forma] || forma;
   };

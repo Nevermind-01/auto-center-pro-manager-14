@@ -159,7 +159,9 @@ const NovaOSSupabase = () => {
   const [novoServico, setNovoServico] = useState({ nome: "", descricao: "", valor: 0 });
 
   // Pagamento e finalizacao
-  const [desconto, setDesconto] = useState(0);
+  const [tipoDesconto, setTipoDesconto] = useState<'percentual' | 'fixo'>('percentual');
+  const [descontoPercentual, setDescontoPercentual] = useState(0);
+  const [descontoFixo, setDescontoFixo] = useState(0);
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento | "">("");
   const [parcelas, setParcelas] = useState(1);
   const [observacoes, setObservacoes] = useState("");
@@ -221,11 +223,13 @@ const NovaOSSupabase = () => {
           // Preencher campos com dados existentes
           setNumeroOS(vendaParaEditar.numero_os);
           
-          // Calcular desconto em porcentagem
-          const descontoPercentual = vendaParaEditar.valor_total > 0 
+          // Calcular desconto - por padrão, tratar como percentual
+          const descontoPercentualCalculado = vendaParaEditar.valor_total > 0 
             ? (vendaParaEditar.valor_desconto || 0) / vendaParaEditar.valor_total * 100
             : 0;
-          setDesconto(descontoPercentual);
+          setTipoDesconto('percentual');
+          setDescontoPercentual(descontoPercentualCalculado);
+          setDescontoFixo(0);
           
           // Mapear forma de pagamento antiga para nova (se necessário)
           const formaPagamentoMapeada = (() => {
@@ -330,7 +334,9 @@ const NovaOSSupabase = () => {
   );
   
   const valorTotal = valorProdutos + valorServicos;
-  const valorDesconto = (valorTotal * desconto) / 100;
+  const valorDesconto = tipoDesconto === 'percentual'
+    ? (valorTotal * descontoPercentual) / 100
+    : descontoFixo;
   const valorFinal = valorTotal - valorDesconto;
 
 
@@ -341,7 +347,9 @@ const NovaOSSupabase = () => {
     setMecanicoSelecionado("");
     setProdutosSelecionados([]);
     setServicosSelecionados([]);
-    setDesconto(0);
+    setTipoDesconto('percentual');
+    setDescontoPercentual(0);
+    setDescontoFixo(0);
     setFormaPagamento("");
     setParcelas(1);
     setObservacoes("");
@@ -2088,19 +2096,50 @@ const NovaOSSupabase = () => {
                 <span>Subtotal:</span>
                 <span>R$ {valorTotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <Label htmlFor="desconto" className="text-sm">Desconto (%):</Label>
-                <Input
-                  id="desconto"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={desconto}
-                  onChange={(e) => setDesconto(parseFloat(e.target.value) || 0)}
-                  className="w-20 h-8"
-                />
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <Label className="text-sm">Tipo de Desconto:</Label>
+                  <Select value={tipoDesconto} onValueChange={(value: 'percentual' | 'fixo') => setTipoDesconto(value)}>
+                    <SelectTrigger className="w-32 h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percentual">Percentual</SelectItem>
+                      <SelectItem value="fixo">Valor Fixo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {tipoDesconto === 'percentual' ? (
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="desconto-percentual" className="text-sm">Desconto (%):</Label>
+                    <Input
+                      id="desconto-percentual"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={descontoPercentual}
+                      onChange={(e) => setDescontoPercentual(parseFloat(e.target.value) || 0)}
+                      className="w-20 h-8"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="desconto-fixo" className="text-sm">Desconto (R$):</Label>
+                    <Input
+                      id="desconto-fixo"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={descontoFixo}
+                      onChange={(e) => setDescontoFixo(parseFloat(e.target.value) || 0)}
+                      className="w-20 h-8"
+                    />
+                  </div>
+                )}
               </div>
-              {desconto > 0 && (
+              {valorDesconto > 0 && (
                 <div className="flex justify-between text-sm text-red-600">
                   <span>Desconto:</span>
                   <span>- R$ {valorDesconto.toFixed(2)}</span>

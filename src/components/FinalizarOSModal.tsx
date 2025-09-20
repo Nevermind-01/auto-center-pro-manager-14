@@ -41,7 +41,9 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
   const estoqueManager = useSupabaseEstoque();
 
   // Estados para a finalização
-  const [desconto, setDesconto] = useState(0);
+  const [tipoDesconto, setTipoDesconto] = useState<'percentual' | 'fixo'>('percentual');
+  const [descontoPercentual, setDescontoPercentual] = useState(0);
+  const [descontoFixo, setDescontoFixo] = useState(0);
   const [formaPagamento, setFormaPagamento] = useState("");
   const [parcelas, setParcelas] = useState(1);
   const [observacoes, setObservacoes] = useState("");
@@ -70,11 +72,13 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
   // Resetar valores quando a modal abrir/fechar ou venda mudar
   useEffect(() => {
     if (open && venda) {
-      // Calcular desconto em porcentagem baseado nos valores existentes
-      const descontoPercentual = venda.valor_total > 0 
+      // Carregamento inicial - por padrão tratar como percentual  
+      const descontoPercentualCalculado = venda.valor_total > 0 
         ? (venda.valor_desconto || 0) / venda.valor_total * 100
         : 0;
-      setDesconto(descontoPercentual);
+      setTipoDesconto('percentual');
+      setDescontoPercentual(descontoPercentualCalculado);
+      setDescontoFixo(0);
       setFormaPagamento(venda.forma_pagamento || '');
       setParcelas(venda.parcelas || 1);
       setObservacoes(venda.observacoes || '');
@@ -100,7 +104,9 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
       checkComissaoExistente();
     } else {
       // Reset quando fechar
-      setDesconto(0);
+      setTipoDesconto('percentual');
+      setDescontoPercentual(0);
+      setDescontoFixo(0);
       setFormaPagamento("");
       setParcelas(1);
       setObservacoes("");
@@ -126,7 +132,9 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
   );
   
 const valorTotal = valorProdutos + valorServicos;
-const valorDesconto = (valorTotal * desconto) / 100;
+const valorDesconto = tipoDesconto === 'percentual'
+  ? (valorTotal * descontoPercentual) / 100
+  : descontoFixo;
 const valorFinal = valorTotal - valorDesconto;
 
   // Cálculos de comissão
@@ -665,19 +673,50 @@ const valorFinal = valorTotal - valorDesconto;
                     <span>Subtotal:</span>
                     <span>R$ {valorTotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <Label htmlFor="desconto" className="text-sm">Desconto (%):</Label>
-                    <Input
-                      id="desconto"
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={desconto}
-                      onChange={(e) => setDesconto(parseFloat(e.target.value) || 0)}
-                      className="w-20 h-8"
-                    />
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-sm">Tipo de Desconto:</Label>
+                      <Select value={tipoDesconto} onValueChange={(value: 'percentual' | 'fixo') => setTipoDesconto(value)}>
+                        <SelectTrigger className="w-32 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percentual">Percentual</SelectItem>
+                          <SelectItem value="fixo">Valor Fixo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {tipoDesconto === 'percentual' ? (
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="desconto-percentual" className="text-sm">Desconto (%):</Label>
+                        <Input
+                          id="desconto-percentual"
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                          value={descontoPercentual}
+                          onChange={(e) => setDescontoPercentual(parseFloat(e.target.value) || 0)}
+                          className="w-20 h-8"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="desconto-fixo" className="text-sm">Desconto (R$):</Label>
+                        <Input
+                          id="desconto-fixo"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={descontoFixo}
+                          onChange={(e) => setDescontoFixo(parseFloat(e.target.value) || 0)}
+                          className="w-20 h-8"
+                        />
+                      </div>
+                    )}
                   </div>
-                  {desconto > 0 && (
+                  {valorDesconto > 0 && (
                     <div className="flex justify-between text-sm text-red-600">
                       <span>Desconto:</span>
                       <span>- R$ {valorDesconto.toFixed(2)}</span>

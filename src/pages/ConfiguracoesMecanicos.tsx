@@ -16,14 +16,17 @@ import {
   User,
   CheckCircle,
   XCircle,
-  Coins
+  Coins,
+  FileText
 } from "lucide-react";
 import { useMecanicos, useCriarMecanico, useAtualizarMecanico, useDeletarMecanico, type Mecanico } from "@/hooks/useMecanicos";
 import { MecanicoComissoesModal } from "@/components/MecanicoComissoesModal";
+import { MecanicoOSModal } from "@/components/MecanicoOSModal";
 
 const ConfiguracoesMecanicos = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [showComissoes, setShowComissoes] = useState(false);
+  const [showOS, setShowOS] = useState(false);
   const [selectedMecanico, setSelectedMecanico] = useState<Mecanico | null>(null);
   const [editingMecanico, setEditingMecanico] = useState<Mecanico | null>(null);
   const [formData, setFormData] = useState({
@@ -270,6 +273,22 @@ const ConfiguracoesMecanicos = () => {
                       </Tooltip>
                     </TooltipProvider>
 
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => { setSelectedMecanico(mecanico); setShowOS(true); }}
+                          >
+                            <FileText className="h-4 w-4 mr-1" />
+                            Ver OS
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Ver ordens de serviço</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -318,6 +337,12 @@ const ConfiguracoesMecanicos = () => {
       <MecanicoComissoesModal
         open={showComissoes}
         onOpenChange={setShowComissoes}
+        mecanico={selectedMecanico}
+      />
+
+      <MecanicoOSModal
+        open={showOS}
+        onOpenChange={setShowOS}
         mecanico={selectedMecanico}
       />
     </div>

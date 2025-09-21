@@ -36,8 +36,7 @@ export const useOSByMecanico = ({ mecanicoId, startDate, endDate }: UseOSByMecan
           valor_final,
           status,
           created_at,
-          finalizado_em,
-          comissoes_mecanicos(id)
+          finalizado_em
         `)
         .eq("mecanico_id", mecanicoId)
         .eq("empresa_id", empresaId)
@@ -53,6 +52,21 @@ export const useOSByMecanico = ({ mecanicoId, startDate, endDate }: UseOSByMecan
       const { data, error } = await query;
       if (error) throw error;
 
+      // Buscar comissões separadamente para cada OS
+      const vendaIds = (data || []).map(os => os.id);
+      
+      let comissoes: any[] = [];
+      if (vendaIds.length > 0) {
+        const { data: comissoesData, error: comissoesError } = await supabase
+          .from("comissoes_mecanicos")
+          .select("venda_id")
+          .in("venda_id", vendaIds)
+          .eq("empresa_id", empresaId);
+
+        if (comissoesError) throw comissoesError;
+        comissoes = comissoesData || [];
+      }
+
       const osData: OSMecanico[] = (data || []).map((os: any) => ({
         id: os.id,
         numero_os: os.numero_os,
@@ -61,7 +75,7 @@ export const useOSByMecanico = ({ mecanicoId, startDate, endDate }: UseOSByMecan
         status: os.status,
         created_at: os.created_at,
         finalizado_em: os.finalizado_em,
-        tem_comissao: (os.comissoes_mecanicos || []).length > 0
+        tem_comissao: comissoes.some(c => c.venda_id === os.id)
       }));
 
       return osData;

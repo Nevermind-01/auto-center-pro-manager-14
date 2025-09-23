@@ -29,10 +29,11 @@ import { ServiceWarningModal } from "@/components/ServiceWarningModal";
 import { useSupabaseEstoque, ProdutoComCategoria } from "@/lib/supabaseEstoque";
 import { useClienteValidation } from "@/hooks/useClienteValidation";
 import { sanitizeClienteData } from "@/lib/inputSanitizer";
-import { generateSequentialOSNumber } from "@/lib/utils";
+import { generateSequentialOSNumber, formatCurrency } from "@/lib/utils";
 import { useEmpresaContext } from "@/hooks/useEmpresaContext";
 import { useMultipleAsyncActions } from "@/hooks/useAsyncAction";
 import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
+import { useCarteiraCliente } from "@/hooks/useCarteiraCliente";
 import { useCaixa } from "@/hooks/useCaixa";
 import { type FormaPagamento, isValidFormaPagamento, getAvailablePaymentMethods } from "@/lib/paymentMethodMapper";
 import { 
@@ -52,7 +53,8 @@ import {
   Car,
   Edit,
   Truck,
-  Wrench
+  Wrench,
+  Wallet
 } from "lucide-react";
 import { AtualizarKmModal } from '@/components/AtualizarKmModal';
 
@@ -98,6 +100,7 @@ const NovaOSSupabase = () => {
   const { createVeiculo } = useVeiculoMutations();
   const { createLog } = useLogMovimentacaoMutations();
   const { criarMovimentacaoAsync } = useMovimentacoesCaixa();
+  const { getCarteiraCliente, debitarCarteira } = useCarteiraCliente();
   const { caixaAtual } = useCaixa();
   
   // Validation
@@ -182,6 +185,10 @@ const NovaOSSupabase = () => {
   // Estados para preservar valores durante cálculo de comissão
   const [valorServicosParaComissao, setValorServicosParaComissao] = useState<number>(0);
   const [valorTotalParaComissao, setValorTotalParaComissao] = useState<number>(0);
+
+  // Hook da carteira do cliente selecionado
+  const carteiraQuery = getCarteiraCliente(clienteSelecionado?.id || '');
+  const saldoCarteira = carteiraQuery.data?.saldo_atual || 0;
 
   // Número da OS será gerado apenas no salvamento
 

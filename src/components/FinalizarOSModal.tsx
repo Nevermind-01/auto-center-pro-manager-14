@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useVendaMutations, useLogMovimentacaoMutations } from "@/hooks/useSupabaseQueries";
 import { useSupabaseEstoque } from "@/lib/supabaseEstoque";
-import { DollarSign, Package, Wrench, ShoppingCart, AlertTriangle, User, FileText, Calculator } from "lucide-react";
+import { DollarSign, Package, Wrench, ShoppingCart, AlertTriangle, User, FileText, Calculator, Wallet } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { useComissoesMutations } from "@/hooks/useComissoes";
@@ -20,7 +20,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { PrintModal } from "@/components/print/PrintModal";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
+import { useCarteiraCliente } from "@/hooks/useCarteiraCliente";
 import { type FormaPagamento, isValidFormaPagamento, getAvailablePaymentMethods } from "@/lib/paymentMethodMapper";
+import { formatCurrency } from "@/lib/utils";
 import { ProdutoOnlyWarningModal } from "@/components/ProdutoOnlyWarningModal";
 import { ServiceWarningModal } from "@/components/ServiceWarningModal";
 import { MecanicoWarningModal } from "@/components/MecanicoWarningModal";
@@ -38,6 +40,7 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
   const { createLog } = useLogMovimentacaoMutations();
   const { createComissao } = useComissoesMutations();
   const { criarMovimentacaoAsync } = useMovimentacoesCaixa();
+  const { getCarteiraCliente, debitarCarteira } = useCarteiraCliente();
   const estoqueManager = useSupabaseEstoque();
 
   // Estados para a finalização
@@ -68,6 +71,10 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
   const [showMecanicoWarning, setShowMecanicoWarning] = useState(false);
   const [showComissaoWarning, setShowComissaoWarning] = useState(false);
   const [pendingFinalization, setPendingFinalization] = useState(false);
+
+  // Hook da carteira do cliente
+  const carteiraQuery = getCarteiraCliente(venda?.cliente_id || '');
+  const saldoCarteira = carteiraQuery.data?.saldo_atual || 0;
 
   // Resetar valores quando a modal abrir/fechar ou venda mudar
   useEffect(() => {
@@ -159,6 +166,18 @@ const valorFinal = valorTotal - valorDesconto;
           variant: "destructive",
         });
         return;
+      }
+
+      // Validação específica para carteira
+      if (formaPagamento === 'carteira') {
+        if (saldoCarteira < valorFinal) {
+          toast({
+            title: "Saldo insuficiente", 
+            description: `Saldo da carteira: ${formatCurrency(saldoCarteira)}. Valor necessário: ${formatCurrency(valorFinal)}`,
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       const produtos = venda?.venda_produtos || [];
@@ -299,6 +318,16 @@ const valorFinal = valorTotal - valorDesconto;
             valor_final: comissaoPreview,
             base_calculo: baseCalculo,
             observacoes: obsComissao || null
+          });
+        }
+
+        // Debitar da carteira se for pagamento via carteira
+        if (formaPagamento === 'carteira') {
+          await debitarCarteira.mutateAsync({
+            clienteId: venda.cliente_id,
+            valor: valorFinal,
+            descricao: `OS ${venda.numero_os}`,
+            osId: venda.id
           });
         }
 
@@ -751,6 +780,35 @@ const valorFinal = valorTotal - valorDesconto;
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Saldo da carteira (se carteira digital) */}
+              {formaPagamento === "carteira" && (
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Wallet className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-800">Carteira Digital</span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span>Saldo disponível:</span>
+                      <span className="font-semibold">{formatCurrency(saldoCarteira)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Valor da OS:</span>
+                      <span className="font-semibold">{formatCurrency(valorFinal)}</span>
+                    </div>
+                    {saldoCarteira >= valorFinal ? (
+                      <div className="text-xs text-green-700 bg-green-100 px-2 py-1 rounded mt-2">
+                        ✓ Saldo suficiente
+                      </div>
+                    ) : (
+                      <div className="text-xs text-red-700 bg-red-100 px-2 py-1 rounded mt-2">
+                        ✗ Saldo insuficiente
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Parcelas (se cartão de crédito) */}
               {formaPagamento === "credito" && (

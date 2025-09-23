@@ -116,12 +116,15 @@ export function useMovimentacoesCaixa() {
       // Validar forma de pagamento antes de inserir
       if (!isValidFormaPagamento(data.forma_pagamento)) {
         console.error('❌ [useMovimentacoesCaixa] Forma de pagamento inválida:', data.forma_pagamento);
-        throw new Error(`Forma de pagamento inválida: ${data.forma_pagamento}. Valores aceitos: dinheiro, pix, debito, credito, cheque, boleto, outros`);
+        throw new Error(`Forma de pagamento inválida: ${data.forma_pagamento}. Valores aceitos: dinheiro, pix, debito, credito, cheque, boleto, carteira, outros`);
       }
 
       console.log('✅ [useMovimentacoesCaixa] Validações passaram, prosseguindo com inserção');
 
-      const valorLiquido = data.valor_liquido || data.valor_bruto;
+      // Para carteira, não registra no caixa físico (valor = 0)
+      const isCarteira = data.forma_pagamento === 'carteira';
+      const valorLiquido = isCarteira ? 0 : (data.valor_liquido || data.valor_bruto);
+      const valorBruto = isCarteira ? 0 : data.valor_bruto;
 
       const { data: novaMovimentacao, error } = await supabase
         .from('movimentacoes_caixa')
@@ -132,10 +135,14 @@ export function useMovimentacoesCaixa() {
           referencia_id: data.referencia_id,
           tipo: data.tipo,
           forma_pagamento: data.forma_pagamento,
-          valor_bruto: data.valor_bruto,
+          valor_bruto: valorBruto,
           valor_liquido: valorLiquido,
-          descricao: data.descricao,
-          metadados: data.metadados,
+          descricao: isCarteira 
+            ? `${data.descricao || ''} (Pago via carteira digital)`
+            : data.descricao,
+          metadados: isCarteira 
+            ? { ...data.metadados, valor_original: data.valor_bruto, carteira: true }
+            : data.metadados,
           criado_por: (await supabase.auth.getUser()).data.user?.id,
         })
         .select()

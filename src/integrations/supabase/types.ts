@@ -223,6 +223,33 @@ export type Database = {
         }
         Relationships: []
       }
+      clientes_carteira: {
+        Row: {
+          cliente_id: string
+          created_at: string | null
+          empresa_id: string
+          id: string
+          saldo_atual: number
+          updated_at: string | null
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string | null
+          empresa_id: string
+          id?: string
+          saldo_atual?: number
+          updated_at?: string | null
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string | null
+          empresa_id?: string
+          id?: string
+          saldo_atual?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       comissoes_mecanicos: {
         Row: {
           base_calculo: number
@@ -796,6 +823,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      movimentacoes_carteira: {
+        Row: {
+          cliente_id: string
+          created_at: string | null
+          criado_por: string
+          descricao: string
+          empresa_id: string
+          id: string
+          os_id: string | null
+          saldo_anterior: number
+          saldo_novo: number
+          tipo: string
+          valor: number
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string | null
+          criado_por: string
+          descricao: string
+          empresa_id: string
+          id?: string
+          os_id?: string | null
+          saldo_anterior: number
+          saldo_novo: number
+          tipo: string
+          valor: number
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string | null
+          criado_por?: string
+          descricao?: string
+          empresa_id?: string
+          id?: string
+          os_id?: string | null
+          saldo_anterior?: number
+          saldo_novo?: number
+          tipo?: string
+          valor?: number
+        }
+        Relationships: []
       }
       orcamento_produtos: {
         Row: {

@@ -186,10 +186,8 @@ const NovaOSSupabase = () => {
   const [valorServicosParaComissao, setValorServicosParaComissao] = useState<number>(0);
   const [valorTotalParaComissao, setValorTotalParaComissao] = useState<number>(0);
 
-  // Hook da carteira do cliente selecionado - só busca se forma de pagamento for carteira
-  const carteiraQuery = getCarteiraCliente(
-    formaPagamento === 'carteira' && clienteSelecionado?.id ? clienteSelecionado.id : ''
-  );
+  // Hook da carteira do cliente selecionado
+  const carteiraQuery = getCarteiraCliente(clienteSelecionado?.id || '');
   const saldoCarteira = carteiraQuery.data?.saldo_atual || 0;
 
   // Número da OS será gerado apenas no salvamento
@@ -902,19 +900,6 @@ const NovaOSSupabase = () => {
       return;
     }
 
-    // Validação específica para pagamento via carteira
-    if (formaPagamento === 'carteira') {
-      const saldoDisponivel = saldoCarteira;
-      if (saldoDisponivel < valorFinal) {
-        toast({
-          title: "Saldo insuficiente",
-          description: `Saldo insuficiente na carteira. Saldo atual: ${formatCurrency(saldoDisponivel)}`,
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
     // Validar estoque antes de finalizar
     for (const produto of produtosSelecionados) {
       const estoqueDisponivel = await estoqueManager.verificarEstoque(produto.id, produto.quantidade);
@@ -1128,50 +1113,21 @@ const NovaOSSupabase = () => {
 
       if (!skipCaixaMovement) {
         try {
-          // Processar pagamento baseado na forma
-          if (formaPagamento === 'carteira') {
-            // Debitar da carteira do cliente
-            await debitarCarteira.mutateAsync({
-              clienteId: clienteSelecionado.id,
-              valor: valorFinal,
-              descricao: `Pagamento OS ${numeroOSFinal}`,
-              osId: vendaId
-            });
-            
-            // Registrar movimentação especial no caixa (sem entrada de dinheiro físico)
-            const movimentacaoData = {
-              tipo: 'entrada' as const,
-              tipo_origem: 'OS' as const,
-              forma_pagamento: formaPagamento as FormaPagamento,
-              valor_bruto: 0, // Zero para não afetar caixa físico
-              valor_liquido: 0, // Zero para não afetar caixa físico
-              descricao: `OS ${numeroOSFinal} - Pago via carteira do cliente ${clienteSelecionado.nome}`,
-              referencia_id: vendaId,
-            };
+          const movimentacaoData = {
+            tipo: 'entrada' as const,
+            tipo_origem: 'OS' as const,
+            forma_pagamento: formaPagamento as FormaPagamento,
+            valor_bruto: valorFinal,
+            valor_liquido: valorFinal,
+            descricao: `OS ${numeroOSFinal} - ${clienteSelecionado.nome}`,
+            referencia_id: vendaId,
+          };
 
-            console.log('📝 Dados da movimentação da carteira a ser criada:', movimentacaoData);
-            
-            await criarMovimentacaoAsync(movimentacaoData);
-            
-            console.log('✅ Movimentação da carteira registrada com sucesso no caixa');
-          } else {
-            // Registrar movimentação normal no caixa
-            const movimentacaoData = {
-              tipo: 'entrada' as const,
-              tipo_origem: 'OS' as const,
-              forma_pagamento: formaPagamento as FormaPagamento,
-              valor_bruto: valorFinal,
-              valor_liquido: valorFinal,
-              descricao: `OS ${numeroOSFinal} - ${clienteSelecionado.nome}`,
-              referencia_id: vendaId,
-            };
-
-            console.log('📝 Dados da movimentação a ser criada:', movimentacaoData);
-            
-            await criarMovimentacaoAsync(movimentacaoData);
-            
-            console.log('✅ Movimentação registrada com sucesso no caixa');
-          }
+          console.log('📝 Dados da movimentação a ser criada:', movimentacaoData);
+          
+          await criarMovimentacaoAsync(movimentacaoData);
+          
+          console.log('✅ Movimentação registrada com sucesso no caixa');
           
         } catch (caixaError: any) {
           console.error('❌ Erro detalhado ao registrar movimentação no caixa:', {
@@ -2217,12 +2173,7 @@ const NovaOSSupabase = () => {
                     <SelectItem value="credito">Cartão de Crédito</SelectItem>
                     <SelectItem value="cheque">Cheque</SelectItem>
                     <SelectItem value="boleto">Boleto Bancário</SelectItem>
-                     <SelectItem value="carteira">
-                       Carteira Digital
-                       {formaPagamento === 'carteira' && saldoCarteira > 0 && (
-                         ` (Saldo: ${formatCurrency(saldoCarteira)})`
-                       )}
-                     </SelectItem>
+                    <SelectItem value="carteira">Carteira Digital</SelectItem>
                     <SelectItem value="outros">Outros</SelectItem>
                   </SelectContent>
                 </Select>

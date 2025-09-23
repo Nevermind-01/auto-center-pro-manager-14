@@ -19,6 +19,7 @@ import Historico from "./pages/Historico";
 import HistoricoMovimentacoes from "./pages/HistoricoMovimentacoes";
 import ConfiguracoesMecanicos from "./pages/ConfiguracoesMecanicos";
 import Empresas from "./pages/Empresas";
+import { GestaoCarteiras } from "./pages/GestaoCarteiras";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -86,6 +87,11 @@ const App = () => (
             <Route path="/caixa" element={
               <ProtectedRoute>
                 <Caixa />
+              </ProtectedRoute>
+            } />
+            <Route path="/gestao-carteiras" element={
+              <ProtectedRoute>
+                <Layout><GestaoCarteiras /></Layout>
               </ProtectedRoute>
             } />
             <Route path="/settings" element={

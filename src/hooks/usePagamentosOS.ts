@@ -29,6 +29,17 @@ interface OSPendente {
   finalizado_em: string;
   valor_pago: number;
   valor_restante: number;
+  pagamentos_realizados?: PagamentoOS[];
+}
+
+interface OSConcluida {
+  id: string;
+  numero_os: string;
+  valor_final: number;
+  cliente_nome: string;
+  finalizado_em: string;
+  data_conclusao: string;
+  pagamentos: PagamentoOS[];
 }
 
 interface RegistrarPagamentoData {
@@ -74,8 +85,15 @@ export function usePagamentosOS() {
         for (const venda of vendas || []) {
           const { data: pagamentos, error: pagError } = await supabase
             .from("pagamentos_os")
-            .select("valor_pago")
-            .eq("os_id", venda.id);
+            .select(`
+              id,
+              valor_pago,
+              forma_pagamento,
+              data_pagamento,
+              observacoes
+            `)
+            .eq("os_id", venda.id)
+            .order("data_pagamento", { ascending: false });
 
           if (pagError) throw pagError;
 
@@ -86,7 +104,17 @@ export function usePagamentosOS() {
             ossPendentes.push({
               ...venda,
               valor_pago: valorPago,
-              valor_restante: valorRestante
+              valor_restante: valorRestante,
+              pagamentos_realizados: pagamentos?.map(p => ({
+                ...p,
+                os_id: venda.id,
+                valor_restante: 0,
+                vendas: {
+                  numero_os: venda.numero_os,
+                  valor_final: venda.valor_final,
+                  cliente_nome: venda.cliente_nome
+                }
+              })) || []
             });
           }
         }
@@ -286,8 +314,79 @@ export function usePagamentosOS() {
     },
   });
 
+  // Buscar OSs concluídas de um cliente
+  const getPagamentosConcluidos = (clienteId: string) => {
+    return useQuery({
+      queryKey: ["pagamentos-concluidos", clienteId, empresaAtual?.id],
+      queryFn: async () => {
+        if (!clienteId || !empresaAtual?.id) return [];
+
+        const { data: vendas, error } = await supabase
+          .from("vendas")
+          .select(`
+            id,
+            numero_os,
+            valor_final,
+            cliente_nome,
+            finalizado_em,
+            updated_at
+          `)
+          .eq("cliente_id", clienteId)
+          .eq("empresa_id", empresaAtual.id)
+          .in("status", ["finalizada"])
+          .order("updated_at", { ascending: false });
+
+        if (error) throw error;
+
+        // Para cada venda, buscar todos os pagamentos
+        const ossConcluidas: OSConcluida[] = [];
+        
+        for (const venda of vendas || []) {
+          const { data: pagamentos, error: pagError } = await supabase
+            .from("pagamentos_os")
+            .select(`
+              id,
+              valor_pago,
+              forma_pagamento,
+              data_pagamento,
+              observacoes
+            `)
+            .eq("os_id", venda.id)
+            .order("data_pagamento", { ascending: true });
+
+          if (pagError) throw pagError;
+
+          // Só incluir OSs que realmente tiveram pagamentos posteriores
+          // (OSs finalizadas diretamente em outras formas não aparecem aqui)
+          if (pagamentos && pagamentos.length > 0) {
+            const dataConclusao = pagamentos[pagamentos.length - 1].data_pagamento;
+            
+            ossConcluidas.push({
+              ...venda,
+              data_conclusao: dataConclusao,
+              pagamentos: pagamentos.map(p => ({
+                ...p,
+                os_id: venda.id,
+                valor_restante: 0,
+                vendas: {
+                  numero_os: venda.numero_os,
+                  valor_final: venda.valor_final,
+                  cliente_nome: venda.cliente_nome
+                }
+              }))
+            });
+          }
+        }
+
+        return ossConcluidas;
+      },
+      enabled: !!clienteId && !!empresaAtual?.id,
+    });
+  };
+
   return {
     getPagamentosPendentes,
+    getPagamentosConcluidos,
     getHistoricoPagamentos,
     registrarPagamento: registrarPagamento.mutate,
     isRegistrandoPagamento: registrarPagamento.isPending,

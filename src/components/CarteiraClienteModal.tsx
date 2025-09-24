@@ -13,7 +13,7 @@ import { usePagamentosOS } from "@/hooks/usePagamentosOS";
 import { PagamentoOSModal } from "@/components/PagamentoOSModal";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CreditCard, Plus, TrendingDown, TrendingUp, Receipt, Clock } from "lucide-react";
+import { CreditCard, Plus, TrendingDown, TrendingUp, Receipt, Clock, CheckCircle, Calendar, DollarSign } from "lucide-react";
 
 interface CarteiraClienteModalProps {
   open: boolean;
@@ -33,11 +33,12 @@ export const CarteiraClienteModal = ({ open, onOpenChange, cliente }: CarteiraCl
   const [osSelecionada, setOsSelecionada] = useState<any>(null);
 
   const { getCarteiraCliente, getHistoricoCarteira, adicionarCredito } = useCarteiraCliente();
-  const { getPagamentosPendentes } = usePagamentosOS();
+  const { getPagamentosPendentes, getPagamentosConcluidos } = usePagamentosOS();
 
   const { data: carteira } = getCarteiraCliente(cliente?.id || '');
   const { data: historico = [] } = getHistoricoCarteira(cliente?.id || '');
   const { data: pagamentosPendentes = [] } = getPagamentosPendentes(cliente?.id || '');
+  const { data: pagamentosConcluidos = [] } = getPagamentosConcluidos(cliente?.id || '');
 
   useEffect(() => {
     if (open) {
@@ -90,17 +91,26 @@ export const CarteiraClienteModal = ({ open, onOpenChange, cliente }: CarteiraCl
         </DialogHeader>
 
         <Tabs defaultValue="carteira" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="carteira" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               Carteira
             </TabsTrigger>
             <TabsTrigger value="pagamentos" className="flex items-center gap-2">
               <Receipt className="h-4 w-4" />
-              Pagamentos Pendentes
+              Pendentes
               {pagamentosPendentes.length > 0 && (
                 <Badge variant="destructive" className="ml-1">
                   {pagamentosPendentes.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="concluidos" className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              Concluídos
+              {pagamentosConcluidos.length > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {pagamentosConcluidos.length}
                 </Badge>
               )}
             </TabsTrigger>
@@ -239,44 +249,170 @@ export const CarteiraClienteModal = ({ open, onOpenChange, cliente }: CarteiraCl
                   <p className="text-muted-foreground text-center py-8">
                     Nenhum pagamento pendente
                   </p>
+                 ) : (
+                   pagamentosPendentes.map((os) => (
+                     <Card key={os.id} className="border-l-4 border-l-orange-500">
+                       <CardContent className="p-4">
+                         <div className="flex justify-between items-start mb-3">
+                           <div>
+                             <h4 className="font-medium">{os.numero_os}</h4>
+                             <p className="text-sm text-muted-foreground">
+                               Finalizada em {format(new Date(os.finalizado_em), "dd/MM/yyyy", { locale: ptBR })}
+                             </p>
+                           </div>
+                           <Badge variant="outline" className="text-orange-600 border-orange-600">
+                             Pendente
+                           </Badge>
+                         </div>
+
+                         <div className="space-y-2 text-sm">
+                           <div className="flex justify-between">
+                             <span>Valor Total:</span>
+                             <span className="font-medium">R$ {os.valor_final.toFixed(2)}</span>
+                           </div>
+                           <div className="flex justify-between">
+                             <span>Já Pago:</span>
+                             <span className="text-green-600">R$ {os.valor_pago.toFixed(2)}</span>
+                           </div>
+                           <div className="flex justify-between border-t pt-2">
+                             <span className="font-medium">Restante:</span>
+                             <span className="font-bold text-red-600">R$ {os.valor_restante.toFixed(2)}</span>
+                           </div>
+                         </div>
+
+                         {/* Mostrar pagamentos já realizados */}
+                         {os.pagamentos_realizados && os.pagamentos_realizados.length > 0 && (
+                           <div className="mt-4 pt-3 border-t">
+                             <div className="flex items-center gap-2 mb-2">
+                               <DollarSign className="h-4 w-4 text-green-600" />
+                               <span className="text-sm font-medium">Pagamentos Realizados ({os.pagamentos_realizados.length})</span>
+                             </div>
+                             <div className="space-y-2">
+                               {os.pagamentos_realizados.map((pagamento, index) => (
+                                 <div key={pagamento.id} className="flex justify-between items-center text-xs bg-muted p-2 rounded">
+                                   <div className="flex items-center gap-2">
+                                     <Badge variant="outline">
+                                       {pagamento.forma_pagamento}
+                                     </Badge>
+                                     <span className="text-muted-foreground">
+                                       {format(new Date(pagamento.data_pagamento), "dd/MM/yy", { locale: ptBR })}
+                                     </span>
+                                   </div>
+                                   <span className="font-medium text-green-600">
+                                     R$ {Number(pagamento.valor_pago).toFixed(2)}
+                                   </span>
+                                 </div>
+                               ))}
+                             </div>
+                           </div>
+                         )}
+
+                         <Button 
+                           onClick={() => handlePagamentoOS(os)}
+                           className="w-full mt-4"
+                           size="sm"
+                         >
+                           Registrar Pagamento
+                         </Button>
+                       </CardContent>
+                     </Card>
+                   ))
+                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="concluidos" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  OSs Completamente Pagas
+                </CardTitle>
+                <CardDescription>
+                  Ordens de serviço finalizadas em carteira digital com pagamentos concluídos
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {pagamentosConcluidos.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    Nenhum pagamento concluído encontrado
+                  </p>
                 ) : (
-                  pagamentosPendentes.map((os) => (
-                    <Card key={os.id} className="border-l-4 border-l-orange-500">
+                  pagamentosConcluidos.map((os) => (
+                    <Card key={os.id} className="border-l-4 border-l-green-500">
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start mb-3">
                           <div>
                             <h4 className="font-medium">{os.numero_os}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {format(new Date(os.finalizado_em), "dd/MM/yyyy", { locale: ptBR })}
-                            </p>
+                            <div className="text-sm text-muted-foreground space-y-1">
+                              <p className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                Finalizada: {format(new Date(os.finalizado_em), "dd/MM/yyyy", { locale: ptBR })}
+                              </p>
+                              <p className="flex items-center gap-1">
+                                <CheckCircle className="h-3 w-3" />
+                                Concluída: {format(new Date(os.data_conclusao), "dd/MM/yyyy", { locale: ptBR })}
+                              </p>
+                            </div>
                           </div>
-                          <Badge variant="outline" className="text-orange-600 border-orange-600">
-                            Pendente
+                          <Badge variant="outline" className="text-green-600 border-green-600">
+                            Pago
                           </Badge>
                         </div>
 
-                        <div className="space-y-2 text-sm">
+                        <div className="space-y-2 text-sm mb-4">
                           <div className="flex justify-between">
                             <span>Valor Total:</span>
-                            <span className="font-medium">R$ {os.valor_final.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Já Pago:</span>
-                            <span className="text-green-600">R$ {os.valor_pago.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between border-t pt-2">
-                            <span className="font-medium">Restante:</span>
-                            <span className="font-bold text-red-600">R$ {os.valor_restante.toFixed(2)}</span>
+                            <span className="font-bold text-green-600">R$ {os.valor_final.toFixed(2)}</span>
                           </div>
                         </div>
 
-                        <Button 
-                          onClick={() => handlePagamentoOS(os)}
-                          className="w-full mt-4"
-                          size="sm"
-                        >
-                          Registrar Pagamento
-                        </Button>
+                        {/* Histórico completo de pagamentos */}
+                        <div className="border-t pt-3">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Receipt className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm font-medium">Histórico de Pagamentos ({os.pagamentos.length})</span>
+                          </div>
+                          <div className="space-y-2">
+                            {os.pagamentos.map((pagamento, index) => (
+                              <div key={pagamento.id} className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Badge variant="secondary">
+                                      {pagamento.forma_pagamento}
+                                    </Badge>
+                                    <span className="text-sm font-medium">
+                                      R$ {Number(pagamento.valor_pago).toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground space-y-1">
+                                    <p className="flex items-center gap-1">
+                                      <Calendar className="h-3 w-3" />
+                                      {format(new Date(pagamento.data_pagamento), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                    </p>
+                                    {pagamento.observacoes && (
+                                      <p className="italic">"{pagamento.observacoes}"</p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-xs text-muted-foreground">
+                                    #{index + 1}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          {/* Totalizador */}
+                          <div className="mt-3 pt-3 border-t flex justify-between items-center">
+                            <span className="font-medium">Total Pago:</span>
+                            <span className="font-bold text-green-600">
+                              R$ {os.pagamentos.reduce((acc, p) => acc + Number(p.valor_pago), 0).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
                   ))

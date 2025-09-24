@@ -208,6 +208,7 @@ export function useCarteiraCliente() {
       queryClient.invalidateQueries({ queryKey: ["carteira-cliente"] });
       queryClient.invalidateQueries({ queryKey: ["historico-carteira"] });
       queryClient.invalidateQueries({ queryKey: ["carteiras-empresa"] });
+      queryClient.invalidateQueries({ queryKey: ["todos-clientes-carteira"] });
     },
     onError: (error) => {
       console.error("Erro ao adicionar crédito:", error);
@@ -284,6 +285,7 @@ export function useCarteiraCliente() {
       queryClient.invalidateQueries({ queryKey: ["carteira-cliente"] });
       queryClient.invalidateQueries({ queryKey: ["historico-carteira"] });
       queryClient.invalidateQueries({ queryKey: ["carteiras-empresa"] });
+      queryClient.invalidateQueries({ queryKey: ["todos-clientes-carteira"] });
     },
     onError: (error) => {
       console.error("Erro ao debitar carteira:", error);

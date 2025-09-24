@@ -140,6 +140,19 @@ export const GestaoCarteiras = () => {
             <div className="text-center py-8">
               <p className="text-muted-foreground">Carregando clientes...</p>
             </div>
+          ) : clientesQuery.error ? (
+            <div className="text-center py-8">
+              <p className="text-destructive">
+                Erro ao carregar clientes: {clientesQuery.error.message}
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => clientesQuery.refetch()} 
+                className="mt-2"
+              >
+                Tentar novamente
+              </Button>
+            </div>
           ) : clientesFiltrados.length === 0 ? (
             <div className="text-center py-8">
               <Wallet className="mx-auto h-12 w-12 text-muted-foreground mb-4" />

@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEmpresaContext } from "@/hooks/useEmpresaContext";
 import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
 import { useCarteiraCliente } from "@/hooks/useCarteiraCliente";
+import { getFormaPagamentoDescription, isValidFormaPagamento } from '@/lib/paymentMethodMapper';
 
 interface PagamentoOS {
   id: string;
@@ -187,13 +188,17 @@ export function usePagamentosOS() {
         throw new Error(`Valor do pagamento (R$ ${valorPago.toFixed(2)}) não pode ser maior que o valor restante (R$ ${valorRestanteAntes.toFixed(2)})`);
       }
 
+      // Mapear e validar forma de pagamento
+      const formaPagamentoMapeada = formaPagamento === 'transferencia' ? 'outros' : formaPagamento;
+      const formaPagamentoValidada = isValidFormaPagamento(formaPagamentoMapeada) ? formaPagamentoMapeada : 'outros';
+
       // Registrar pagamento
       const { data: pagamento, error: pagamentoError } = await supabase
         .from("pagamentos_os")
         .insert({
           os_id: osId,
           valor_pago: valorPago,
-          forma_pagamento: formaPagamento as any,
+          forma_pagamento: formaPagamentoValidada,
           valor_restante: novoValorRestante,
           usuario_id: (await supabase.auth.getUser()).data.user?.id,
           empresa_id: empresaAtual.id,
@@ -208,7 +213,7 @@ export function usePagamentosOS() {
       await criarMovimentacaoAsync({
         tipo: 'entrada',
         tipo_origem: 'MANUAL',
-        forma_pagamento: formaPagamento as any,
+        forma_pagamento: formaPagamentoValidada as any,
         valor_bruto: valorPago,
         valor_liquido: valorPago,
         descricao: `Pagamento parcial OS ${venda.numero_os} - ${venda.cliente_nome}`,
@@ -224,12 +229,8 @@ export function usePagamentosOS() {
 
       if (vendaCompleta?.cliente_id) {
         try {
-          const formaPagamentoFormatada = formaPagamento === 'dinheiro' ? 'Dinheiro' :
-                                        formaPagamento === 'cartao_credito' ? 'Cartão Crédito' :
-                                        formaPagamento === 'cartao_debito' ? 'Cartão Débito' :
-                                        formaPagamento === 'pix' ? 'PIX' :
-                                        formaPagamento === 'cheque' ? 'Cheque' :
-                                        formaPagamento === 'outros' ? 'Outros' : 'Dinheiro';
+          // Usar a forma de pagamento já validada e formatada
+          const formaPagamentoFormatada = getFormaPagamentoDescription(formaPagamentoValidada as any);
           
           await adicionarCredito.mutateAsync({
             clienteId: vendaCompleta.cliente_id,

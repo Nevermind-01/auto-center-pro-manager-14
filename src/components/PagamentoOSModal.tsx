@@ -29,7 +29,7 @@ const formasPagamento = [
   { value: "pix", label: "PIX" },
   { value: "debito", label: "Cartão de Débito" },
   { value: "credito", label: "Cartão de Crédito" },
-  { value: "transferencia", label: "Transferência" },
+  { value: "outros", label: "Transferência/Outros" },
   { value: "cheque", label: "Cheque" },
 ];
 

@@ -7,12 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCarteiraCliente } from "@/hooks/useCarteiraCliente";
-import { formatCurrency } from "@/lib/utils";
+import { usePagamentosOS } from "@/hooks/usePagamentosOS";
+import { PagamentoOSModal } from "@/components/PagamentoOSModal";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Wallet, Plus, Minus, Clock, TrendingUp, TrendingDown } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { CreditCard, Plus, TrendingDown, TrendingUp, Receipt, Clock } from "lucide-react";
 
 interface CarteiraClienteModalProps {
   open: boolean;
@@ -26,137 +27,116 @@ interface CarteiraClienteModalProps {
 }
 
 export const CarteiraClienteModal = ({ open, onOpenChange, cliente }: CarteiraClienteModalProps) => {
-  const [tipoOperacao, setTipoOperacao] = useState<'credito' | 'debito'>('credito');
-  const [valor, setValor] = useState<string>('');
+  const [valor, setValor] = useState('');
   const [descricao, setDescricao] = useState('');
+  const [pagamentoModalOpen, setPagamentoModalOpen] = useState(false);
+  const [osSelecionada, setOsSelecionada] = useState<any>(null);
 
-  const { 
-    getCarteiraCliente, 
-    getHistoricoCarteira,
-    adicionarCredito,
-    isAdicionandoCredito 
-  } = useCarteiraCliente();
+  const { getCarteiraCliente, getHistoricoCarteira, adicionarCredito } = useCarteiraCliente();
+  const { getPagamentosPendentes } = usePagamentosOS();
 
-  const carteiraQuery = getCarteiraCliente(cliente?.id || '');
-  const historicoQuery = getHistoricoCarteira(cliente?.id || '');
+  const { data: carteira } = getCarteiraCliente(cliente?.id || '');
+  const { data: historico = [] } = getHistoricoCarteira(cliente?.id || '');
+  const { data: pagamentosPendentes = [] } = getPagamentosPendentes(cliente?.id || '');
 
-  // Reset form when modal opens/closes
   useEffect(() => {
     if (open) {
-      setTipoOperacao('credito');
       setValor('');
       setDescricao('');
     }
   }, [open]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cliente || !valor || !descricao) return;
+    
+    if (!cliente?.id || !valor || !descricao) return;
 
-    const valorNumerico = parseFloat(valor);
-    if (isNaN(valorNumerico) || valorNumerico <= 0) return;
-
-    try {
-      if (tipoOperacao === 'credito') {
-        await adicionarCredito.mutateAsync({
-          clienteId: cliente.id,
-          valor: valorNumerico,
-          descricao
-        });
-      }
-      
-      // Reset form
-      setValor('');
-      setDescricao('');
-    } catch (error) {
-      console.error('Erro ao processar operação:', error);
+    const valorNumerico = parseFloat(valor.replace(',', '.'));
+    
+    if (valorNumerico <= 0) {
+      alert('Valor deve ser maior que zero');
+      return;
     }
+
+    adicionarCredito({
+      clienteId: cliente.id,
+      valor: valorNumerico,
+      descricao,
+    });
+
+    // Reset form
+    setValor('');
+    setDescricao('');
   };
 
-  const saldoAtual = carteiraQuery.data?.saldo_atual || 0;
-  const historico = historicoQuery.data || [];
+  const handlePagamentoOS = (os: any) => {
+    setOsSelecionada(os);
+    setPagamentoModalOpen(true);
+  };
+
+  if (!cliente) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Wallet className="h-5 w-5" />
-            Carteira Digital - {cliente?.nome}
+            <CreditCard className="h-5 w-5" />
+            Carteira Digital - {cliente.nome}
           </DialogTitle>
           <DialogDescription>
-            Gerencie o saldo e histórico da carteira digital do cliente
+            Gerencie créditos e pagamentos pendentes do cliente
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Coluna 1: Saldo e Operações */}
-          <div className="space-y-4">
-            {/* Saldo Atual */}
+        <Tabs defaultValue="carteira" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="carteira" className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Carteira
+            </TabsTrigger>
+            <TabsTrigger value="pagamentos" className="flex items-center gap-2">
+              <Receipt className="h-4 w-4" />
+              Pagamentos Pendentes
+              {pagamentosPendentes.length > 0 && (
+                <Badge variant="destructive" className="ml-1">
+                  {pagamentosPendentes.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="carteira" className="space-y-6">
+            {/* Saldo atual */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4" />
-                  Saldo Atual
-                </CardTitle>
+              <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+                <div className="flex-1">
+                  <CardTitle className="text-base">Saldo Atual</CardTitle>
+                </div>
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-primary">
-                  {formatCurrency(saldoAtual)}
+                <div className="text-2xl font-bold text-green-600">
+                  R$ {carteira?.saldo_atual?.toFixed(2) || '0,00'}
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Disponível para utilização
-                </p>
               </CardContent>
             </Card>
 
-            {/* Formulário de Operação */}
+            {/* Formulário para adicionar crédito */}
             <Card>
               <CardHeader>
-                <CardTitle>Nova Operação</CardTitle>
-                <CardDescription>
-                  Adicione ou remova créditos da carteira
-                </CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Adicionar Crédito
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <Label>Tipo de Operação</Label>
-                    <RadioGroup
-                      value={tipoOperacao}
-                      onValueChange={(value) => setTipoOperacao(value as 'credito' | 'debito')}
-                      className="flex gap-4 mt-2"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="credito" id="credito" />
-                        <Label 
-                          htmlFor="credito" 
-                          className="flex items-center gap-2 cursor-pointer"
-                        >
-                          <Plus className="h-4 w-4 text-green-600" />
-                          Adicionar Crédito
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="debito" id="debito" disabled />
-                        <Label 
-                          htmlFor="debito" 
-                          className="flex items-center gap-2 cursor-pointer text-muted-foreground"
-                        >
-                          <Minus className="h-4 w-4 text-red-600" />
-                          Remover Crédito (Em breve)
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  <div>
                     <Label htmlFor="valor">Valor</Label>
                     <Input
                       id="valor"
-                      type="number"
-                      step="0.01"
-                      min="0.01"
+                      type="text"
                       value={valor}
                       onChange={(e) => setValor(e.target.value)}
                       placeholder="0,00"
@@ -166,83 +146,142 @@ export const CarteiraClienteModal = ({ open, onOpenChange, cliente }: CarteiraCl
 
                   <div>
                     <Label htmlFor="descricao">Descrição</Label>
-                    <Textarea
+                    <Input
                       id="descricao"
                       value={descricao}
                       onChange={(e) => setDescricao(e.target.value)}
-                      placeholder="Motivo da operação..."
-                      rows={3}
+                      placeholder="Motivo do crédito..."
                       required
                     />
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    disabled={!valor || !descricao || isAdicionandoCredito}
-                    className="w-full"
-                  >
-                    {isAdicionandoCredito ? 'Processando...' : 
-                     tipoOperacao === 'credito' ? 'Adicionar Crédito' : 'Remover Crédito'}
+                  <Button type="submit" className="w-full">
+                    Adicionar Crédito
                   </Button>
                 </form>
               </CardContent>
             </Card>
-          </div>
 
-          {/* Coluna 2: Histórico */}
-          <div className="space-y-4">
+            {/* Histórico de transações */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Histórico de Transações</CardTitle>
+                <CardDescription>
+                  Últimas movimentações da carteira
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {historico.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    Nenhuma transação encontrada
+                  </p>
+                ) : (
+                  historico.map((transacao, index) => (
+                    <div key={index}>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            {transacao.tipo === 'credito' ? (
+                              <TrendingUp className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <TrendingDown className="h-4 w-4 text-red-600" />
+                            )}
+                            <span className="font-medium">
+                              {transacao.tipo === 'credito' ? 'Crédito' : 'Débito'}
+                            </span>
+                            <Badge variant={transacao.tipo === 'credito' ? 'default' : 'destructive'}>
+                              {transacao.tipo === 'credito' ? '+' : '-'}R$ {Number(transacao.valor).toFixed(2)}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {transacao.descricao}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(transacao.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-medium">
+                            Saldo: R$ {Number(transacao.saldo_novo).toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                      {index < historico.length - 1 && <Separator className="mt-3" />}
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="pagamentos" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  Histórico de Movimentações
+                  OSs Aguardando Pagamento
                 </CardTitle>
+                <CardDescription>
+                  Ordens de serviço finalizadas em carteira digital pendentes de pagamento
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                {historicoQuery.isLoading ? (
-                  <p className="text-center text-muted-foreground">Carregando histórico...</p>
-                ) : historico.length === 0 ? (
-                  <p className="text-center text-muted-foreground">Nenhuma movimentação encontrada</p>
+              <CardContent className="space-y-3">
+                {pagamentosPendentes.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    Nenhum pagamento pendente
+                  </p>
                 ) : (
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {historico.map((movimentacao) => (
-                      <div key={movimentacao.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          {movimentacao.tipo === 'credito' ? (
-                            <TrendingUp className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <TrendingDown className="h-4 w-4 text-red-600" />
-                          )}
+                  pagamentosPendentes.map((os) => (
+                    <Card key={os.id} className="border-l-4 border-l-orange-500">
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start mb-3">
                           <div>
-                            <p className="font-medium">{movimentacao.descricao}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {format(new Date(movimentacao.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                            <h4 className="font-medium">{os.numero_os}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {format(new Date(os.finalizado_em), "dd/MM/yyyy", { locale: ptBR })}
                             </p>
-                            {movimentacao.os_id && (
-                              <Badge variant="outline" className="text-xs mt-1">
-                                OS Relacionada
-                              </Badge>
-                            )}
+                          </div>
+                          <Badge variant="outline" className="text-orange-600 border-orange-600">
+                            Pendente
+                          </Badge>
+                        </div>
+
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span>Valor Total:</span>
+                            <span className="font-medium">R$ {os.valor_final.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Já Pago:</span>
+                            <span className="text-green-600">R$ {os.valor_pago.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between border-t pt-2">
+                            <span className="font-medium">Restante:</span>
+                            <span className="font-bold text-red-600">R$ {os.valor_restante.toFixed(2)}</span>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className={`font-semibold ${
-                            movimentacao.tipo === 'credito' ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {movimentacao.tipo === 'credito' ? '+' : '-'}{formatCurrency(movimentacao.valor)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Saldo: {formatCurrency(movimentacao.saldo_novo)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+
+                        <Button 
+                          onClick={() => handlePagamentoOS(os)}
+                          className="w-full mt-4"
+                          size="sm"
+                        >
+                          Registrar Pagamento
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))
                 )}
               </CardContent>
             </Card>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
+
+        <PagamentoOSModal
+          open={pagamentoModalOpen}
+          onOpenChange={setPagamentoModalOpen}
+          osPendente={osSelecionada}
+        />
       </DialogContent>
     </Dialog>
   );

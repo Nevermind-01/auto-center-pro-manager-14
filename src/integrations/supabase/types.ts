@@ -1054,6 +1054,56 @@ export type Database = {
           },
         ]
       }
+      pagamentos_os: {
+        Row: {
+          created_at: string
+          data_pagamento: string
+          empresa_id: string
+          forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
+          id: string
+          observacoes: string | null
+          os_id: string
+          updated_at: string
+          usuario_id: string
+          valor_pago: number
+          valor_restante: number
+        }
+        Insert: {
+          created_at?: string
+          data_pagamento?: string
+          empresa_id: string
+          forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
+          id?: string
+          observacoes?: string | null
+          os_id: string
+          updated_at?: string
+          usuario_id: string
+          valor_pago?: number
+          valor_restante?: number
+        }
+        Update: {
+          created_at?: string
+          data_pagamento?: string
+          empresa_id?: string
+          forma_pagamento?: Database["public"]["Enums"]["forma_pagamento"]
+          id?: string
+          observacoes?: string | null
+          os_id?: string
+          updated_at?: string
+          usuario_id?: string
+          valor_pago?: number
+          valor_restante?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagamentos_os_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       produtos: {
         Row: {
           categoria_id: string | null
@@ -1756,7 +1806,11 @@ export type Database = {
       movimentacao_tipo: "entrada" | "saida" | "ajuste"
       orcamento_status: "pendente" | "aprovado" | "rejeitado" | "convertido_os"
       produto_status: "ativo" | "inativo"
-      venda_status: "pendente" | "finalizada" | "cancelada"
+      venda_status:
+        | "pendente"
+        | "finalizada"
+        | "cancelada"
+        | "finalizada-carteira"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1904,7 +1958,12 @@ export const Constants = {
       movimentacao_tipo: ["entrada", "saida", "ajuste"],
       orcamento_status: ["pendente", "aprovado", "rejeitado", "convertido_os"],
       produto_status: ["ativo", "inativo"],
-      venda_status: ["pendente", "finalizada", "cancelada"],
+      venda_status: [
+        "pendente",
+        "finalizada",
+        "cancelada",
+        "finalizada-carteira",
+      ],
     },
   },
 } as const

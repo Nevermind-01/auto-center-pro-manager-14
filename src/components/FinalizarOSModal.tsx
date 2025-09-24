@@ -294,7 +294,7 @@ const valorFinal = valorTotal - valorDesconto;
           return;
         }
 
-        // Atualizar a venda com os novos valores e status finalizada
+        // Atualizar a venda com os novos valores e status
         await updateVenda.mutateAsync({
           id: venda.id,
           valor_total: valorTotal,
@@ -303,7 +303,7 @@ const valorFinal = valorTotal - valorDesconto;
           forma_pagamento: formaPagamento,
           parcelas: formaPagamento === 'credito' ? parcelas : 1,
           observacoes: observacoes || null,
-          status: 'finalizada',
+          status: novoStatus,
           finalizado_em: new Date().toISOString()
         });
 
@@ -333,16 +333,51 @@ const valorFinal = valorTotal - valorDesconto;
 
         // Usar forma de pagamento direta (agora unificada)
         
+        // Registrar movimentação no caixa com lógica especial para carteira
         try {
-          await criarMovimentacaoAsync({
-            tipo: 'entrada',
-            tipo_origem: 'OS',
-            forma_pagamento: formaPagamento as FormaPagamento,
-            valor_bruto: valorFinal,
-            valor_liquido: valorFinal,
-            descricao: `OS ${venda.numero_os} - ${venda.cliente_nome}`,
-            referencia_id: venda.id,
-          });
+          if (formaPagamento === 'carteira') {
+            // Para carteira, registrar movimento com valor zero (não soma no caixa físico)
+            await criarMovimentacaoAsync({
+              tipo: 'entrada',
+              tipo_origem: 'OS',
+              forma_pagamento: formaPagamento as FormaPagamento,
+              valor_bruto: 0, // Valor zero para carteira
+              valor_liquido: 0,
+              descricao: `OS ${venda.numero_os} - ${venda.cliente_nome} (Carteira Digital - Valor: R$ ${valorFinal.toFixed(2)})`,
+              referencia_id: venda.id,
+            });
+
+            // Criar registro inicial em pagamentos_os para controle de pagamentos parciais
+            const { data: { user } } = await supabase.auth.getUser();
+            const empresaAtual = await supabase.from('profiles').select('empresa_atual_id').eq('user_id', user?.id).single();
+            
+            const { error: pagamentoError } = await supabase
+              .from('pagamentos_os')
+              .insert({
+                os_id: venda.id,
+                valor_pago: 0,
+                forma_pagamento: 'carteira',
+                valor_restante: valorFinal,
+                usuario_id: user?.id,
+                empresa_id: empresaAtual?.data?.empresa_atual_id,
+                observacoes: 'Registro inicial - aguardando pagamento'
+              });
+
+            if (pagamentoError) {
+              throw pagamentoError;
+            }
+          } else {
+            // Para outras formas de pagamento, registrar valor real
+            await criarMovimentacaoAsync({
+              tipo: 'entrada',
+              tipo_origem: 'OS',
+              forma_pagamento: formaPagamento as FormaPagamento,
+              valor_bruto: valorFinal,
+              valor_liquido: valorFinal,
+              descricao: `OS ${venda.numero_os} - ${venda.cliente_nome}`,
+              referencia_id: venda.id,
+            });
+          }
         } catch (caixaError) {
           console.error('Erro ao registrar movimentação no caixa:', caixaError);
           // Note: We don't throw here to avoid full rollback, just log the error

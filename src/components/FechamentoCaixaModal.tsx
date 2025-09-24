@@ -23,6 +23,7 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
   const [contagemPix, setContagemPix] = useState('');
   const [contagemDebito, setContagemDebito] = useState('');
   const [contagemCredito, setContagemCredito] = useState('');
+  const [contagemOutros, setContagemOutros] = useState<Record<string, string>>({});
   const [valoresEsperados, setValoresEsperados] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
@@ -37,6 +38,13 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
           setContagemPix(valores?.valoresEsperados?.pix?.toString() || '0');
           setContagemDebito(valores?.valoresEsperados?.debito?.toString() || '0');
           setContagemCredito(valores?.valoresEsperados?.credito?.toString() || '0');
+          
+          // Pré-preencher formas "outros" se existirem
+          const outrosFormatados: Record<string, string> = {};
+          Object.entries(valores?.valoresEsperados?.outros || {}).forEach(([forma, valor]) => {
+            outrosFormatados[forma] = (valor as number).toString();
+          });
+          setContagemOutros(outrosFormatados);
         })
         .catch(console.error)
         .finally(() => setLoading(false));
@@ -44,12 +52,18 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
   }, [open, caixaAtual?.id, calcularValoresEsperados]);
 
   const calcularTotalContado = () => {
-    return (
+    const totalPrincipais = (
       (parseFloat(contagemDinheiro) || 0) +
       (parseFloat(contagemPix) || 0) +
       (parseFloat(contagemDebito) || 0) +
       (parseFloat(contagemCredito) || 0)
     );
+    
+    const totalOutros = Object.values(contagemOutros).reduce((sum, valor) => {
+      return sum + (parseFloat(valor) || 0);
+    }, 0);
+    
+    return totalPrincipais + totalOutros;
   };
 
   const calcularDiferenca = () => {
@@ -62,11 +76,18 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
   const handleProcessarFechamento = () => {
     if (!caixaAtual?.id || isProcessandoFechamento) return;
 
+    // Preparar dados de "outros" formatados
+    const contagemOutrosFormatados: Record<string, number> = {};
+    Object.entries(contagemOutros).forEach(([forma, valor]) => {
+      contagemOutrosFormatados[forma] = parseFloat(valor) || 0;
+    });
+    
     processarFechamento({
       contagem_dinheiro: parseFloat(contagemDinheiro) || 0,
       contagem_pix: parseFloat(contagemPix) || 0,
       contagem_debito: parseFloat(contagemDebito) || 0,
       contagem_credito: parseFloat(contagemCredito) || 0,
+      contagem_outros: contagemOutrosFormatados,
       caixa_id: caixaAtual.id,
     });
   };
@@ -78,6 +99,7 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
       setContagemPix('');
       setContagemDebito('');
       setContagemCredito('');
+      setContagemOutros({});
       setValoresEsperados(null);
     }
   }, [open]);
@@ -177,6 +199,21 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
                       <span>Crédito:</span>
                       <span className="font-medium">R$ {valoresEsperados.valoresEsperados?.credito?.toFixed(2) || '0.00'}</span>
                     </div>
+                    
+                    {/* Outras Formas de Pagamento */}
+                    {valoresEsperados?.valoresEsperados?.outros && Object.keys(valoresEsperados.valoresEsperados.outros).length > 0 && (
+                      <>
+                        <Separator className="my-2" />
+                        <div className="text-sm font-medium text-muted-foreground mb-2">Outras Formas:</div>
+                        {Object.entries(valoresEsperados.valoresEsperados.outros).map(([forma, valor]) => (
+                          <div key={forma} className="flex justify-between text-sm">
+                            <span className="capitalize">{forma}:</span>
+                            <span className="font-medium">R$ {(valor as number).toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    
                     <Separator />
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total Esperado:</span>
@@ -242,6 +279,33 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
                         placeholder="0,00"
                       />
                     </div>
+                    
+                    {/* Outras Formas de Pagamento - apenas se existirem */}
+                    {valoresEsperados?.valoresEsperados?.outros && Object.keys(valoresEsperados.valoresEsperados.outros).length > 0 && (
+                      <>
+                        <Separator className="my-4" />
+                        <div className="text-sm font-medium text-muted-foreground mb-3">Outras Formas de Pagamento:</div>
+                        {Object.entries(valoresEsperados.valoresEsperados.outros).map(([forma, valorEsperado]) => (
+                          <div key={forma}>
+                            <Label htmlFor={`outros_${forma}`} className="capitalize">
+                              {forma} Contado (R$)
+                            </Label>
+                            <Input
+                              id={`outros_${forma}`}
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={contagemOutros[forma] || ''}
+                              onChange={(e) => setContagemOutros(prev => ({
+                                ...prev,
+                                [forma]: e.target.value
+                              }))}
+                              placeholder="0,00"
+                            />
+                          </div>
+                        ))}
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </div>

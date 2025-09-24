@@ -32,6 +32,14 @@ export interface DadosFechamento {
   caixa_id: string;
 }
 
+export interface ValoresEsperados {
+  dinheiro: number;
+  pix: number;
+  debito: number;
+  credito: number;
+  outros: Record<string, number>;
+}
+
 export function useFechamentoCaixa() {
   const { toast } = useToast();
   const { empresaId } = useEmpresaContext();
@@ -95,6 +103,9 @@ export function useFechamentoCaixa() {
     const resumoPorForma: Record<string, { entradas: number; saidas: number; total: number }> = {};
 
     movimentacoes.forEach((mov) => {
+      // Excluir movimentações da carteira do fechamento físico
+      if (mov.forma_pagamento === 'carteira') return;
+      
       if (!resumoPorForma[mov.forma_pagamento]) {
         resumoPorForma[mov.forma_pagamento] = { entradas: 0, saidas: 0, total: 0 };
       }
@@ -112,13 +123,16 @@ export function useFechamentoCaixa() {
     const totalSuprimentos = suprimentos.reduce((sum, sup) => sum + Number(sup.valor), 0);
     const totalSangrias = sangrias.reduce((sum, sang) => sum + Number(sang.valor), 0);
 
+    // Definir formas principais e outras
+    const formasPrincipais = ['dinheiro', 'pix', 'debito', 'credito'];
+    
     const valoresEsperados = {
       dinheiro: (resumoPorForma.dinheiro?.total || 0) + Number(caixa.troco_inicial) + totalSuprimentos - totalSangrias,
       pix: resumoPorForma.pix?.total || 0,
       debito: resumoPorForma.debito?.total || 0,
       credito: resumoPorForma.credito?.total || 0,
       outros: Object.entries(resumoPorForma)
-        .filter(([forma]) => !['dinheiro', 'pix', 'debito', 'credito'].includes(forma))
+        .filter(([forma]) => !formasPrincipais.includes(forma))
         .reduce((acc, [forma, dados]) => ({ ...acc, [forma]: dados.total }), {} as Record<string, number>),
     };
 

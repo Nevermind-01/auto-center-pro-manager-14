@@ -329,11 +329,12 @@ export function usePagamentosOS() {
             valor_final,
             cliente_nome,
             finalizado_em,
-            updated_at
+            updated_at,
+            status
           `)
           .eq("cliente_id", clienteId)
           .eq("empresa_id", empresaAtual.id)
-          .in("status", ["finalizada"])
+          .in("status", ["finalizada", "finalizada-carteira"])
           .order("updated_at", { ascending: false });
 
         if (error) throw error;
@@ -347,6 +348,7 @@ export function usePagamentosOS() {
             .select(`
               id,
               valor_pago,
+              valor_restante,
               forma_pagamento,
               data_pagamento,
               observacoes
@@ -356,18 +358,53 @@ export function usePagamentosOS() {
 
           if (pagError) throw pagError;
 
-          // Só incluir OSs que realmente tiveram pagamentos posteriores
-          // (OSs finalizadas diretamente em outras formas não aparecem aqui)
-          if (pagamentos && pagamentos.length > 0) {
-            const dataConclusao = pagamentos[pagamentos.length - 1].data_pagamento;
+          // Verificar se a OS foi realmente concluída
+          let foiConcluida = false;
+          let dataConclusao = venda.finalizado_em;
+          let pagamentosHistorico = [...(pagamentos || [])];
+
+          if (venda.status === "finalizada-carteira") {
+            // Para OSs finalizadas via carteira, verificar se foi completamente paga
+            if (pagamentos && pagamentos.length > 0) {
+              const ultimoPagamento = pagamentos[pagamentos.length - 1];
+              foiConcluida = ultimoPagamento.valor_restante <= 0.01; // Tolerância para arredondamento
+              dataConclusao = ultimoPagamento.data_pagamento;
+
+              // Adicionar o débito inicial da carteira como primeiro item
+              pagamentosHistorico.unshift({
+                id: `carteira-${venda.id}`,
+                valor_pago: venda.valor_final,
+                valor_restante: venda.valor_final,
+                forma_pagamento: "carteira" as any,
+                data_pagamento: venda.finalizado_em,
+                observacoes: "Finalização via carteira (débito inicial)"
+              });
+            }
+          } else if (venda.status === "finalizada") {
+            // OSs finalizadas diretamente são consideradas concluídas
+            foiConcluida = true;
             
+            // Se não tem pagamentos posteriores, considerar o pagamento da finalização
+            if (!pagamentos || pagamentos.length === 0) {
+              pagamentosHistorico.push({
+                id: `finalizacao-${venda.id}`,
+                valor_pago: venda.valor_final,
+                valor_restante: 0,
+                forma_pagamento: "dinheiro" as any,
+                data_pagamento: venda.finalizado_em,
+                observacoes: "Pagamento na finalização"
+              });
+            }
+          }
+
+          // Só incluir OSs que foram realmente concluídas
+          if (foiConcluida) {
             ossConcluidas.push({
               ...venda,
               data_conclusao: dataConclusao,
-              pagamentos: pagamentos.map(p => ({
+              pagamentos: pagamentosHistorico.map(p => ({
                 ...p,
                 os_id: venda.id,
-                valor_restante: 0,
                 vendas: {
                   numero_os: venda.numero_os,
                   valor_final: venda.valor_final,

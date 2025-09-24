@@ -294,6 +294,11 @@ const valorFinal = valorTotal - valorDesconto;
           return;
         }
 
+        // Determinar o novo status baseado na forma de pagamento
+        const novoStatus: "finalizada" | "finalizada-carteira" = formaPagamento === 'carteira' 
+          ? "finalizada-carteira" 
+          : "finalizada";
+
         // Atualizar a venda com os novos valores e status
         await updateVenda.mutateAsync({
           id: venda.id,

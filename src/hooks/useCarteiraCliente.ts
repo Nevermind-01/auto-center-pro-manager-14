@@ -99,6 +99,37 @@ export function useCarteiraCliente() {
     });
   };
 
+  // Buscar todos os clientes da empresa (com ou sem carteira)
+  const getTodosClientesComCarteira = () => {
+    return useQuery({
+      queryKey: ["todos-clientes-carteira", empresaId],
+      queryFn: async () => {
+        if (!empresaId) return [];
+
+        const { data, error } = await supabase
+          .from("clientes")
+          .select(`
+            id,
+            nome,
+            email,
+            telefone,
+            clientes_carteira (
+              id,
+              saldo_atual,
+              created_at,
+              updated_at
+            )
+          `)
+          .eq("empresa_id", empresaId)
+          .order("nome", { ascending: true });
+
+        if (error) throw error;
+        return data;
+      },
+      enabled: !!empresaId,
+    });
+  };
+
   // Adicionar crédito à carteira
   const adicionarCredito = useMutation({
     mutationFn: async ({ 
@@ -264,6 +295,7 @@ export function useCarteiraCliente() {
     getCarteiraCliente,
     getHistoricoCarteira,
     getCarteirasEmpresas,
+    getTodosClientesComCarteira,
     adicionarCredito,
     debitarCarteira,
     isAdicionandoCredito: adicionarCredito.isPending,

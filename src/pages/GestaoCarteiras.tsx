@@ -13,14 +13,13 @@ export const GestaoCarteiras = () => {
   const [clienteSelecionado, setClienteSelecionado] = useState<any>(null);
   const [showCarteiraModal, setShowCarteiraModal] = useState(false);
 
-  const { getCarteirasEmpresas } = useCarteiraCliente();
-  const carteirasQuery = getCarteirasEmpresas();
+  const { getTodosClientesComCarteira } = useCarteiraCliente();
+  const clientesQuery = getTodosClientesComCarteira();
 
-  const carteiras = carteirasQuery.data || [];
+  const clientes = clientesQuery.data || [];
 
-  // Filtrar carteiras baseado na busca
-  const carteirasFiltradas = carteiras.filter((carteira: any) => {
-    const cliente = carteira.clientes;
+  // Filtrar clientes baseado na busca
+  const clientesFiltrados = clientes.filter((cliente: any) => {
     const searchLower = searchTerm.toLowerCase();
     
     return (
@@ -31,20 +30,26 @@ export const GestaoCarteiras = () => {
   });
 
   // Estatísticas
-  const totalCarteiras = carteiras.length;
-  const totalSaldo = carteiras.reduce((total: number, carteira: any) => 
-    total + (Number(carteira.saldo_atual) || 0), 0
-  );
-  const carteirasAtivas = carteiras.filter((carteira: any) => 
-    Number(carteira.saldo_atual) > 0
+  const totalCarteiras = clientes.filter((cliente: any) => 
+    cliente.clientes_carteira && cliente.clientes_carteira.length > 0
   ).length;
+  
+  const totalSaldo = clientes.reduce((total: number, cliente: any) => {
+    const carteira = cliente.clientes_carteira?.[0];
+    return total + (Number(carteira?.saldo_atual) || 0);
+  }, 0);
+  
+  const carteirasAtivas = clientes.filter((cliente: any) => {
+    const carteira = cliente.clientes_carteira?.[0];
+    return Number(carteira?.saldo_atual) > 0;
+  }).length;
 
-  const handleOpenCarteira = (carteira: any) => {
+  const handleOpenCarteira = (cliente: any) => {
     setClienteSelecionado({
-      id: carteira.cliente_id,
-      nome: carteira.clientes?.nome || 'Cliente',
-      email: carteira.clientes?.email,
-      telefone: carteira.clientes?.telefone
+      id: cliente.id,
+      nome: cliente.nome,
+      email: cliente.email,
+      telefone: cliente.telefone
     });
     setShowCarteiraModal(true);
   };
@@ -122,35 +127,36 @@ export const GestaoCarteiras = () => {
         </CardContent>
       </Card>
 
-      {/* Lista de Carteiras */}
+      {/* Lista de Clientes */}
       <Card>
         <CardHeader>
-          <CardTitle>Carteiras dos Clientes</CardTitle>
+          <CardTitle>Clientes e Carteiras</CardTitle>
           <CardDescription>
-            {carteirasFiltradas.length} carteira(s) encontrada(s)
+            {clientesFiltrados.length} cliente(s) encontrado(s)
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {carteirasQuery.isLoading ? (
+          {clientesQuery.isLoading ? (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">Carregando carteiras...</p>
+              <p className="text-muted-foreground">Carregando clientes...</p>
             </div>
-          ) : carteirasFiltradas.length === 0 ? (
+          ) : clientesFiltrados.length === 0 ? (
             <div className="text-center py-8">
               <Wallet className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <p className="text-muted-foreground">
-                {searchTerm ? 'Nenhuma carteira encontrada com os filtros aplicados' : 'Nenhuma carteira criada ainda'}
+                {searchTerm ? 'Nenhum cliente encontrado com os filtros aplicados' : 'Nenhum cliente cadastrado ainda'}
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {carteirasFiltradas.map((carteira: any) => {
-                const cliente = carteira.clientes;
-                const saldo = Number(carteira.saldo_atual) || 0;
+              {clientesFiltrados.map((cliente: any) => {
+                const carteira = cliente.clientes_carteira?.[0];
+                const saldo = Number(carteira?.saldo_atual) || 0;
+                const temCarteira = carteira && carteira.id;
                 
                 return (
                   <div
-                    key={carteira.id}
+                    key={cliente.id}
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50"
                   >
                     <div className="flex items-center gap-4">
@@ -158,9 +164,9 @@ export const GestaoCarteiras = () => {
                         <Wallet className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-semibold">{cliente?.nome || 'Nome não disponível'}</h3>
+                        <h3 className="font-semibold">{cliente.nome}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {cliente?.email || cliente?.telefone || 'Contato não disponível'}
+                          {cliente.email || cliente.telefone || 'Contato não disponível'}
                         </p>
                       </div>
                     </div>
@@ -170,18 +176,18 @@ export const GestaoCarteiras = () => {
                         <p className="font-semibold text-lg">
                           {formatCurrency(saldo)}
                         </p>
-                        <Badge variant={saldo > 0 ? "default" : "secondary"}>
-                          {saldo > 0 ? "Ativo" : "Sem saldo"}
+                        <Badge variant={temCarteira ? (saldo > 0 ? "default" : "secondary") : "outline"}>
+                          {temCarteira ? (saldo > 0 ? "Ativo" : "Sem saldo") : "Sem carteira"}
                         </Badge>
                       </div>
                       
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleOpenCarteira(carteira)}
+                        onClick={() => handleOpenCarteira(cliente)}
                       >
                         <Plus className="h-4 w-4 mr-2" />
-                        Gerenciar
+                        {temCarteira ? "Gerenciar" : "Criar Carteira"}
                       </Button>
                     </div>
                   </div>

@@ -58,7 +58,7 @@ export const CarteiraClienteModal = ({ open, onOpenChange, cliente }: CarteiraCl
       return;
     }
 
-    adicionarCredito({
+    adicionarCredito.mutate({
       clienteId: cliente.id,
       valor: valorNumerico,
       descricao,

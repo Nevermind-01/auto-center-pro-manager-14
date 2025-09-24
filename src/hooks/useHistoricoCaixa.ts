@@ -114,7 +114,7 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
       return vendasResult.data.map((venda: any) => {
         const pagamentoPosterior = pagamentosMap.get(venda.id);
         const isCarteira = venda.forma_pagamento === 'carteira';
-        const temPagamentoPosterior = pagamentoPosterior && pagamentoPosterior.valor_pago > 0;
+        const hasPagamentoPosterior = pagamentoPosterior && pagamentoPosterior.valor_pago > 0;
 
         return {
           id: venda.id,
@@ -127,7 +127,7 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
           forma_pagamento: getFormaPagamentoDescription(venda.forma_pagamento as FormaPagamento),
           status: venda.status,
           valor_comissao: comissoesMap.get(venda.id) || 0,
-          tipo_transacao: (isCarteira && !temPagamentePosterior) ? 'carteira' : 'bruto',
+          tipo_transacao: (isCarteira && !hasPagamentoPosterior) ? 'carteira' : 'bruto',
           valor_pago_posterior: pagamentoPosterior?.valor_pago,
           forma_pagamento_posterior: pagamentoPosterior?.forma_pagamento 
             ? getFormaPagamentoDescription(pagamentoPosterior.forma_pagamento as FormaPagamento)

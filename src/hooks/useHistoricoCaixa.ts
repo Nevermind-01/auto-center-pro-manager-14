@@ -16,6 +16,7 @@ export interface HistoricoVenda {
   status: string;
   valor_comissao: number;
   tipo_transacao: 'bruto' | 'carteira';
+  tipo_entrada: 'finalizacao' | 'pagamento_posterior';
   valor_pago_posterior?: number;
   forma_pagamento_posterior?: string;
 }
@@ -35,7 +36,7 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
     queryFn: async () => {
       if (!empresaId) return [];
 
-      // Query para buscar vendas (incluindo carteira)
+      // Query para buscar vendas finalizadas no período
       let vendasQuery = supabase
         .from('vendas')
         .select(`
@@ -65,23 +66,28 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
         .select('venda_id, valor_final')
         .eq('empresa_id', empresaId);
 
-      // Query para buscar pagamentos posteriores das vendas em carteira
+      // Query para buscar TODOS os pagamentos no período (incluindo avulsos)
       const pagamentosQuery = supabase
         .from('pagamentos_os')
         .select(`
+          id,
           os_id,
           valor_pago,
           forma_pagamento,
           data_pagamento,
-          vendas!inner(
+          observacoes,
+          vendas(
             id,
             numero_os,
-            forma_pagamento
+            cliente_nome,
+            forma_pagamento,
+            finalizado_em
           )
         `)
         .eq('empresa_id', empresaId)
         .gte('data_pagamento', filtros.dataInicio.toISOString())
-        .lte('data_pagamento', filtros.dataFim.toISOString());
+        .lte('data_pagamento', filtros.dataFim.toISOString())
+        .order('data_pagamento', { ascending: false });
 
       // Executar queries em paralelo
       const [vendasResult, comissoesResult, pagamentosResult] = await Promise.all([
@@ -100,23 +106,13 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
         comissoesMap.set(comissao.venda_id, comissao.valor_final || 0);
       });
 
-      // Criar mapa de pagamentos posteriores por venda_id
-      const pagamentosMap = new Map<string, { valor_pago: number; forma_pagamento: string }>();
-      pagamentosResult.data?.forEach((pagamento: any) => {
-        const existente = pagamentosMap.get(pagamento.os_id) || { valor_pago: 0, forma_pagamento: '' };
-        pagamentosMap.set(pagamento.os_id, {
-          valor_pago: existente.valor_pago + pagamento.valor_pago,
-          forma_pagamento: pagamento.forma_pagamento || existente.forma_pagamento
-        });
-      });
+      const historico: HistoricoVenda[] = [];
 
-      // Combinar dados de vendas com comissões e pagamentos
-      return vendasResult.data.map((venda: any) => {
-        const pagamentoPosterior = pagamentosMap.get(venda.id);
+      // 1. Processar vendas finalizadas no período
+      vendasResult.data.forEach((venda: any) => {
         const isCarteira = venda.forma_pagamento === 'carteira';
-        const hasPagamentoPosterior = pagamentoPosterior && pagamentoPosterior.valor_pago > 0;
-
-        return {
+        
+        historico.push({
           id: venda.id,
           numero_os: venda.numero_os,
           finalizado_em: venda.finalizado_em,
@@ -127,43 +123,82 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
           forma_pagamento: getFormaPagamentoDescription(venda.forma_pagamento as FormaPagamento),
           status: venda.status,
           valor_comissao: comissoesMap.get(venda.id) || 0,
-          tipo_transacao: (isCarteira && !hasPagamentoPosterior) ? 'carteira' : 'bruto',
-          valor_pago_posterior: pagamentoPosterior?.valor_pago,
-          forma_pagamento_posterior: pagamentoPosterior?.forma_pagamento 
-            ? getFormaPagamentoDescription(pagamentoPosterior.forma_pagamento as FormaPagamento)
-            : undefined,
-        };
-      }) as HistoricoVenda[];
+          // Vendas em carteira sempre ficam como "carteira", outras sempre como "bruto"
+          tipo_transacao: isCarteira ? 'carteira' : 'bruto',
+          tipo_entrada: 'finalizacao',
+        });
+      });
+
+      // 2. Processar pagamentos posteriores/avulsos no período
+      pagamentosResult.data?.forEach((pagamento: any) => {
+        const venda = pagamento.vendas;
+        
+        // Se a venda não foi finalizada no período atual, adicionar como entrada separada
+        const vendaJaIncluida = venda && vendasResult.data.some((v: any) => v.id === venda.id);
+        
+        if (!vendaJaIncluida && venda) {
+          // Pagamento de venda de outro período - incluir como entrada separada
+          historico.push({
+            id: `pagamento-${pagamento.id}`,
+            numero_os: venda.numero_os,
+            finalizado_em: pagamento.data_pagamento,
+            cliente_nome: venda.cliente_nome,
+            valor_total: 0,
+            valor_desconto: 0,
+            valor_final: pagamento.valor_pago,
+            forma_pagamento: getFormaPagamentoDescription(pagamento.forma_pagamento as FormaPagamento),
+            status: 'Pago',
+            valor_comissao: 0,
+            tipo_transacao: 'bruto', // Pagamentos sempre vão para bruto
+            tipo_entrada: 'pagamento_posterior',
+            valor_pago_posterior: pagamento.valor_pago,
+            forma_pagamento_posterior: getFormaPagamentoDescription(pagamento.forma_pagamento as FormaPagamento),
+          });
+        }
+      });
+
+      // Ordenar por data (mais recente primeiro)
+      return historico.sort((a, b) => 
+        new Date(b.finalizado_em).getTime() - new Date(a.finalizado_em).getTime()
+      );
     },
     enabled: !!empresaId,
   });
 
   // Calcular totalizadores separados
+  const vendasCarteira = historico?.filter(v => v.tipo_transacao === 'carteira' && v.tipo_entrada === 'finalizacao') || [];
   const vendasBruto = historico?.filter(v => v.tipo_transacao === 'bruto') || [];
-  const vendasCarteira = historico?.filter(v => v.tipo_transacao === 'carteira') || [];
+  const pagamentosPosteriores = historico?.filter(v => v.tipo_entrada === 'pagamento_posterior') || [];
 
   const totalizadores = {
-    totalVendas: historico?.length || 0,
-    totalVendasBruto: vendasBruto.length,
+    totalVendas: vendasCarteira.length + vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').length,
+    totalVendasBruto: vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').length,
     totalVendasCarteira: vendasCarteira.length,
+    totalPagamentosPosteriores: pagamentosPosteriores.length,
     
-    // Valores brutos (apenas vendas pagas)
-    valorTotalBruto: vendasBruto.reduce((sum, v) => sum + v.valor_total, 0),
-    valorDescontoBruto: vendasBruto.reduce((sum, v) => sum + v.valor_desconto, 0),
-    valorFinalBruto: vendasBruto.reduce((sum, v) => sum + v.valor_final, 0),
-    valorComissaoBruto: vendasBruto.reduce((sum, v) => sum + v.valor_comissao, 0),
-    
-    // Valores carteira (apenas vendas em carteira)
+    // Valores carteira (apenas finalizações em carteira)
     valorTotalCarteira: vendasCarteira.reduce((sum, v) => sum + v.valor_total, 0),
     valorDescontoCarteira: vendasCarteira.reduce((sum, v) => sum + v.valor_desconto, 0),
     valorFinalCarteira: vendasCarteira.reduce((sum, v) => sum + v.valor_final, 0),
     valorComissaoCarteira: vendasCarteira.reduce((sum, v) => sum + v.valor_comissao, 0),
     
+    // Valores brutos reais (finalizações não-carteira + pagamentos posteriores)
+    valorTotalBrutoReal: vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_total, 0),
+    valorDescontoBrutoReal: vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_desconto, 0),
+    valorFinalBrutoReal: vendasBruto.reduce((sum, v) => sum + v.valor_final, 0), // Inclui pagamentos posteriores
+    valorComissaoBrutoReal: vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_comissao, 0),
+    
+    // Valores dos pagamentos posteriores/avulsos
+    valorPagamentosPosteriores: pagamentosPosteriores.reduce((sum, v) => sum + v.valor_final, 0),
+    
     // Totais gerais (para compatibilidade)
-    valorTotal: historico?.reduce((sum, v) => sum + v.valor_total, 0) || 0,
-    valorDesconto: historico?.reduce((sum, v) => sum + v.valor_desconto, 0) || 0,
+    valorTotal: vendasCarteira.reduce((sum, v) => sum + v.valor_total, 0) + 
+               vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_total, 0),
+    valorDesconto: vendasCarteira.reduce((sum, v) => sum + v.valor_desconto, 0) + 
+                  vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_desconto, 0),
     valorFinal: historico?.reduce((sum, v) => sum + v.valor_final, 0) || 0,
-    valorComissao: historico?.reduce((sum, v) => sum + v.valor_comissao, 0) || 0,
+    valorComissao: vendasCarteira.reduce((sum, v) => sum + v.valor_comissao, 0) + 
+                  vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_comissao, 0),
   };
 
   return {

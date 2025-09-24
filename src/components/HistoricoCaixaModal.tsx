@@ -148,6 +148,7 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
                 <p className="text-2xl font-bold">{totalizadores.totalVendas}</p>
                 <p className="text-xs text-muted-foreground">
                   {totalizadores.totalVendasBruto} pagas • {totalizadores.totalVendasCarteira} carteira
+                  {totalizadores.totalPagamentosPosteriores > 0 && ` • ${totalizadores.totalPagamentosPosteriores} pag. posteriores`}
                 </p>
               </CardContent>
             </Card>
@@ -161,10 +162,10 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
               </CardHeader>
               <CardContent>
                 <p className="text-lg font-bold text-primary">
-                  {formatarMoeda(totalizadores.valorFinalBruto)}
+                  {formatarMoeda(totalizadores.valorFinalBrutoReal)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Apenas vendas pagas
+                  Vendas pagas + Pag. posteriores
                 </p>
               </CardContent>
             </Card>
@@ -260,19 +261,20 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
                           <Badge variant="outline" className="capitalize">
                             {venda.status}
                           </Badge>
-                          {venda.tipo_transacao === 'carteira' && (
-                            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                              Carteira
+                          {venda.tipo_entrada === 'pagamento_posterior' && (
+                            <Badge variant="default" className="bg-orange-100 text-orange-700">
+                              Pagamento Posterior
                             </Badge>
                           )}
-                          {venda.valor_pago_posterior && (
-                            <Badge variant="default" className="bg-green-100 text-green-700">
-                              Pago: {venda.forma_pagamento_posterior}
+                          {venda.tipo_transacao === 'carteira' && venda.tipo_entrada === 'finalizacao' && (
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                              Carteira Digital
                             </Badge>
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">
                           {venda.cliente_nome}
+                          {venda.tipo_entrada === 'pagamento_posterior' && ' • Pagamento de OS anterior'}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {format(new Date(venda.finalizado_em), 'dd/MM/yyyy HH:mm')}

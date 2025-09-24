@@ -58,7 +58,8 @@ export function useCarteiraCliente() {
       queryFn: async () => {
         if (!empresaId || !clienteId) return [];
 
-        const { data, error } = await supabase
+        // Buscar movimentações da carteira
+        const { data: movimentacoes, error } = await supabase
           .from("movimentacoes_carteira")
           .select("*")
           .eq("cliente_id", clienteId)
@@ -66,7 +67,80 @@ export function useCarteiraCliente() {
           .order("created_at", { ascending: false });
 
         if (error) throw error;
-        return data as MovimentacaoCarteira[];
+
+        // Buscar OSs pagas via carteira para incluir no histórico
+        const { data: osCarteira, error: osError } = await supabase
+          .from("vendas")
+          .select("id, numero_os, valor_final, finalizado_em, status")
+          .eq("cliente_id", clienteId)
+          .eq("empresa_id", empresaId)
+          .eq("forma_pagamento", "carteira")
+          .order("finalizado_em", { ascending: false });
+
+        if (osError) throw osError;
+
+        // Buscar pagamentos parciais dessas OSs
+        const { data: pagamentosOS, error: pagError } = await supabase
+          .from("pagamentos_os")
+          .select(`
+            *,
+            vendas!inner(numero_os, cliente_id)
+          `)
+          .eq("vendas.cliente_id", clienteId)
+          .eq("empresa_id", empresaId)
+          .gt("valor_pago", 0)
+          .order("data_pagamento", { ascending: false });
+
+        if (pagError) throw pagError;
+
+        // Combinar tudo em um histórico unificado
+        const historicoCompleto: any[] = [];
+
+        // Adicionar movimentações normais da carteira
+        movimentacoes?.forEach(mov => {
+          historicoCompleto.push({
+            ...mov,
+            tipo_evento: 'movimentacao',
+            data_evento: mov.created_at
+          });
+        });
+
+        // Adicionar OSs pagas via carteira como débitos
+        osCarteira?.forEach(os => {
+          historicoCompleto.push({
+            id: `os-${os.id}`,
+            tipo: 'debito',
+            valor: os.valor_final,
+            descricao: `OS ${os.numero_os}`,
+            os_id: os.id,
+            created_at: os.finalizado_em,
+            tipo_evento: 'os_carteira',
+            data_evento: os.finalizado_em,
+            cliente_id: clienteId,
+            empresa_id: empresaId
+          });
+        });
+
+        // Adicionar pagamentos de OS como créditos
+        pagamentosOS?.forEach(pago => {
+          historicoCompleto.push({
+            id: `pagamento-${pago.id}`,
+            tipo: 'credito',
+            valor: pago.valor_pago,
+            descricao: `Pagamento OS ${pago.vendas?.numero_os}`,
+            os_id: pago.os_id,
+            created_at: pago.data_pagamento,
+            tipo_evento: 'pagamento_os',
+            data_evento: pago.data_pagamento,
+            cliente_id: clienteId,
+            empresa_id: empresaId
+          });
+        });
+
+        // Ordenar por data mais recente
+        return historicoCompleto.sort((a, b) => 
+          new Date(b.data_evento).getTime() - new Date(a.data_evento).getTime()
+        );
       },
       enabled: !!empresaId && !!clienteId,
     });

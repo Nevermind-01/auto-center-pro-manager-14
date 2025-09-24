@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useEmpresaContext } from "@/hooks/useEmpresaContext";
 import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
+import { useCarteiraCliente } from "@/hooks/useCarteiraCliente";
 
 interface PagamentoOS {
   id: string;
@@ -41,6 +42,7 @@ export function usePagamentosOS() {
   const queryClient = useQueryClient();
   const { empresaAtual } = useEmpresaContext();
   const { criarMovimentacaoAsync } = useMovimentacoesCaixa();
+  const { adicionarCredito } = useCarteiraCliente();
 
   // Buscar OSs pendentes de um cliente
   const getPagamentosPendentes = (clienteId: string) => {
@@ -101,6 +103,15 @@ export function usePagamentosOS() {
       queryFn: async () => {
         if (!osId) return [];
 
+        // Buscar dados da OS primeiro para saber se foi paga via carteira
+        const { data: venda, error: vendaError } = await supabase
+          .from("vendas")
+          .select("numero_os, valor_final, cliente_nome, forma_pagamento, status, finalizado_em")
+          .eq("id", osId)
+          .single();
+
+        if (vendaError) throw vendaError;
+
         const { data, error } = await supabase
           .from("pagamentos_os")
           .select(`
@@ -116,7 +127,32 @@ export function usePagamentosOS() {
           .order("data_pagamento", { ascending: false });
 
         if (error) throw error;
-        return data as PagamentoOS[];
+
+        const pagamentos = data as PagamentoOS[];
+
+        // Se OS foi finalizada via carteira, adicionar registro inicial do pagamento via carteira
+        if (venda.forma_pagamento === 'carteira' && venda.status === 'finalizada-carteira') {
+          const pagamentoInicialCarteira: PagamentoOS = {
+            id: `carteira-inicial-${osId}`,
+            os_id: osId,
+            valor_pago: 0,
+            forma_pagamento: 'carteira',
+            valor_restante: venda.valor_final,
+            data_pagamento: venda.finalizado_em,
+            observacoes: `OS finalizada via carteira - Valor debitado: R$ ${venda.valor_final.toFixed(2)}`,
+            vendas: {
+              numero_os: venda.numero_os,
+              valor_final: venda.valor_final,
+              cliente_nome: venda.cliente_nome
+            }
+          };
+          
+          // Adicionar o pagamento inicial e ordenar por data
+          const todosPagamentos = [pagamentoInicialCarteira, ...pagamentos];
+          return todosPagamentos.sort((a, b) => new Date(b.data_pagamento).getTime() - new Date(a.data_pagamento).getTime());
+        }
+
+        return pagamentos;
       },
       enabled: !!osId && !!empresaAtual?.id,
     });
@@ -179,6 +215,26 @@ export function usePagamentosOS() {
         referencia_id: osId
       });
 
+      // Creditar o valor pago de volta na carteira do cliente
+      const { data: vendaCompleta } = await supabase
+        .from("vendas")
+        .select("cliente_id")
+        .eq("id", osId)
+        .single();
+
+      if (vendaCompleta?.cliente_id) {
+        try {
+          await adicionarCredito.mutateAsync({
+            clienteId: vendaCompleta.cliente_id,
+            valor: valorPago,
+            descricao: `Pagamento OS ${venda.numero_os}`
+          });
+        } catch (carteiraError) {
+          console.error('Erro ao creditar na carteira:', carteiraError);
+          // Não falha a operação, apenas loga o erro
+        }
+      }
+
       // Se pagamento completou a OS, alterar status
       if (novoValorRestante <= 0.01) { // Tolerância para arredondamentos
         const { error: statusError } = await supabase
@@ -195,6 +251,9 @@ export function usePagamentosOS() {
       queryClient.invalidateQueries({ queryKey: ["pagamentos-pendentes"] });
       queryClient.invalidateQueries({ queryKey: ["historico-pagamentos"] });
       queryClient.invalidateQueries({ queryKey: ["carteiras-empresas"] });
+      queryClient.invalidateQueries({ queryKey: ["carteira-cliente"] });
+      queryClient.invalidateQueries({ queryKey: ["historico-carteira"] });
+      queryClient.invalidateQueries({ queryKey: ["todos-clientes-carteira"] });
       queryClient.invalidateQueries({ queryKey: ["movimentacoes-caixa"] });
       
       if (data.osCompletada) {

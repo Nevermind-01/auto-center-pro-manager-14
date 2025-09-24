@@ -136,7 +136,7 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
           </div>
 
           {/* Totalizadores */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-1">
@@ -146,6 +146,9 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">{totalizadores.totalVendas}</p>
+                <p className="text-xs text-muted-foreground">
+                  {totalizadores.totalVendasBruto} pagas • {totalizadores.totalVendasCarteira} carteira
+                </p>
               </CardContent>
             </Card>
 
@@ -158,7 +161,27 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
               </CardHeader>
               <CardContent>
                 <p className="text-lg font-bold text-primary">
-                  {formatarMoeda(totalizadores.valorTotal)}
+                  {formatarMoeda(totalizadores.valorFinalBruto)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Apenas vendas pagas
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-blue-200 bg-blue-50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-1 text-blue-700">
+                  <CreditCard className="h-4 w-4" />
+                  Carteira
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-lg font-bold text-blue-600">
+                  {formatarMoeda(totalizadores.valorFinalCarteira)}
+                </p>
+                <p className="text-xs text-blue-600">
+                  Vendas em carteira
                 </p>
               </CardContent>
             </Card>
@@ -188,6 +211,9 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
                 <p className="text-lg font-bold text-green-600">
                   {formatarMoeda(totalizadores.valorFinal)}
                 </p>
+                <p className="text-xs text-muted-foreground">
+                  Bruto + Carteira
+                </p>
               </CardContent>
             </Card>
 
@@ -199,7 +225,7 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-lg font-bold text-blue-600">
+                <p className="text-lg font-bold text-purple-600">
                   {formatarMoeda(totalizadores.valorComissao)}
                 </p>
               </CardContent>
@@ -234,6 +260,16 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
                           <Badge variant="outline" className="capitalize">
                             {venda.status}
                           </Badge>
+                          {venda.tipo_transacao === 'carteira' && (
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                              Carteira
+                            </Badge>
+                          )}
+                          {venda.valor_pago_posterior && (
+                            <Badge variant="default" className="bg-green-100 text-green-700">
+                              Pago: {venda.forma_pagamento_posterior}
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground">
                           {venda.cliente_nome}

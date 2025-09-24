@@ -224,10 +224,18 @@ export function usePagamentosOS() {
 
       if (vendaCompleta?.cliente_id) {
         try {
+          const formaPagamentoFormatada = formaPagamento === 'dinheiro' ? 'Dinheiro' :
+                                        formaPagamento === 'cartao_credito' ? 'Cartão Crédito' :
+                                        formaPagamento === 'cartao_debito' ? 'Cartão Débito' :
+                                        formaPagamento === 'pix' ? 'PIX' :
+                                        formaPagamento === 'cheque' ? 'Cheque' :
+                                        formaPagamento === 'outros' ? 'Outros' : 'Dinheiro';
+          
           await adicionarCredito.mutateAsync({
             clienteId: vendaCompleta.cliente_id,
             valor: valorPago,
-            descricao: `Pagamento OS ${venda.numero_os}`
+            descricao: `Pagamento OS ${venda.numero_os}`,
+            formaPagamento: formaPagamentoFormatada
           });
         } catch (carteiraError) {
           console.error('Erro ao creditar na carteira:', carteiraError);

@@ -846,6 +846,7 @@ export type Database = {
           criado_por: string
           descricao: string
           empresa_id: string
+          forma_pagamento: string | null
           id: string
           os_id: string | null
           saldo_anterior: number
@@ -859,6 +860,7 @@ export type Database = {
           criado_por: string
           descricao: string
           empresa_id: string
+          forma_pagamento?: string | null
           id?: string
           os_id?: string | null
           saldo_anterior: number
@@ -872,6 +874,7 @@ export type Database = {
           criado_por?: string
           descricao?: string
           empresa_id?: string
+          forma_pagamento?: string | null
           id?: string
           os_id?: string | null
           saldo_anterior?: number

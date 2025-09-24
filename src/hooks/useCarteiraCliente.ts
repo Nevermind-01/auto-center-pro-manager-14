@@ -24,6 +24,7 @@ export interface MovimentacaoCarteira {
   saldo_novo: number;
   criado_por: string;
   created_at: string;
+  forma_pagamento?: string;
 }
 
 export function useCarteiraCliente() {
@@ -209,11 +210,13 @@ export function useCarteiraCliente() {
     mutationFn: async ({ 
       clienteId, 
       valor, 
-      descricao 
+      descricao,
+      formaPagamento = 'Crédito Carteira'
     }: { 
       clienteId: string; 
       valor: number; 
       descricao: string; 
+      formaPagamento?: string;
     }) => {
       if (!empresaId) throw new Error("Empresa não selecionada");
 
@@ -270,7 +273,8 @@ export function useCarteiraCliente() {
           descricao,
           saldo_anterior: saldoAnterior,
           saldo_novo: saldoNovo,
-          criado_por: user.user.id
+          criado_por: user.user.id,
+          forma_pagamento: formaPagamento
         });
 
       if (movError) throw movError;
@@ -348,7 +352,8 @@ export function useCarteiraCliente() {
           os_id: osId,
           saldo_anterior: saldoAnterior,
           saldo_novo: saldoNovo,
-          criado_por: user.user.id
+          criado_por: user.user.id,
+          forma_pagamento: 'Carteira'
         });
 
       if (movError) throw movError;

@@ -178,43 +178,43 @@ export const CarteiraClienteModal = ({ open, onOpenChange, cliente }: CarteiraCl
                  ) : (
                    historico.map((transacao, index) => (
                      <div key={transacao.id || index}>
-                       <div className="flex justify-between items-start">
-                         <div className="flex-1">
-                           <div className="flex items-center gap-2">
-                             {transacao.tipo === 'credito' ? (
-                               <TrendingUp className="h-4 w-4 text-green-600" />
-                             ) : (
-                               <TrendingDown className="h-4 w-4 text-red-600" />
-                             )}
-                             <span className="font-medium">
-                               {transacao.tipo === 'credito' ? 'Crédito' : 'Débito'}
-                             </span>
-                             <Badge variant={transacao.tipo === 'credito' ? 'default' : 'destructive'}>
-                               {transacao.tipo === 'credito' ? '+' : '-'}R$ {Number(transacao.valor).toFixed(2)}
-                             </Badge>
-                           </div>
-                           <p className="text-sm text-muted-foreground mt-1">
-                             {transacao.descricao}
-                           </p>
-                           <p className="text-xs text-muted-foreground">
-                             {format(new Date(transacao.data_evento || transacao.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                           </p>
-                           {transacao.tipo_evento && (
-                             <p className="text-xs text-blue-600">
-                               {transacao.tipo_evento === 'os_carteira' ? 'Débito OS' :
-                                transacao.tipo_evento === 'pagamento_os' ? 'Pagamento OS' :
-                                'Movimentação Manual'}
-                             </p>
-                           )}
-                         </div>
-                         <div className="text-right">
-                           {transacao.saldo_novo !== undefined && (
-                             <div className="text-sm font-medium">
-                               Saldo: R$ {Number(transacao.saldo_novo).toFixed(2)}
-                             </div>
-                           )}
-                         </div>
-                       </div>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              {transacao.tipo === 'credito' ? (
+                                <TrendingUp className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <TrendingDown className="h-4 w-4 text-red-600" />
+                              )}
+                              <span className="font-medium">
+                                {transacao.forma_pagamento || (transacao.tipo === 'credito' ? 'Crédito Carteira' : 'Carteira')}
+                              </span>
+                              <Badge variant={transacao.tipo === 'credito' ? 'default' : 'destructive'}>
+                                {transacao.tipo === 'credito' ? '+' : '-'}R$ {Number(transacao.valor).toFixed(2)}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {transacao.descricao}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(transacao.data_evento || transacao.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                            </p>
+                            {transacao.tipo_evento && (
+                              <p className="text-xs text-blue-600">
+                                {transacao.tipo_evento === 'os_carteira' ? 'Débito OS' :
+                                 transacao.tipo_evento === 'pagamento_os' ? 'Pagamento OS' :
+                                 'Movimentação Manual'}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            {transacao.saldo_novo !== undefined && (
+                              <div className="text-sm font-medium">
+                                Saldo: R$ {Number(transacao.saldo_novo).toFixed(2)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                        {index < historico.length - 1 && <Separator className="mt-3" />}
                      </div>
                    ))

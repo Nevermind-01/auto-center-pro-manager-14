@@ -129,15 +129,16 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
         });
       });
 
-      // 2. Processar pagamentos posteriores/avulsos no período
+      // 2. Processar TODOS os pagamentos posteriores válidos no período
       pagamentosResult.data?.forEach((pagamento: any) => {
         const venda = pagamento.vendas;
         
-        // Se a venda não foi finalizada no período atual, adicionar como entrada separada
-        const vendaJaIncluida = venda && vendasResult.data.some((v: any) => v.id === venda.id);
+        // Filtrar apenas pagamentos válidos (valor > 0 e não automáticos do sistema)
+        const isValorValido = pagamento.valor_pago > 0;
+        const isFormaPagamentoValida = pagamento.forma_pagamento !== 'carteira' || pagamento.valor_pago > 0;
         
-        if (!vendaJaIncluida && venda) {
-          // Pagamento de venda de outro período - incluir como entrada separada
+        if (venda && isValorValido && isFormaPagamentoValida) {
+          // Incluir SEMPRE como entrada separada (independente se a venda já foi incluída)
           historico.push({
             id: `pagamento-${pagamento.id}`,
             numero_os: venda.numero_os,

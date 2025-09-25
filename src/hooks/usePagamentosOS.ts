@@ -334,7 +334,7 @@ export function usePagamentosOS() {
           `)
           .eq("cliente_id", clienteId)
           .eq("empresa_id", empresaAtual.id)
-          .in("status", ["finalizada", "finalizada-carteira"])
+          .in("status", ["finalizada-carteira"])
           .order("updated_at", { ascending: false });
 
         if (error) throw error;
@@ -378,21 +378,6 @@ export function usePagamentosOS() {
                 forma_pagamento: "carteira" as any,
                 data_pagamento: venda.finalizado_em,
                 observacoes: "Finalização via carteira (débito inicial)"
-              });
-            }
-          } else if (venda.status === "finalizada") {
-            // OSs finalizadas diretamente são consideradas concluídas
-            foiConcluida = true;
-            
-            // Se não tem pagamentos posteriores, considerar o pagamento da finalização
-            if (!pagamentos || pagamentos.length === 0) {
-              pagamentosHistorico.push({
-                id: `finalizacao-${venda.id}`,
-                valor_pago: venda.valor_final,
-                valor_restante: 0,
-                forma_pagamento: "dinheiro" as any,
-                data_pagamento: venda.finalizado_em,
-                observacoes: "Pagamento na finalização"
               });
             }
           }

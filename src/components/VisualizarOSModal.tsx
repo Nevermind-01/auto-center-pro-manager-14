@@ -6,11 +6,13 @@ import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useOSDetails } from "@/hooks/useOSDetails";
+import { usePagamentosOS } from "@/hooks/usePagamentosOS";
+import { useMultiplePaymentForms } from "@/hooks/useMultiplePaymentForms";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { usePrintGenerator } from "@/hooks/usePrintGenerator";
 import { PrintModal } from "@/components/print/PrintModal";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   User, 
   Car, 
@@ -22,7 +24,10 @@ import {
   MapPin,
   Phone,
   Hash,
-  X
+  X,
+  Wallet,
+  Clock,
+  CheckCircle2
 } from "lucide-react";
 
 interface VisualizarOSModalProps {
@@ -35,6 +40,7 @@ const getStatusBadge = (status: string) => {
   const statusConfig = {
     pendente: { variant: 'secondary' as const, label: 'Pendente' },
     finalizada: { variant: 'default' as const, label: 'Finalizada' },
+    'finalizada-carteira': { variant: 'outline' as const, label: 'Finalizada - Carteira' },
     cancelada: { variant: 'destructive' as const, label: 'Cancelada' }
   };
   
@@ -65,7 +71,36 @@ const formatCurrency = (value: number) => {
 
 export const VisualizarOSModal = ({ open, onOpenChange, osId }: VisualizarOSModalProps) => {
   const { data: osDetails, isLoading } = useOSDetails(osId);
+  const { getHistoricoPagamentos } = usePagamentosOS(); 
+  const { buscarFormasPagamento } = useMultiplePaymentForms();
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [historicoCarteiraOS, setHistoricoCarteiraOS] = useState<any[]>([]);
+  const [formasPagamentoOS, setFormasPagamentoOS] = useState<any[]>([]);
+
+  // Buscar histórico de pagamentos se for OS finalizada-carteira
+  const historicoQuery = getHistoricoPagamentos(
+    osDetails?.status === 'finalizada-carteira' && osId ? osId : ''
+  );
+
+  useEffect(() => {
+    if (osDetails?.status === 'finalizada-carteira' && historicoQuery.data) {
+      setHistoricoCarteiraOS(historicoQuery.data);
+    } else {
+      setHistoricoCarteiraOS([]);
+    }
+  }, [osDetails?.status, historicoQuery.data]);
+
+  // Buscar múltiplas formas de pagamento
+  useEffect(() => {
+    const carregarFormasPagamento = async () => {
+      if (osId && osDetails) {
+        const formas = await buscarFormasPagamento(osId);
+        setFormasPagamentoOS(formas);
+      }
+    };
+
+    carregarFormasPagamento();
+  }, [osId, osDetails, buscarFormasPagamento]);
 
   const handlePrint = () => {
     if (!osDetails) return;
@@ -330,27 +365,161 @@ export const VisualizarOSModal = ({ open, onOpenChange, osId }: VisualizarOSModa
                   Pagamento
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div>
-                  <span className="font-medium">Forma de Pagamento:</span>
-                  <p className="capitalize">{osDetails.forma_pagamento}</p>
+              <CardContent className="space-y-4">
+                {/* Resumo Financeiro */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <span className="font-medium">Valor Total:</span>
+                    <p>{formatCurrency(osDetails.valor_total)}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Desconto:</span>
+                    <p>{formatCurrency(osDetails.valor_desconto)}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Valor Final:</span>
+                    <p className="font-bold text-lg">{formatCurrency(osDetails.valor_final)}</p>
+                  </div>
+                  {osDetails.status === 'finalizada-carteira' && historicoCarteiraOS.length > 0 && (
+                    <div>
+                      <span className="font-medium">Valor Pago:</span>
+                      <p className="text-green-600 font-semibold">
+                        {formatCurrency(
+                          historicoCarteiraOS
+                            .filter(h => h.valor_pago > 0)
+                            .reduce((total, pagamento) => total + pagamento.valor_pago, 0)
+                        )}
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <span className="font-medium">Parcelas:</span>
-                  <p>{osDetails.parcelas}x</p>
-                </div>
-                <div>
-                  <span className="font-medium">Valor Total:</span>
-                  <p>{formatCurrency(osDetails.valor_total)}</p>
-                </div>
-                <div>
-                  <span className="font-medium">Desconto:</span>
-                  <p>{formatCurrency(osDetails.valor_desconto)}</p>
-                </div>
-                <div>
-                  <span className="font-medium">Valor Final:</span>
-                  <p className="font-bold text-lg">{formatCurrency(osDetails.valor_final)}</p>
-                </div>
+
+                {/* Formas de Pagamento */}
+                {formasPagamentoOS.length > 0 ? (
+                  <div className="space-y-3">
+                    <h4 className="font-medium">Formas de Pagamento:</h4>
+                    <div className="grid gap-2">
+                      {formasPagamentoOS.map((forma, index) => (
+                        <div key={forma.id} className="flex items-center justify-between p-3 bg-accent/50 rounded-md">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">
+                              {index + 1}. {forma.forma_pagamento === 'credito' ? 'Cartão de Crédito' : 
+                                 forma.forma_pagamento === 'debito' ? 'Cartão de Débito' :
+                                 forma.forma_pagamento === 'pix' ? 'PIX' :
+                                 forma.forma_pagamento === 'carteira' ? 'Carteira' : 
+                                 forma.forma_pagamento.charAt(0).toUpperCase() + forma.forma_pagamento.slice(1)}
+                            </span>
+                            {forma.parcelas > 1 && (
+                              <Badge variant="secondary">{forma.parcelas}x</Badge>
+                            )}
+                          </div>
+                          <span className="font-semibold">{formatCurrency(forma.valor)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="font-medium">Forma de Pagamento:</span>
+                      <p className="capitalize">{osDetails.forma_pagamento}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium">Parcelas:</span>
+                      <p>{osDetails.parcelas}x</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Status de Pagamento para Carteira */}
+                {osDetails.status === 'finalizada-carteira' && (
+                  <div className="border-t pt-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Wallet className="h-4 w-4" />
+                      <h4 className="font-medium">Status de Pagamento via Carteira</h4>
+                    </div>
+                    
+                    {historicoCarteiraOS.length > 0 ? (
+                      <div className="space-y-3">
+                        {/* Progresso */}
+                        <div className="grid grid-cols-3 gap-4 p-3 bg-blue-50 rounded-md">
+                          <div className="text-center">
+                            <div className="text-sm text-muted-foreground">Valor Pago</div>
+                            <div className="font-semibold text-green-600">
+                              {formatCurrency(
+                                historicoCarteiraOS
+                                  .filter(h => h.valor_pago > 0)
+                                  .reduce((total, pagamento) => total + pagamento.valor_pago, 0)
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-sm text-muted-foreground">Valor Restante</div>
+                            <div className="font-semibold text-orange-600">
+                              {formatCurrency(
+                                historicoCarteiraOS.length > 0 
+                                  ? historicoCarteiraOS[historicoCarteiraOS.length - 1].valor_restante 
+                                  : osDetails.valor_final
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-sm text-muted-foreground">Status</div>
+                            <div className="flex items-center justify-center gap-1">
+                              {historicoCarteiraOS.some(h => h.valor_restante === 0) ? (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                  <span className="text-green-600 font-semibold">Pago</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Clock className="h-4 w-4 text-orange-500" />
+                                  <span className="text-orange-600 font-semibold">Pendente</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Histórico de Pagamentos */}
+                        <div>
+                          <h5 className="text-sm font-medium mb-2">Histórico de Pagamentos:</h5>
+                          <div className="space-y-2">
+                            {historicoCarteiraOS.map((pagamento, index) => (
+                              <div key={pagamento.id || index} className="flex items-center justify-between p-2 bg-accent/30 rounded text-sm">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                  <span>{formatDate(pagamento.data_pagamento)}</span>
+                                  <span className="text-muted-foreground">({pagamento.forma_pagamento})</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {pagamento.valor_pago > 0 && (
+                                    <span className="text-green-600 font-medium">
+                                      +{formatCurrency(pagamento.valor_pago)}
+                                    </span>
+                                  )}
+                                  <span className="text-xs text-muted-foreground">
+                                    Restante: {formatCurrency(pagamento.valor_restante)}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {historicoCarteiraOS.length > 0 && historicoCarteiraOS[0].observacoes && (
+                            <p className="text-xs text-muted-foreground mt-2 italic">
+                              {historicoCarteiraOS[0].observacoes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-muted-foreground">
+                        <Clock className="h-8 w-8 mx-auto mb-2" />
+                        <p>Nenhum pagamento registrado ainda</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

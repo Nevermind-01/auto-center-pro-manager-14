@@ -21,6 +21,8 @@ import { PrintModal } from "@/components/print/PrintModal";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
 import { useCarteiraCliente } from "@/hooks/useCarteiraCliente";
+import { useMultiplePaymentForms } from "@/hooks/useMultiplePaymentForms";
+import { MultiplePaymentForms, type FormaPagamentoMultipla } from "@/components/MultiplePaymentForms";
 import { type FormaPagamento, isValidFormaPagamento, getAvailablePaymentMethods } from "@/lib/paymentMethodMapper";
 import { formatCurrency } from "@/lib/utils";
 import { ProdutoOnlyWarningModal } from "@/components/ProdutoOnlyWarningModal";
@@ -41,14 +43,14 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
   const { createComissao } = useComissoesMutations();
   const { criarMovimentacaoAsync } = useMovimentacoesCaixa();
   const { getCarteiraCliente, debitarCarteira } = useCarteiraCliente();
+  const { criarFormaPadrao, validarFormas, salvarFormasPagamento } = useMultiplePaymentForms();
   const estoqueManager = useSupabaseEstoque();
 
   // Estados para a finalização
   const [tipoDesconto, setTipoDesconto] = useState<'percentual' | 'fixo'>('percentual');
   const [descontoPercentual, setDescontoPercentual] = useState(0);
   const [descontoFixo, setDescontoFixo] = useState(0);
-  const [formaPagamento, setFormaPagamento] = useState("");
-  const [parcelas, setParcelas] = useState(1);
+  const [formasPagamento, setFormasPagamento] = useState<FormaPagamentoMultipla[]>([]);
   const [observacoes, setObservacoes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -76,6 +78,12 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
   const carteiraQuery = getCarteiraCliente(venda?.cliente_id || '');
   const saldoCarteira = carteiraQuery.data?.saldo_atual || 0;
 
+  // Verificar se tem carteira nas formas de pagamento
+  const temCarteira = formasPagamento.some(forma => forma.forma_pagamento === 'carteira');
+  const valorCarteira = formasPagamento
+    .filter(forma => forma.forma_pagamento === 'carteira')
+    .reduce((total, forma) => total + forma.valor, 0);
+
   // Resetar valores quando a modal abrir/fechar ou venda mudar
   useEffect(() => {
     if (open && venda) {
@@ -86,8 +94,15 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
       setTipoDesconto('percentual');
       setDescontoPercentual(descontoPercentualCalculado);
       setDescontoFixo(0);
-      setFormaPagamento(venda.forma_pagamento || '');
-      setParcelas(venda.parcelas || 1);
+      
+      // Criar forma padrão baseada na venda existente
+      const formaPagamentoExistente = venda.forma_pagamento as FormaPagamento || "dinheiro";
+      const formasPadrao = criarFormaPadrao(venda.valor_final || 0, formaPagamentoExistente);
+      if (venda.parcelas && venda.parcelas > 1) {
+        formasPadrao[0].parcelas = venda.parcelas;
+      }
+      setFormasPagamento(formasPadrao);
+      
       setObservacoes(venda.observacoes || '');
       
       // Reset comissão
@@ -114,8 +129,7 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
       setTipoDesconto('percentual');
       setDescontoPercentual(0);
       setDescontoFixo(0);
-      setFormaPagamento("");
-      setParcelas(1);
+      setFormasPagamento([]);
       setObservacoes("");
       setRegistrarComissao(false);
       setTemComissaoRegistrada(false);
@@ -124,7 +138,7 @@ export const FinalizarOSModal = ({ open, onOpenChange, venda }: FinalizarOSModal
       setValorFixo('');
       setObsComissao('');
     }
-  }, [open, venda]);
+  }, [open, venda, criarFormaPadrao]);
 
   // Cálculos de valores
   const produtos = venda?.venda_produtos || [];
@@ -158,26 +172,15 @@ const valorFinal = valorTotal - valorDesconto;
   // Hook para proteção contra múltiplos cliques
   const { execute: executarFinalizacao, isLoading: finalizandoOS } = useAsyncAction(
     async () => {
-      // Validações obrigatórias
-      if (!formaPagamento) {
+      // Validações obrigatórias das formas de pagamento
+      const validacao = validarFormas(formasPagamento, valorFinal, saldoCarteira);
+      if (!validacao.isValid) {
         toast({
-          title: "Erro", 
-          description: "Selecione uma forma de pagamento.",
+          title: "Erro nas formas de pagamento", 
+          description: validacao.errors.join(". "),
           variant: "destructive",
         });
         return;
-      }
-
-      // Validação específica para carteira
-      if (formaPagamento === 'carteira') {
-        if (saldoCarteira < valorFinal) {
-          toast({
-            title: "Saldo insuficiente", 
-            description: `Saldo da carteira: ${formatCurrency(saldoCarteira)}. Valor necessário: ${formatCurrency(valorFinal)}`,
-            variant: "destructive",
-          });
-          return;
-        }
       }
 
       const produtos = venda?.venda_produtos || [];
@@ -285,17 +288,18 @@ const valorFinal = valorTotal - valorDesconto;
         }
 
         // Validar forma de pagamento antes de salvar
-        if (!isValidFormaPagamento(formaPagamento)) {
+        const formasValidas = formasPagamento.filter(f => f.forma_pagamento && f.valor > 0);
+        if (formasValidas.length === 0) {
           toast({
             title: "Erro",
-            description: "Forma de pagamento inválida.",
+            description: "Pelo menos uma forma de pagamento é obrigatória.",
             variant: "destructive",
           });
           return;
         }
 
-        // Determinar o novo status baseado na forma de pagamento
-        const novoStatus: "finalizada" | "finalizada-carteira" = formaPagamento === 'carteira' 
+        // Determinar o novo status baseado se tem carteira
+        const novoStatus: "finalizada" | "finalizada-carteira" = temCarteira 
           ? "finalizada-carteira" 
           : "finalizada";
 
@@ -305,8 +309,8 @@ const valorFinal = valorTotal - valorDesconto;
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: formaPagamento,
-          parcelas: formaPagamento === 'credito' ? parcelas : 1,
+          forma_pagamento: formasValidas[0].forma_pagamento as FormaPagamento, // Primeira forma para compatibilidade
+          parcelas: formasValidas[0].forma_pagamento === 'credito' ? formasValidas[0].parcelas : 1,
           observacoes: observacoes || null,
           status: novoStatus,
           finalizado_em: new Date().toISOString()
@@ -326,33 +330,49 @@ const valorFinal = valorTotal - valorDesconto;
           });
         }
 
-        // Debitar da carteira se for pagamento via carteira
-        if (formaPagamento === 'carteira') {
+        // Salvar múltiplas formas de pagamento
+        await salvarFormasPagamento(venda.id, formasPagamento);
+
+        // Debitar da carteira se houver carteira
+        if (temCarteira) {
           await debitarCarteira.mutateAsync({
             clienteId: venda.cliente_id,
-            valor: valorFinal,
+            valor: valorCarteira,
             descricao: `OS ${venda.numero_os}`,
             osId: venda.id
           });
         }
 
-        // Usar forma de pagamento direta (agora unificada)
-        
-        // Registrar movimentação no caixa com lógica especial para carteira
+        // Processar movimentações de caixa para cada forma de pagamento
         try {
-          if (formaPagamento === 'carteira') {
-            // Para carteira, registrar movimento com valor zero (não soma no caixa físico)
-            await criarMovimentacaoAsync({
-              tipo: 'entrada',
-              tipo_origem: 'OS',
-              forma_pagamento: formaPagamento as FormaPagamento,
-              valor_bruto: 0, // Valor zero para carteira
-              valor_liquido: 0,
-              descricao: `OS ${venda.numero_os} - ${venda.cliente_nome} (Carteira Digital - Valor: R$ ${valorFinal.toFixed(2)})`,
-              referencia_id: venda.id,
-            });
+          for (const forma of formasValidas) {
+            if (forma.forma_pagamento === 'carteira') {
+              // Para carteira, registrar movimento com valor zero (não soma no caixa físico)
+              await criarMovimentacaoAsync({
+                tipo: 'entrada',
+                tipo_origem: 'OS',
+                forma_pagamento: forma.forma_pagamento,
+                valor_bruto: 0, // Valor zero para carteira
+                valor_liquido: 0,
+                descricao: `OS ${venda.numero_os} - ${venda.cliente_nome} (Carteira Digital - Valor: R$ ${forma.valor.toFixed(2)})`,
+                referencia_id: venda.id,
+              });
+            } else {
+              // Para outras formas de pagamento, registrar valor real
+              await criarMovimentacaoAsync({
+                tipo: 'entrada',
+                tipo_origem: 'OS',
+                forma_pagamento: forma.forma_pagamento as FormaPagamento,
+                valor_bruto: forma.valor,
+                valor_liquido: forma.valor,
+                descricao: `OS ${venda.numero_os} - ${venda.cliente_nome} (${forma.forma_pagamento})`,
+                referencia_id: venda.id,
+              });
+            }
+          }
 
-            // Criar registro inicial em pagamentos_os para controle de pagamentos parciais
+          // Criar registro inicial em pagamentos_os se tem carteira
+          if (temCarteira) {
             const { data: { user } } = await supabase.auth.getUser();
             const empresaAtual = await supabase.from('profiles').select('empresa_atual_id').eq('user_id', user?.id).single();
             
@@ -371,17 +391,6 @@ const valorFinal = valorTotal - valorDesconto;
             if (pagamentoError) {
               throw pagamentoError;
             }
-          } else {
-            // Para outras formas de pagamento, registrar valor real
-            await criarMovimentacaoAsync({
-              tipo: 'entrada',
-              tipo_origem: 'OS',
-              forma_pagamento: formaPagamento as FormaPagamento,
-              valor_bruto: valorFinal,
-              valor_liquido: valorFinal,
-              descricao: `OS ${venda.numero_os} - ${venda.cliente_nome}`,
-              referencia_id: venda.id,
-            });
           }
         } catch (caixaError) {
           console.error('Erro ao registrar movimentação no caixa:', caixaError);
@@ -395,9 +404,13 @@ const valorFinal = valorTotal - valorDesconto;
         }
 
         // Registrar log de finalização
+        const formasDescricao = formasValidas.map(f => 
+          f.forma_pagamento === 'credito' ? `${f.forma_pagamento} (${f.parcelas}x)` : f.forma_pagamento
+        ).join(', ');
+        
         const logDescricao = registrarComissao && tipoCalculo
-          ? `OS ${venda.numero_os} finalizada com comissão registrada - ${formaPagamento}${formaPagamento === 'credito' ? ` (${parcelas}x)` : ''}`
-          : `OS ${venda.numero_os} finalizada via modal - ${formaPagamento}${formaPagamento === 'credito' ? ` (${parcelas}x)` : ''}`;
+          ? `OS ${venda.numero_os} finalizada com comissão registrada - ${formasDescricao}`
+          : `OS ${venda.numero_os} finalizada via modal - ${formasDescricao}`;
 
         await createLog.mutateAsync({
           os_id: venda.id,
@@ -422,8 +435,8 @@ const valorFinal = valorTotal - valorDesconto;
             valor_total: valorTotal,
             valor_desconto: valorDesconto,
             valor_final: valorFinal,
-            forma_pagamento: formaPagamento,
-            parcelas: formaPagamento === 'credito' ? parcelas : 1,
+            forma_pagamento: formasValidas[0].forma_pagamento,
+            parcelas: formasValidas[0].forma_pagamento === 'credito' ? formasValidas[0].parcelas : 1,
             observacoes: observacoes || null,
             status: 'finalizada',
             finalizado_em: new Date().toISOString()

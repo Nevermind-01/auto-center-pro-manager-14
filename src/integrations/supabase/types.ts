@@ -1072,6 +1072,45 @@ export type Database = {
           },
         ]
       }
+      os_formas_pagamento: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
+          id: string
+          observacoes: string | null
+          ordem: number
+          os_id: string
+          parcelas: number
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
+          id?: string
+          observacoes?: string | null
+          ordem?: number
+          os_id: string
+          parcelas?: number
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          forma_pagamento?: Database["public"]["Enums"]["forma_pagamento"]
+          id?: string
+          observacoes?: string | null
+          ordem?: number
+          os_id?: string
+          parcelas?: number
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: []
+      }
       pagamentos_os: {
         Row: {
           created_at: string

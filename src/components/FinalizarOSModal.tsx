@@ -813,108 +813,42 @@ const valorFinal = valorTotal - valorDesconto;
               </CardContent>
             </Card>
 
-            {/* Forma de pagamento */}
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="forma-pagamento">Forma de Pagamento *</Label>
-                <Select value={formaPagamento} onValueChange={setFormaPagamento}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                    <SelectItem value="pix">PIX</SelectItem>
-                    <SelectItem value="debito">Cartão de Débito</SelectItem>
-                    <SelectItem value="credito">Cartão de Crédito</SelectItem>
-                    <SelectItem value="cheque">Cheque</SelectItem>
-                    <SelectItem value="boleto">Boleto Bancário</SelectItem>
-                    <SelectItem value="carteira">Carteira Digital</SelectItem>
-                    <SelectItem value="outros">Outros</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Múltiplas Formas de Pagamento */}
+            <MultiplePaymentForms
+              formasPagamento={formasPagamento}
+              onChange={setFormasPagamento}
+              valorTotal={valorFinal}
+              saldoCarteira={saldoCarteira}
+              clienteSelecionado={venda?.cliente}
+              disabled={finalizandoOS}
+            />
 
-              {/* Saldo da carteira (se carteira digital) */}
-              {formaPagamento === "carteira" && (
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Wallet className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-800">Carteira Digital</span>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span>Saldo disponível:</span>
-                      <span className="font-semibold">{formatCurrency(saldoCarteira)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Valor da OS:</span>
-                      <span className="font-semibold">{formatCurrency(valorFinal)}</span>
-                    </div>
-                    {saldoCarteira >= valorFinal ? (
-                      <div className="text-xs text-green-700 bg-green-100 px-2 py-1 rounded mt-2">
-                        ✓ Saldo suficiente
-                      </div>
-                    ) : (
-                      <div className="text-xs text-red-700 bg-red-100 px-2 py-1 rounded mt-2">
-                        ✗ Saldo insuficiente
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+            {/* Observações */}
+            <div className="space-y-2">
+              <Label htmlFor="observacoes">Observações</Label>
+              <Textarea
+                id="observacoes"
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
+                placeholder="Observações adicionais..."
+                rows={3}
+                disabled={finalizandoOS}
+              />
+            </div>
 
-              {/* Parcelas (se cartão de crédito) */}
-              {formaPagamento === "credito" && (
-                <div>
-                  <Label htmlFor="parcelas">Número de Parcelas</Label>
-                  <Select value={parcelas.toString()} onValueChange={(value) => setParcelas(parseInt(value))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[2, 3, 4, 5, 6, 10, 12].map((num) => (
-                        <SelectItem key={num} value={num.toString()}>
-                          {num}x de R$ {(valorFinal / num).toFixed(2)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Observações */}
-              <div>
-                <Label htmlFor="observacoes">Observações</Label>
-                <Textarea
-                  id="observacoes"
-                  value={observacoes}
-                  onChange={(e) => setObservacoes(e.target.value)}
-                  placeholder="Observações adicionais..."
-                  rows={3}
-                />
-              </div>
-
-              {/* Opção de imprimir após finalização */}
-              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
-                <input
-                  type="checkbox"
-                  id="imprimir-finalizacao"
-                  checked={imprimirAposFinalizacao}
-                  onChange={(e) => setImprimirAposFinalizacao(e.target.checked)}
-                  className="rounded"
-                />
-                <Label htmlFor="imprimir-finalizacao" className="text-sm cursor-pointer">
-                  🖨️ Abrir impressão da fatura após finalizar
-                </Label>
-              </div>
-
-              {/* Alertas */}
-              {!formaPagamento && (
-                <div className="flex items-center gap-2 p-3 bg-yellow-50 text-yellow-800 rounded-lg text-sm">
-                  <AlertTriangle className="h-4 w-4" />
-                  Selecione uma forma de pagamento para continuar
-                </div>
-              )}
+            {/* Opção de imprimir após finalização */}
+            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+              <input
+                type="checkbox"
+                id="imprimir-finalizacao"
+                checked={imprimirAposFinalizacao}
+                onChange={(e) => setImprimirAposFinalizacao(e.target.checked)}
+                className="rounded"
+                disabled={finalizandoOS}
+              />
+              <Label htmlFor="imprimir-finalizacao" className="text-sm cursor-pointer">
+                🖨️ Abrir impressão da fatura após finalizar
+              </Label>
             </div>
           </div>
         </div>
@@ -926,7 +860,7 @@ const valorFinal = valorTotal - valorDesconto;
           </Button>
           <Button 
             onClick={handleFinalizarOS} 
-            disabled={!formaPagamento || finalizandoOS}
+            disabled={formasPagamento.length === 0 || !formasPagamento.some(f => f.forma_pagamento && f.valor > 0) || finalizandoOS}
           >
             {finalizandoOS ? "Finalizando..." : (registrarComissao && tipoCalculo ? "Finalizar OS e Registrar Comissão" : "Finalizar OS")}
           </Button>

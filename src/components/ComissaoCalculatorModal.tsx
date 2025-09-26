@@ -121,7 +121,7 @@ export const ComissaoCalculatorModal = ({
         throw new Error("Mecânico não selecionado");
       }
 
-      if (!formaPagamento || formaPagamento.trim() === "") {
+      if (!formaPagamentoPrincipal || formaPagamentoPrincipal.trim() === "") {
         throw new Error("Forma de pagamento não selecionada");
       }
 
@@ -164,8 +164,8 @@ export const ComissaoCalculatorModal = ({
         valorTotal: valorTotal,
         valorDesconto: valorDesconto || 0,
         valorFinal,
-        formaPagamento,
-        parcelas: parcelas || 1,
+        formaPagamento: formaPagamentoPrincipal,
+        parcelas: parcelasPrincipal || 1,
         observacoes: observacoes || "",
         produtos: (produtosSelecionados || []).map(p => ({
           id: p.id,
@@ -217,7 +217,7 @@ export const ComissaoCalculatorModal = ({
           await criarMovimentacaoAsync({
             tipo: 'entrada',
             tipo_origem: 'OS',
-            forma_pagamento: formaPagamento as FormaPagamento,
+            forma_pagamento: formaPagamentoPrincipal as FormaPagamento,
             valor_bruto: valorFinal,
             valor_liquido: valorFinal,
             descricao: `OS ${numeroOS} - ${clienteSelecionado.nome}`,

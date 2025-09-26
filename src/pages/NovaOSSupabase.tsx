@@ -36,6 +36,8 @@ import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
 import { useCarteiraCliente } from "@/hooks/useCarteiraCliente";
 import { useCaixa } from "@/hooks/useCaixa";
 import { type FormaPagamento, isValidFormaPagamento, getAvailablePaymentMethods } from "@/lib/paymentMethodMapper";
+import { MultiplePaymentForms, type FormaPagamentoMultipla } from "@/components/MultiplePaymentForms";
+import { useMultiplePaymentForms } from "@/hooks/useMultiplePaymentForms";
 import { 
   Plus, 
   Search, 
@@ -102,6 +104,7 @@ const NovaOSSupabase = () => {
   const { criarMovimentacaoAsync } = useMovimentacoesCaixa();
   const { getCarteiraCliente, debitarCarteira } = useCarteiraCliente();
   const { caixaAtual } = useCaixa();
+  const { validarFormas, criarFormaPadrao, salvarFormasPagamento } = useMultiplePaymentForms();
   
   // Validation
   const { validateClienteData } = useClienteValidation();
@@ -165,8 +168,7 @@ const NovaOSSupabase = () => {
   const [tipoDesconto, setTipoDesconto] = useState<'percentual' | 'fixo'>('percentual');
   const [descontoPercentual, setDescontoPercentual] = useState(0);
   const [descontoFixo, setDescontoFixo] = useState(0);
-  const [formaPagamento, setFormaPagamento] = useState<FormaPagamento | "">("");
-  const [parcelas, setParcelas] = useState(1);
+  const [formasPagamento, setFormasPagamento] = useState<FormaPagamentoMultipla[]>([]);
   const [observacoes, setObservacoes] = useState("");
   const [numeroOS, setNumeroOS] = useState("");
 
@@ -186,9 +188,10 @@ const NovaOSSupabase = () => {
   const [valorServicosParaComissao, setValorServicosParaComissao] = useState<number>(0);
   const [valorTotalParaComissao, setValorTotalParaComissao] = useState<number>(0);
 
-  // Hook da carteira do cliente selecionado - só busca se forma de pagamento for carteira
+  // Hook da carteira do cliente selecionado - só busca se alguma forma for carteira
+  const temCarteira = formasPagamento.some(f => f.forma_pagamento === 'carteira');
   const carteiraQuery = getCarteiraCliente(
-    formaPagamento === 'carteira' && clienteSelecionado?.id ? clienteSelecionado.id : ''
+    temCarteira && clienteSelecionado?.id ? clienteSelecionado.id : ''
   );
   const saldoCarteira = carteiraQuery.data?.saldo_atual || 0;
 
@@ -240,15 +243,18 @@ const NovaOSSupabase = () => {
           setDescontoPercentual(descontoPercentualCalculado);
           setDescontoFixo(0);
           
-          // Mapear forma de pagamento antiga para nova (se necessário)
+          // Criar forma de pagamento padrão baseada nos dados existentes
           const formaPagamentoMapeada = (() => {
             const fpOriginal = vendaParaEditar.forma_pagamento || '';
             if (fpOriginal === 'cartao' || fpOriginal === 'parcelado') return 'credito';
-            if (!isValidFormaPagamento(fpOriginal)) return '';
+            if (!isValidFormaPagamento(fpOriginal)) return 'dinheiro';
             return fpOriginal;
           })();
-          setFormaPagamento(formaPagamentoMapeada);
-          setParcelas(vendaParaEditar.parcelas || 1);
+          const formasPadrao = criarFormaPadrao(vendaParaEditar.valor_final, formaPagamentoMapeada);
+          if (formaPagamentoMapeada === 'credito') {
+            formasPadrao[0].parcelas = vendaParaEditar.parcelas || 1;
+          }
+          setFormasPagamento(formasPadrao);
           setObservacoes(vendaParaEditar.observacoes || '');
           
           // Buscar cliente - agora garantimos que a lista já está carregada
@@ -359,8 +365,7 @@ const NovaOSSupabase = () => {
     setTipoDesconto('percentual');
     setDescontoPercentual(0);
     setDescontoFixo(0);
-    setFormaPagamento("");
-    setParcelas(1);
+    setFormasPagamento([]);
     setObservacoes("");
     setSearchClienteTerm("");
     setSearchProdutoTerm("");
@@ -750,8 +755,8 @@ const NovaOSSupabase = () => {
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: (formaPagamento || 'dinheiro') as FormaPagamento,
-          parcelas: formaPagamento === 'credito' ? parcelas : 1,
+          forma_pagamento: formasPagamento[0]?.forma_pagamento || 'dinheiro',
+          parcelas: formasPagamento[0]?.forma_pagamento === 'credito' ? formasPagamento[0]?.parcelas || 1 : 1,
           observacoes: observacoes || null
         });
 
@@ -814,8 +819,8 @@ const NovaOSSupabase = () => {
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: (formaPagamento || 'dinheiro') as FormaPagamento,
-          parcelas: formaPagamento === 'credito' ? parcelas : 1,
+          forma_pagamento: formasPagamento[0]?.forma_pagamento || 'dinheiro',
+          parcelas: formasPagamento[0]?.forma_pagamento === 'credito' ? formasPagamento[0]?.parcelas || 1 : 1,
           observacoes: observacoes || null,
           status: 'pendente'
         });
@@ -884,10 +889,12 @@ const NovaOSSupabase = () => {
       return;
     }
 
-    if (!formaPagamento) {
+    // Validar formas de pagamento
+    const validacao = validarFormas(formasPagamento, valorFinal, saldoCarteira);
+    if (!validacao.isValid) {
       toast({
-        title: "Erro", 
-        description: "Selecione uma forma de pagamento.",
+        title: "Erro nas formas de pagamento", 
+        description: validacao.errors.join('. '),
         variant: "destructive",
       });
       return;
@@ -902,17 +909,25 @@ const NovaOSSupabase = () => {
       return;
     }
 
-    // Validação específica para pagamento via carteira
-    if (formaPagamento === 'carteira') {
-      const saldoDisponivel = saldoCarteira;
-      if (saldoDisponivel < valorFinal) {
-        toast({
-          title: "Saldo insuficiente",
-          description: `Saldo insuficiente na carteira. Saldo atual: ${formatCurrency(saldoDisponivel)}`,
-          variant: "destructive",
-        });
-        return;
-      }
+    // Gerar número sequencial de OS apenas se não tiver
+    let numeroOSFinal = numeroOS;
+    if (!numeroOSFinal) {
+      numeroOSFinal = await generateSequentialOSNumber(empresaId!);
+      setNumeroOS(numeroOSFinal);
+    }
+
+    // Validação específica adicional para carteira (já validada antes)
+    const valorCarteira = formasPagamento
+      .filter(f => f.forma_pagamento === 'carteira')
+      .reduce((total, f) => total + f.valor, 0);
+    
+    if (valorCarteira > 0 && valorCarteira > saldoCarteira) {
+      toast({
+        title: "Saldo insuficiente",
+        description: `Saldo insuficiente na carteira. Saldo atual: R$ ${saldoCarteira.toFixed(2)}`,
+        variant: "destructive",
+      });
+      return;
     }
 
     // Validar estoque antes de finalizar
@@ -950,37 +965,14 @@ const NovaOSSupabase = () => {
 
   const processarFinalizacao = async () => {
     try {
-      // Validar forma de pagamento antes de processar
-      if (!formaPagamento) {
-        toast({
-          title: "Erro",
-          description: "Selecione uma forma de pagamento.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Validar se a forma de pagamento é válida para vendas
-      if (!isValidFormaPagamento(formaPagamento)) {
-        console.error('Forma de pagamento inválida para vendas:', formaPagamento);
-        toast({
-          title: "Erro",
-          description: "Forma de pagamento inválida. Tente novamente.",
-          variant: "destructive",
-        });
-        return;
-      }
-
       let vendaId: string;
       let numeroOSFinal = numeroOS;
 
       if (isEditing && editingVenda) {
         // Modo edição - atualizar venda existente
-        // Deletar produtos e serviços antigos
         await deleteVendaProdutos.mutateAsync(editingVenda.id);
         await deleteVendaServicos.mutateAsync(editingVenda.id);
 
-        // Atualizar venda existente para finalizada
         const vendaAtualizada = await updateVenda.mutateAsync({
           id: editingVenda.id,
           cliente_id: clienteSelecionado.id,
@@ -989,8 +981,8 @@ const NovaOSSupabase = () => {
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: formaPagamento as FormaPagamento,
-          parcelas: formaPagamento === 'credito' ? parcelas : 1,
+          forma_pagamento: formasPagamento[0]?.forma_pagamento || 'dinheiro',
+          parcelas: formasPagamento[0]?.forma_pagamento === 'credito' ? formasPagamento[0]?.parcelas || 1 : 1,
           observacoes: observacoes || null,
           status: 'finalizada',
           finalizado_em: new Date().toISOString()
@@ -1015,7 +1007,6 @@ const NovaOSSupabase = () => {
           setNumeroOS(numeroOSFinal);
         }
         
-        // Modo criação - usar numeração sequencial
         const venda = await createVenda.mutateAsync({
           numero_os: numeroOSFinal,
           cliente_id: clienteSelecionado.id,
@@ -1025,8 +1016,8 @@ const NovaOSSupabase = () => {
           valor_total: valorTotal,
           valor_desconto: valorDesconto,
           valor_final: valorFinal,
-          forma_pagamento: formaPagamento as FormaPagamento,
-          parcelas: formaPagamento === 'credito' ? parcelas : 1,
+          forma_pagamento: formasPagamento[0]?.forma_pagamento || 'dinheiro',
+          parcelas: formasPagamento[0]?.forma_pagamento === 'credito' ? formasPagamento[0]?.parcelas || 1 : 1,
           observacoes: observacoes || null,
           status: 'finalizada',
           finalizado_em: new Date().toISOString()
@@ -1078,6 +1069,9 @@ const NovaOSSupabase = () => {
         });
       }
 
+      // Salvar múltiplas formas de pagamento
+      await salvarFormasPagamento(vendaId, formasPagamento);
+
       // Dar baixa no estoque
       await estoqueManager.processarVenda(
         produtosSelecionados.map(p => ({
@@ -1094,7 +1088,7 @@ const NovaOSSupabase = () => {
       console.log('🔍 Iniciando registro de movimentação no caixa:', {
         numeroOS: numeroOSFinal,
         vendaId,
-        formaPagamento,
+        formasPagamento,
         valorFinal,
         caixaAtual: caixaAtual?.id,
         empresaId
@@ -1123,13 +1117,14 @@ const NovaOSSupabase = () => {
         skipCaixaMovement = true;
       }
 
-      // Usar forma de pagamento direta (agora unificada)
-      console.log('🔄 Forma de pagamento:', formaPagamento);
+      // Processar movimentações para cada forma de pagamento
+      console.log('🔄 Formas de pagamento:', formasPagamento);
 
       if (!skipCaixaMovement) {
         try {
-          // Processar pagamento baseado na forma
-          if (formaPagamento === 'carteira') {
+          // Processar cada forma de pagamento separadamente
+          for (const forma of formasPagamento) {
+            if (forma.forma_pagamento === 'carteira') {
             // Debitar da carteira do cliente
             await debitarCarteira.mutateAsync({
               clienteId: clienteSelecionado.id,
@@ -1142,7 +1137,7 @@ const NovaOSSupabase = () => {
             const movimentacaoData = {
               tipo: 'entrada' as const,
               tipo_origem: 'OS' as const,
-              forma_pagamento: formaPagamento as FormaPagamento,
+              forma_pagamento: 'carteira' as FormaPagamento,
               valor_bruto: 0, // Zero para não afetar caixa físico
               valor_liquido: 0, // Zero para não afetar caixa físico
               descricao: `OS ${numeroOSFinal} - Pago via carteira do cliente ${clienteSelecionado.nome}`,
@@ -1159,7 +1154,7 @@ const NovaOSSupabase = () => {
             const movimentacaoData = {
               tipo: 'entrada' as const,
               tipo_origem: 'OS' as const,
-              forma_pagamento: formaPagamento as FormaPagamento,
+              forma_pagamento: forma.forma_pagamento as FormaPagamento,
               valor_bruto: valorFinal,
               valor_liquido: valorFinal,
               descricao: `OS ${numeroOSFinal} - ${clienteSelecionado.nome}`,
@@ -1171,6 +1166,7 @@ const NovaOSSupabase = () => {
             await criarMovimentacaoAsync(movimentacaoData);
             
             console.log('✅ Movimentação registrada com sucesso no caixa');
+            }
           }
           
         } catch (caixaError: any) {
@@ -1187,7 +1183,7 @@ const NovaOSSupabase = () => {
           let errorMessage = "OS finalizada com sucesso, mas houve um problema ao registrar no caixa.";
           
           if (caixaError?.message?.includes('Forma de pagamento inválida')) {
-            errorMessage = `OS finalizada, mas forma de pagamento "${formaPagamento}" não é válida para o caixa.`;
+            errorMessage = `OS finalizada, mas forma de pagamento não é válida para o caixa.`;
           } else if (caixaError?.message?.includes('Nenhum caixa aberto')) {
             errorMessage = "OS finalizada, mas não há caixa aberto para registrar a movimentação.";
           } else if (caixaError?.message) {
@@ -1278,10 +1274,12 @@ const NovaOSSupabase = () => {
         return;
       }
 
-      if (!formaPagamento) {
+    // Validar se tem formas de pagamento válidas antes de calcular comissão
+    const formasValidas = formasPagamento.filter(f => f.forma_pagamento && f.valor > 0);
+    if (formasValidas.length === 0) {
         toast({
           title: "Erro",
-          description: "Selecione uma forma de pagamento antes de calcular a comissão.",
+          description: "Selecione pelo menos uma forma de pagamento antes de calcular a comissão.",
           variant: "destructive",
         });
         return;
@@ -2203,49 +2201,16 @@ const NovaOSSupabase = () => {
               </div>
             </div>
 
-            {/* Forma de pagamento */}
+            {/* Múltiplas formas de pagamento */}
             <div>
-              <Label htmlFor="forma-pagamento">Forma de Pagamento</Label>
-                <Select value={formaPagamento} onValueChange={(value) => setFormaPagamento(value as FormaPagamento | "")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                    <SelectItem value="pix">PIX</SelectItem>
-                    <SelectItem value="debito">Cartão de Débito</SelectItem>
-                    <SelectItem value="credito">Cartão de Crédito</SelectItem>
-                    <SelectItem value="cheque">Cheque</SelectItem>
-                    <SelectItem value="boleto">Boleto Bancário</SelectItem>
-                     <SelectItem value="carteira">
-                       Carteira Digital
-                       {formaPagamento === 'carteira' && saldoCarteira > 0 && (
-                         ` (Saldo: ${formatCurrency(saldoCarteira)})`
-                       )}
-                     </SelectItem>
-                    <SelectItem value="outros">Outros</SelectItem>
-                  </SelectContent>
-                </Select>
+              <Label>Formas de Pagamento</Label>
+              <MultiplePaymentForms
+                formasPagamento={formasPagamento}
+                onChange={setFormasPagamento}
+                valorTotal={valorFinal}
+                saldoCarteira={saldoCarteira}
+              />
             </div>
-
-            {/* Parcelas (se cartão de crédito) */}
-            {formaPagamento === "credito" && (
-              <div>
-                <Label htmlFor="parcelas">Número de Parcelas</Label>
-                <Select value={parcelas.toString()} onValueChange={(value) => setParcelas(parseInt(value))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[2, 3, 4, 5, 6, 10, 12].map((num) => (
-                      <SelectItem key={num} value={num.toString()}>
-                        {num}x de R$ {(valorFinal / num).toFixed(2)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             {/* Observações */}
             <div>
@@ -2284,7 +2249,7 @@ const NovaOSSupabase = () => {
                   <Button 
                     onClick={actions.finalizarOS} 
                     className="flex-1"
-                    disabled={isLoading('finalizarOS') || !clienteSelecionado || !formaPagamento || (produtosSelecionados.length === 0 && servicosSelecionados.length === 0)}
+                    disabled={isLoading('finalizarOS') || !clienteSelecionado || formasPagamento.length === 0 || (produtosSelecionados.length === 0 && servicosSelecionados.length === 0)}
                   >
                     <ShoppingCart className="mr-2 h-4 w-4" />
                     {isLoading('finalizarOS') ? "Finalizando..." : "Finalizar OS"}
@@ -2334,8 +2299,7 @@ const NovaOSSupabase = () => {
           veiculoSelecionado,
           servicosSelecionados,
           produtosSelecionados,
-          formaPagamento,
-          parcelas,
+          formasPagamento,
           valorDesconto,
           observacoes,
           numeroOS,

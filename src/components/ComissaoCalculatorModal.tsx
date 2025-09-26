@@ -34,8 +34,7 @@ interface ComissaoCalculatorModalProps {
     veiculoSelecionado: any;
     servicosSelecionados: any[];
     produtosSelecionados: any[];
-    formaPagamento: string;
-    parcelas: number;
+    formasPagamento: any[];
     valorDesconto: number;
     observacoes: string;
     numeroOS: string;
@@ -103,9 +102,11 @@ export const ComissaoCalculatorModal = ({
       }
 
       const { clienteSelecionado, veiculoSelecionado, servicosSelecionados, produtosSelecionados,
-              formaPagamento, parcelas, valorDesconto, observacoes, numeroOS } = osData;
+              formasPagamento, valorDesconto, observacoes, numeroOS } = osData;
 
       const valorFinal = valorTotal - (valorDesconto || 0);
+      const formaPagamentoPrincipal = formasPagamento?.[0]?.forma_pagamento || 'dinheiro';
+      const parcelasPrincipal = formaPagamentoPrincipal === 'credito' ? formasPagamento?.[0]?.parcelas || 1 : 1;
 
       // Validações obrigatórias mais específicas
       if (!clienteSelecionado?.id || !clienteSelecionado?.nome) {

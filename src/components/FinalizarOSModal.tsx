@@ -333,42 +333,26 @@ const valorFinal = valorTotal - valorDesconto;
         // Salvar múltiplas formas de pagamento
         await salvarFormasPagamento(venda.id, formasPagamento);
 
-        // Debitar da carteira se houver carteira
-        if (temCarteira) {
-          await debitarCarteira.mutateAsync({
-            clienteId: venda.cliente_id,
-            valor: valorCarteira,
-            descricao: `OS ${venda.numero_os}`,
-            osId: venda.id
-          });
-        }
+        // NÃO debitar da carteira - o valor fica pendente para pagamento posterior
 
-        // Processar movimentações de caixa para cada forma de pagamento
+        // Processar movimentações de caixa apenas para formas não-carteira
         try {
           for (const forma of formasValidas) {
+            // Pular formas "carteira" - não registram movimento de caixa pois ficam pendentes
             if (forma.forma_pagamento === 'carteira') {
-              // Para carteira, registrar movimento com valor zero (não soma no caixa físico)
-              await criarMovimentacaoAsync({
-                tipo: 'entrada',
-                tipo_origem: 'OS',
-                forma_pagamento: forma.forma_pagamento,
-                valor_bruto: 0, // Valor zero para carteira
-                valor_liquido: 0,
-                descricao: `OS ${venda.numero_os} - ${venda.cliente_nome} (Carteira Digital - Valor: R$ ${forma.valor.toFixed(2)})`,
-                referencia_id: venda.id,
-              });
-            } else {
-              // Para outras formas de pagamento, registrar valor real
-              await criarMovimentacaoAsync({
-                tipo: 'entrada',
-                tipo_origem: 'OS',
-                forma_pagamento: forma.forma_pagamento as FormaPagamento,
-                valor_bruto: forma.valor,
-                valor_liquido: forma.valor,
-                descricao: `OS ${venda.numero_os} - ${venda.cliente_nome} (${forma.forma_pagamento})`,
-                referencia_id: venda.id,
-              });
+              continue;
             }
+            
+            // Para outras formas de pagamento, registrar valor real
+            await criarMovimentacaoAsync({
+              tipo: 'entrada',
+              tipo_origem: 'OS',
+              forma_pagamento: forma.forma_pagamento as FormaPagamento,
+              valor_bruto: forma.valor,
+              valor_liquido: forma.valor,
+              descricao: `OS ${venda.numero_os} - ${venda.cliente_nome} (${forma.forma_pagamento})`,
+              referencia_id: venda.id,
+            });
           }
 
           // Criar registro inicial em pagamentos_os se tem carteira

@@ -89,10 +89,10 @@ export function usePagamentosOS() {
             .select("forma_pagamento, valor")
             .eq("os_id", venda.id);
 
-          // Calcular valor já pago em formas não-carteira (no momento da finalização)
+          // Calcular valor já pago em TODAS as formas (incluindo carteira) no momento da finalização
+          // A carteira já foi debitada, então é valor efetivamente pago
           const valorPagoFinalizacao = formasPagamento
-            ?.filter(f => f.forma_pagamento !== 'carteira')
-            .reduce((acc, f) => acc + Number(f.valor), 0) || 0;
+            ?.reduce((acc, f) => acc + Number(f.valor), 0) || 0;
 
           // Buscar pagamentos posteriores
           const { data: pagamentos, error: pagError } = await supabase

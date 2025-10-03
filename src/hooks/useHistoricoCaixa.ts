@@ -19,6 +19,12 @@ export interface HistoricoVenda {
   tipo_entrada: 'finalizacao' | 'pagamento_posterior';
   valor_pago_posterior?: number;
   forma_pagamento_posterior?: string;
+  formas_pagamento?: Array<{
+    forma_pagamento: string;
+    valor: number;
+    parcelas: number;
+    ordem: number;
+  }>;
 }
 
 export interface FiltrosPeriodo {
@@ -100,6 +106,22 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
       if (comissoesResult.error) throw comissoesResult.error;
       if (pagamentosResult.error) throw pagamentosResult.error;
 
+      // Buscar formas de pagamento para todas as vendas
+      const vendasComFormas = await Promise.all(
+        vendasResult.data.map(async (venda: any) => {
+          const { data: formas } = await supabase
+            .from('os_formas_pagamento')
+            .select('forma_pagamento, valor, parcelas, ordem')
+            .eq('os_id', venda.id)
+            .order('ordem');
+          
+          return {
+            ...venda,
+            formas_pagamento: formas || []
+          };
+        })
+      );
+
       // Criar mapa de comissões por venda_id
       const comissoesMap = new Map<string, number>();
       comissoesResult.data?.forEach((comissao) => {
@@ -109,7 +131,7 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
       const historico: HistoricoVenda[] = [];
 
       // 1. Processar vendas finalizadas no período
-      vendasResult.data.forEach((venda: any) => {
+      vendasComFormas.forEach((venda: any) => {
         const isCarteira = venda.forma_pagamento === 'carteira';
         
         historico.push({

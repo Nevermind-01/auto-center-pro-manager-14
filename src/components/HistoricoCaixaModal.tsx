@@ -314,9 +314,24 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
                         </div>
 
                         <div className="text-right">
-                          <Badge variant="secondary" className="capitalize">
-                            {formatarFormaPagamento(venda.forma_pagamento)}
-                          </Badge>
+                          {venda.formas_pagamento && venda.formas_pagamento.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 justify-end">
+                              {venda.formas_pagamento.map((forma: any, idx: number) => (
+                                <Badge 
+                                  key={idx}
+                                  variant="secondary"
+                                  className="text-xs whitespace-nowrap"
+                                >
+                                  {formatarFormaPagamento(forma.forma_pagamento)}
+                                  {forma.parcelas > 1 && ` ${forma.parcelas}x`}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <Badge variant="secondary" className="capitalize">
+                              {formatarFormaPagamento(venda.forma_pagamento)}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </div>

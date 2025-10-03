@@ -204,7 +204,7 @@ export const ComissaoCalculatorModal = ({
         throw new Error(resultadoData?.error || "Falha ao processar finalização da OS");
       }
 
-      // Registrar movimentação no caixa
+      // Registrar movimentações no caixa - UMA POR FORMA DE PAGAMENTO
       try {
         if (!caixaAtual) {
           toast({
@@ -213,16 +213,22 @@ export const ComissaoCalculatorModal = ({
             variant: "destructive",
           });
         } else {
-          // Usar forma de pagamento direta (agora unificada)
-          await criarMovimentacaoAsync({
-            tipo: 'entrada',
-            tipo_origem: 'OS',
-            forma_pagamento: formaPagamentoPrincipal as FormaPagamento,
-            valor_bruto: valorFinal,
-            valor_liquido: valorFinal,
-            descricao: `OS ${numeroOS} - ${clienteSelecionado.nome}`,
-            referencia_id: resultadoData.vendaId,
-          });
+          // Criar uma movimentação para cada forma de pagamento
+          for (const forma of formasPagamento) {
+            await criarMovimentacaoAsync({
+              tipo: 'entrada',
+              tipo_origem: 'OS',
+              forma_pagamento: forma.formaPagamento,
+              valor_bruto: forma.valor,
+              valor_liquido: forma.valor,
+              descricao: `OS ${numeroOS} - ${clienteSelecionado.nome}`,
+              referencia_id: resultadoData.vendaId,
+              metadados: {
+                parcelas: forma.parcelas,
+                ordem_forma: forma.ordem
+              }
+            });
+          }
         }
       } catch (caixaError: any) {
         console.error("Erro ao registrar movimentação no caixa:", caixaError);

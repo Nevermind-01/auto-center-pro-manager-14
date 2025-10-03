@@ -376,16 +376,26 @@ const valorFinal = valorTotal - valorDesconto;
             const { data: { user } } = await supabase.auth.getUser();
             const empresaAtual = await supabase.from('profiles').select('empresa_atual_id').eq('user_id', user?.id).single();
             
+            // Calcular quanto já foi pago em outras formas (não-carteira)
+            const valorPagoOutrasFormas = formasValidas
+              .filter(f => f.forma_pagamento !== 'carteira')
+              .reduce((total, f) => total + f.valor, 0);
+            
+            // Apenas o valor da carteira fica pendente
+            const valorPendenteCarteira = valorCarteira;
+            
             const { error: pagamentoError } = await supabase
               .from('pagamentos_os')
               .insert({
                 os_id: venda.id,
-                valor_pago: 0,
-                forma_pagamento: 'carteira',
-                valor_restante: valorFinal,
+                valor_pago: valorPagoOutrasFormas,
+                forma_pagamento: formasValidas[0].forma_pagamento as any, // Primeira forma não-carteira
+                valor_restante: valorPendenteCarteira,
                 usuario_id: user?.id,
                 empresa_id: empresaAtual?.data?.empresa_atual_id,
-                observacoes: 'Registro inicial - aguardando pagamento'
+                observacoes: valorPagoOutrasFormas > 0 
+                  ? `Pagamento inicial - R$ ${valorPagoOutrasFormas.toFixed(2)} em outras formas. Restante em carteira: R$ ${valorPendenteCarteira.toFixed(2)}`
+                  : 'Registro inicial - aguardando pagamento'
               });
 
             if (pagamentoError) {

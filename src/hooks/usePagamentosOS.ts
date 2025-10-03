@@ -83,6 +83,18 @@ export function usePagamentosOS() {
         const ossPendentes: OSPendente[] = [];
         
         for (const venda of vendas || []) {
+          // Buscar formas de pagamento da OS
+          const { data: formasPagamento } = await supabase
+            .from("os_formas_pagamento")
+            .select("forma_pagamento, valor")
+            .eq("os_id", venda.id);
+
+          // Calcular valor já pago em formas não-carteira (no momento da finalização)
+          const valorPagoFinalizacao = formasPagamento
+            ?.filter(f => f.forma_pagamento !== 'carteira')
+            .reduce((acc, f) => acc + Number(f.valor), 0) || 0;
+
+          // Buscar pagamentos posteriores
           const { data: pagamentos, error: pagError } = await supabase
             .from("pagamentos_os")
             .select(`
@@ -97,13 +109,17 @@ export function usePagamentosOS() {
 
           if (pagError) throw pagError;
 
-          const valorPago = pagamentos?.reduce((acc, p) => acc + Number(p.valor_pago), 0) || 0;
-          const valorRestante = Number(venda.valor_final) - valorPago;
+          // Somar pagamentos posteriores
+          const valorPagoPosterior = pagamentos?.reduce((acc, p) => acc + Number(p.valor_pago), 0) || 0;
+          
+          // Total pago = pago na finalização + pagamentos posteriores
+          const valorPagoTotal = valorPagoFinalizacao + valorPagoPosterior;
+          const valorRestante = Number(venda.valor_final) - valorPagoTotal;
 
           if (valorRestante > 0) {
             ossPendentes.push({
               ...venda,
-              valor_pago: valorPago,
+              valor_pago: valorPagoTotal,
               valor_restante: valorRestante,
               pagamentos_realizados: pagamentos?.map(p => ({
                 ...p,

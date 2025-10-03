@@ -35,6 +35,7 @@ import { useMultipleAsyncActions } from "@/hooks/useAsyncAction";
 import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
 import { useCarteiraCliente } from "@/hooks/useCarteiraCliente";
 import { useCaixa } from "@/hooks/useCaixa";
+import { supabase } from "@/integrations/supabase/client";
 import { type FormaPagamento, isValidFormaPagamento, getAvailablePaymentMethods } from "@/lib/paymentMethodMapper";
 import { MultiplePaymentForms, type FormaPagamentoMultipla } from "@/components/MultiplePaymentForms";
 import { useMultiplePaymentForms } from "@/hooks/useMultiplePaymentForms";
@@ -1120,15 +1121,21 @@ const NovaOSSupabase = () => {
       // Processar movimentações para cada forma de pagamento
       console.log('🔄 Formas de pagamento:', formasPagamento);
 
+      // Verificar se tem carteira nas formas de pagamento
+      const temCarteira = formasPagamento.some(f => f.forma_pagamento === 'carteira');
+      const valorCarteira = formasPagamento
+        .filter(f => f.forma_pagamento === 'carteira')
+        .reduce((total, f) => total + f.valor, 0);
+
       if (!skipCaixaMovement) {
         try {
           // Processar cada forma de pagamento separadamente
           for (const forma of formasPagamento) {
             if (forma.forma_pagamento === 'carteira') {
-            // Debitar da carteira do cliente
+            // Debitar apenas o valor da carteira
             await debitarCarteira.mutateAsync({
               clienteId: clienteSelecionado.id,
-              valor: valorFinal,
+              valor: forma.valor,
               descricao: `Pagamento OS ${numeroOSFinal}`,
               osId: vendaId
             });
@@ -1140,7 +1147,7 @@ const NovaOSSupabase = () => {
               forma_pagamento: 'carteira' as FormaPagamento,
               valor_bruto: 0, // Zero para não afetar caixa físico
               valor_liquido: 0, // Zero para não afetar caixa físico
-              descricao: `OS ${numeroOSFinal} - Pago via carteira do cliente ${clienteSelecionado.nome}`,
+              descricao: `OS ${numeroOSFinal} - Pago via carteira do cliente ${clienteSelecionado.nome} (R$ ${forma.valor.toFixed(2)})`,
               referencia_id: vendaId,
             };
 
@@ -1150,14 +1157,14 @@ const NovaOSSupabase = () => {
             
             console.log('✅ Movimentação da carteira registrada com sucesso no caixa');
           } else {
-            // Registrar movimentação normal no caixa
+            // Registrar movimentação normal no caixa com o valor correto da forma
             const movimentacaoData = {
               tipo: 'entrada' as const,
               tipo_origem: 'OS' as const,
               forma_pagamento: forma.forma_pagamento as FormaPagamento,
-              valor_bruto: valorFinal,
-              valor_liquido: valorFinal,
-              descricao: `OS ${numeroOSFinal} - ${clienteSelecionado.nome}`,
+              valor_bruto: forma.valor,
+              valor_liquido: forma.valor,
+              descricao: `OS ${numeroOSFinal} - ${clienteSelecionado.nome} (${forma.forma_pagamento})`,
               referencia_id: vendaId,
             };
 
@@ -1166,6 +1173,40 @@ const NovaOSSupabase = () => {
             await criarMovimentacaoAsync(movimentacaoData);
             
             console.log('✅ Movimentação registrada com sucesso no caixa');
+            }
+          }
+
+          // Criar registro inicial em pagamentos_os se tem carteira
+          if (temCarteira) {
+            const { data: { user } } = await supabase.auth.getUser();
+            const empresaAtual = await supabase.from('profiles').select('empresa_atual_id').eq('user_id', user?.id).single();
+            
+            // Calcular quanto já foi pago em outras formas (não-carteira)
+            const valorPagoOutrasFormas = formasPagamento
+              .filter(f => f.forma_pagamento !== 'carteira')
+              .reduce((total, f) => total + f.valor, 0);
+            
+            // Apenas o valor da carteira fica pendente
+            const valorPendenteCarteira = valorCarteira;
+            
+            const { error: pagamentoError } = await supabase
+              .from('pagamentos_os')
+              .insert({
+                os_id: vendaId,
+                valor_pago: valorPagoOutrasFormas,
+                forma_pagamento: formasPagamento.find(f => f.forma_pagamento !== 'carteira')?.forma_pagamento as any || 'outros',
+                valor_restante: valorPendenteCarteira,
+                usuario_id: user?.id,
+                empresa_id: empresaAtual?.data?.empresa_atual_id,
+                observacoes: valorPagoOutrasFormas > 0 
+                  ? `Pagamento inicial - R$ ${valorPagoOutrasFormas.toFixed(2)} em outras formas. Restante em carteira: R$ ${valorPendenteCarteira.toFixed(2)}`
+                  : 'Registro inicial - aguardando pagamento'
+              });
+
+            if (pagamentoError) {
+              console.error('Erro ao criar registro inicial de pagamento:', pagamentoError);
+            } else {
+              console.log('✅ Registro inicial de pagamento criado');
             }
           }
           

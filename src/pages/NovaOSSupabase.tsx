@@ -1129,34 +1129,15 @@ const NovaOSSupabase = () => {
 
       if (!skipCaixaMovement) {
         try {
-          // Processar cada forma de pagamento separadamente
+          // NÃO debitar da carteira - o valor fica pendente para pagamento posterior
+          
+          // Processar movimentações de caixa apenas para formas não-carteira
           for (const forma of formasPagamento) {
+            // Pular formas "carteira" - não registram movimento de caixa pois ficam pendentes
             if (forma.forma_pagamento === 'carteira') {
-            // Debitar apenas o valor da carteira
-            await debitarCarteira.mutateAsync({
-              clienteId: clienteSelecionado.id,
-              valor: forma.valor,
-              descricao: `Pagamento OS ${numeroOSFinal}`,
-              osId: vendaId
-            });
+              continue;
+            }
             
-            // Registrar movimentação especial no caixa (sem entrada de dinheiro físico)
-            const movimentacaoData = {
-              tipo: 'entrada' as const,
-              tipo_origem: 'OS' as const,
-              forma_pagamento: 'carteira' as FormaPagamento,
-              valor_bruto: 0, // Zero para não afetar caixa físico
-              valor_liquido: 0, // Zero para não afetar caixa físico
-              descricao: `OS ${numeroOSFinal} - Pago via carteira do cliente ${clienteSelecionado.nome} (R$ ${forma.valor.toFixed(2)})`,
-              referencia_id: vendaId,
-            };
-
-            console.log('📝 Dados da movimentação da carteira a ser criada:', movimentacaoData);
-            
-            await criarMovimentacaoAsync(movimentacaoData);
-            
-            console.log('✅ Movimentação da carteira registrada com sucesso no caixa');
-          } else {
             // Registrar movimentação normal no caixa com o valor correto da forma
             const movimentacaoData = {
               tipo: 'entrada' as const,
@@ -1173,7 +1154,6 @@ const NovaOSSupabase = () => {
             await criarMovimentacaoAsync(movimentacaoData);
             
             console.log('✅ Movimentação registrada com sucesso no caixa');
-            }
           }
 
           // Criar registro inicial em pagamentos_os se tem carteira
@@ -1199,8 +1179,8 @@ const NovaOSSupabase = () => {
                 usuario_id: user?.id,
                 empresa_id: empresaAtual?.data?.empresa_atual_id,
                 observacoes: valorPagoOutrasFormas > 0 
-                  ? `Pagamento inicial - R$ ${valorPagoOutrasFormas.toFixed(2)} em outras formas. Restante em carteira: R$ ${valorPendenteCarteira.toFixed(2)}`
-                  : 'Registro inicial - aguardando pagamento'
+                  ? `Valor pago: R$ ${valorPagoOutrasFormas.toFixed(2)}. Valor pendente (carteira): R$ ${valorPendenteCarteira.toFixed(2)}`
+                  : `Valor total pendente (carteira): R$ ${valorPendenteCarteira.toFixed(2)}`
               });
 
             if (pagamentoError) {

@@ -15,8 +15,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useMovimentacoesCaixa } from "@/hooks/useMovimentacoesCaixa";
-import { type FormaPagamento } from "@/lib/paymentMethodMapper";
 import { useCaixa } from "@/hooks/useCaixa";
 
 interface ComissaoCalculatorModalProps {
@@ -55,7 +53,6 @@ export const ComissaoCalculatorModal = ({
   osData
 }: ComissaoCalculatorModalProps) => {
   const { toast } = useToast();
-  const { criarMovimentacaoAsync } = useMovimentacoesCaixa();
   const { caixaAtual } = useCaixa();
 
   const [tipoCalculo, setTipoCalculo] = useState<"percentual" | "fixo">("percentual");
@@ -154,7 +151,7 @@ export const ComissaoCalculatorModal = ({
         throw new Error("Usuário não autenticado");
       }
 
-      // Preparar payload para o RPC
+      // Preparar payload para o RPC com múltiplas formas de pagamento
       const payload = {
         numeroOS: numeroOS.trim(),
         clienteId: clienteSelecionado.id,
@@ -164,8 +161,15 @@ export const ComissaoCalculatorModal = ({
         valorTotal: valorTotal,
         valorDesconto: valorDesconto || 0,
         valorFinal,
-        formaPagamento: formaPagamentoPrincipal,
-        parcelas: parcelasPrincipal || 1,
+        formaPagamento: formaPagamentoPrincipal, // Mantido para compatibilidade
+        parcelas: parcelasPrincipal || 1, // Mantido para compatibilidade
+        formasPagamento: formasPagamento.map((forma, index) => ({
+          forma: forma.forma_pagamento,
+          valor: forma.valor,
+          parcelas: forma.parcelas || 1,
+          observacoes: forma.observacoes || null,
+          ordem: index + 1
+        })),
         observacoes: observacoes || "",
         produtos: (produtosSelecionados || []).map(p => ({
           id: p.id,
@@ -183,7 +187,8 @@ export const ComissaoCalculatorModal = ({
           percentual: tipoCalculo === "percentual" ? percentual : null,
           valorFixo: tipoCalculo === "fixo" ? valorFixo : null,
           observacoes: observacoes || ""
-        }
+        },
+        caixa: caixaAtual ? { caixaId: caixaAtual.id } : null
       };
 
       console.log("📋 Enviando payload para RPC:", payload);
@@ -204,39 +209,11 @@ export const ComissaoCalculatorModal = ({
         throw new Error(resultadoData?.error || "Falha ao processar finalização da OS");
       }
 
-      // Registrar movimentações no caixa - UMA POR FORMA DE PAGAMENTO
-      try {
-        if (!caixaAtual) {
-          toast({
-            title: "Atenção",
-            description: "OS finalizada com sucesso, mas não há caixa aberto para registrar a movimentação.",
-            variant: "destructive",
-          });
-        } else {
-          // Criar uma movimentação para cada forma de pagamento
-          for (const forma of formasPagamento) {
-            await criarMovimentacaoAsync({
-              tipo: 'entrada',
-              tipo_origem: 'OS',
-              forma_pagamento: forma.formaPagamento,
-              valor_bruto: forma.valor,
-              valor_liquido: forma.valor,
-              descricao: `OS ${numeroOS} - ${clienteSelecionado.nome}`,
-              referencia_id: resultadoData.vendaId,
-              metadados: {
-                parcelas: forma.parcelas,
-                ordem_forma: forma.ordem
-              }
-            });
-          }
-        }
-      } catch (caixaError: any) {
-        console.error("Erro ao registrar movimentação no caixa:", caixaError);
+      // RPC já cria as movimentações de caixa automaticamente
+      if (!caixaAtual) {
         toast({
           title: "Atenção",
-          description: caixaError?.message
-            ? `OS finalizada, mas erro ao registrar no caixa: ${caixaError.message}`
-            : "OS finalizada, mas não foi possível registrar no caixa.",
+          description: "OS finalizada com sucesso, mas não há caixa aberto para registrar a movimentação.",
           variant: "destructive",
         });
       }

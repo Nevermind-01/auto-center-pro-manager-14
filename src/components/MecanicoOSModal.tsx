@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { DateRange } from "react-day-picker";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Eye, CheckCircle, XCircle, Coins } from "lucide-react";
+import { Eye, CheckCircle, XCircle, Coins, Plus } from "lucide-react";
 import { useOSByMecanico } from "@/hooks/useOSByMecanico";
 import { VisualizarOSModal } from "@/components/VisualizarOSModal";
+import { AdicionarComissaoModal } from "@/components/AdicionarComissaoModal";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -41,6 +42,12 @@ export function MecanicoOSModal({ open, onOpenChange, mecanico }: Props) {
   const [appliedRange, setAppliedRange] = useState<DateRange | undefined>();
   const [osModalOpen, setOsModalOpen] = useState(false);
   const [selectedOsId, setSelectedOsId] = useState<string | null>(null);
+  const [comissaoModalOpen, setComissaoModalOpen] = useState(false);
+  const [selectedOsComissao, setSelectedOsComissao] = useState<{
+    id: string;
+    numero: string;
+    dataFinalizacao: string;
+  } | null>(null);
 
   const { data: osData = [], isLoading } = useOSByMecanico({
     mecanicoId: mecanico?.id || null,
@@ -53,6 +60,23 @@ export function MecanicoOSModal({ open, onOpenChange, mecanico }: Props) {
   const openOS = (id: string) => {
     setSelectedOsId(id);
     setOsModalOpen(true);
+  };
+
+  const openComissaoModal = (os: { id: string; numero_os: string; finalizado_em?: string }) => {
+    const isFinalizada = os.finalizado_em || 
+      (osData.find(o => o.id === os.id)?.status === 'finalizada' || 
+       osData.find(o => o.id === os.id)?.status === 'finalizada-carteira');
+    
+    if (!isFinalizada) {
+      return; // Não permitir para OS não finalizada
+    }
+
+    setSelectedOsComissao({
+      id: os.id,
+      numero: os.numero_os,
+      dataFinalizacao: os.finalizado_em || new Date().toISOString(),
+    });
+    setComissaoModalOpen(true);
   };
 
   if (!mecanico) return null;
@@ -122,10 +146,27 @@ export function MecanicoOSModal({ open, onOpenChange, mecanico }: Props) {
                               </Tooltip>
                             </TooltipProvider>
                           ) : (
-                            <Badge variant="secondary">
-                              <XCircle className="h-3 w-3 mr-1" />
-                              Não
-                            </Badge>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openComissaoModal(os)}
+                                    disabled={os.status !== 'finalizada' && os.status !== 'finalizada-carteira'}
+                                    className="gap-1"
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                    Adicionar
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {os.status === 'finalizada' || os.status === 'finalizada-carteira'
+                                    ? 'Adicionar comissão para esta OS'
+                                    : 'Somente OSs finalizadas podem receber comissão'}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           )}
                         </TableCell>
                         <TableCell className="text-center">
@@ -159,6 +200,21 @@ export function MecanicoOSModal({ open, onOpenChange, mecanico }: Props) {
         onOpenChange={setOsModalOpen} 
         osId={selectedOsId} 
       />
+
+      {selectedOsComissao && (
+        <AdicionarComissaoModal
+          isOpen={comissaoModalOpen}
+          onClose={() => {
+            setComissaoModalOpen(false);
+            setSelectedOsComissao(null);
+          }}
+          osId={selectedOsComissao.id}
+          osNumero={selectedOsComissao.numero}
+          mecanicoId={mecanico.id}
+          mecanicoNome={mecanico.nome}
+          dataFinalizacao={selectedOsComissao.dataFinalizacao}
+        />
+      )}
     </>
   );
 }

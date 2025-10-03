@@ -315,15 +315,15 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
 
                         <div className="text-right">
                           {venda.formas_pagamento && venda.formas_pagamento.length > 0 ? (
-                            <div className="flex flex-wrap gap-1 justify-end">
+                            <div className="flex flex-col gap-1 items-end">
                               {venda.formas_pagamento.map((forma: any, idx: number) => (
                                 <Badge 
                                   key={idx}
                                   variant="secondary"
                                   className="text-xs whitespace-nowrap"
                                 >
-                                  {formatarFormaPagamento(forma.forma_pagamento)}
-                                  {forma.parcelas > 1 && ` ${forma.parcelas}x`}
+                                  {formatarFormaPagamento(forma.forma_pagamento)}: {formatarMoeda(forma.valor)}
+                                  {forma.parcelas > 1 && ` (${forma.parcelas}x)`}
                                 </Badge>
                               ))}
                             </div>

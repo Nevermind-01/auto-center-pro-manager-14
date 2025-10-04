@@ -238,7 +238,11 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
           {/* Lista de Vendas */}
           <div>
             <h3 className="text-lg font-semibold mb-4">
-              Vendas do Período ({historico.length})
+              Vendas do Período ({(() => {
+                // Contar OS únicas (agrupar entradas separadas)
+                const osUnicas = new Set(historico.map(v => v.numero_os));
+                return osUnicas.size;
+              })()})
             </h3>
 
             {isLoading ? (
@@ -250,9 +254,34 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Nenhuma venda encontrada no período selecionado.</p>
               </div>
-            ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {historico.map((venda) => (
+            ) : (() => {
+              // Agrupar vendas pelo número da OS para exibição
+              const vendasAgrupadas = historico.reduce((acc, venda) => {
+                const osNumero = venda.numero_os;
+                if (!acc[osNumero]) {
+                  acc[osNumero] = {
+                    ...venda,
+                    formas_separadas: []
+                  };
+                }
+                
+                // Se é entrada separada por forma, adicionar à lista
+                if (venda.valor_forma_especifica) {
+                  acc[osNumero].formas_separadas.push({
+                    forma: venda.forma_pagamento,
+                    valor: venda.valor_forma_especifica,
+                    tipo: venda.tipo_transacao
+                  });
+                }
+                
+                return acc;
+              }, {} as Record<string, any>);
+
+              const vendasParaExibir = Object.values(vendasAgrupadas);
+
+              return (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {vendasParaExibir.map((venda) => (
                   <div key={venda.id} className="border rounded-lg p-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="space-y-1">
@@ -314,7 +343,22 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
                         </div>
 
                         <div className="text-right">
-                          {venda.formas_pagamento && venda.formas_pagamento.length > 0 ? (
+                          {venda.formas_separadas && venda.formas_separadas.length > 0 ? (
+                            <div className="flex flex-col gap-1 items-end">
+                              {venda.formas_separadas.map((forma: any, idx: number) => (
+                                <Badge 
+                                  key={idx}
+                                  variant={forma.tipo === 'carteira' ? 'default' : 'secondary'}
+                                  className={`text-xs whitespace-nowrap ${
+                                    forma.tipo === 'carteira' ? 'bg-blue-100 text-blue-700 border-blue-200' : ''
+                                  }`}
+                                >
+                                  {forma.forma}: {formatarMoeda(forma.valor)}
+                                  {forma.tipo === 'carteira' && ' (Pendente)'}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : venda.formas_pagamento && venda.formas_pagamento.length > 0 ? (
                             <div className="flex flex-col gap-1 items-end">
                               {venda.formas_pagamento.map((forma: any, idx: number) => (
                                 <Badge 
@@ -336,9 +380,10 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </DialogContent>

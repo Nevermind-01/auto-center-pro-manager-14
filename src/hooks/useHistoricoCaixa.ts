@@ -25,6 +25,7 @@ export interface HistoricoVenda {
     parcelas: number;
     ordem: number;
   }>;
+  valor_forma_especifica?: number; // Valor específico desta forma de pagamento
 }
 
 export interface FiltrosPeriodo {
@@ -132,27 +133,57 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
 
       // 1. Processar vendas finalizadas no período
       vendasComFormas.forEach((venda: any) => {
-        // Verificar se TODAS as formas são carteira
-        const todasFormasCarteira = venda.formas_pagamento.length > 0 
-          ? venda.formas_pagamento.every((f: any) => f.forma_pagamento === 'carteira')
-          : venda.forma_pagamento === 'carteira';
-        
-        historico.push({
-          id: venda.id,
-          numero_os: venda.numero_os,
-          finalizado_em: venda.finalizado_em,
-          cliente_nome: venda.cliente_nome,
-          valor_total: venda.valor_total,
-          valor_desconto: venda.valor_desconto || 0,
-          valor_final: venda.valor_final,
-          forma_pagamento: getFormaPagamentoDescription(venda.forma_pagamento as FormaPagamento),
-          status: venda.status,
-          valor_comissao: comissoesMap.get(venda.id) || 0,
-          formas_pagamento: venda.formas_pagamento,
-          // Se TODAS as formas são carteira -> carteira, senão -> bruto
-          tipo_transacao: todasFormasCarteira ? 'carteira' : 'bruto',
-          tipo_entrada: 'finalizacao',
-        });
+        // Se tem múltiplas formas de pagamento, criar uma entrada para cada
+        if (venda.formas_pagamento && venda.formas_pagamento.length > 1) {
+          // Calcular desconto proporcional por forma
+          const totalFormas = venda.formas_pagamento.reduce((sum: number, f: any) => sum + f.valor, 0);
+          
+          venda.formas_pagamento.forEach((forma: any) => {
+            // Calcular valores proporcionais
+            const proporcao = forma.valor / totalFormas;
+            const descontoProporcional = venda.valor_desconto * proporcao;
+            const totalProporcional = (venda.valor_total - venda.valor_desconto) * proporcao;
+            const comissaoProporcional = (comissoesMap.get(venda.id) || 0) * proporcao;
+            
+            historico.push({
+              id: `${venda.id}-${forma.ordem}`,
+              numero_os: venda.numero_os,
+              finalizado_em: venda.finalizado_em,
+              cliente_nome: venda.cliente_nome,
+              valor_total: totalProporcional + descontoProporcional,
+              valor_desconto: descontoProporcional,
+              valor_final: forma.valor,
+              valor_forma_especifica: forma.valor,
+              forma_pagamento: getFormaPagamentoDescription(forma.forma_pagamento as FormaPagamento),
+              status: venda.status,
+              valor_comissao: comissaoProporcional,
+              formas_pagamento: venda.formas_pagamento,
+              tipo_transacao: forma.forma_pagamento === 'carteira' ? 'carteira' : 'bruto',
+              tipo_entrada: 'finalizacao',
+            });
+          });
+        } else {
+          // Forma única (lógica antiga mantida)
+          const isCarteira = venda.formas_pagamento.length > 0
+            ? venda.formas_pagamento[0].forma_pagamento === 'carteira'
+            : venda.forma_pagamento === 'carteira';
+          
+          historico.push({
+            id: venda.id,
+            numero_os: venda.numero_os,
+            finalizado_em: venda.finalizado_em,
+            cliente_nome: venda.cliente_nome,
+            valor_total: venda.valor_total,
+            valor_desconto: venda.valor_desconto || 0,
+            valor_final: venda.valor_final,
+            forma_pagamento: getFormaPagamentoDescription(venda.forma_pagamento as FormaPagamento),
+            status: venda.status,
+            valor_comissao: comissoesMap.get(venda.id) || 0,
+            formas_pagamento: venda.formas_pagamento,
+            tipo_transacao: isCarteira ? 'carteira' : 'bruto',
+            tipo_entrada: 'finalizacao',
+          });
+        }
       });
 
       // 2. Processar APENAS pagamentos posteriores REAIS (não automáticos)

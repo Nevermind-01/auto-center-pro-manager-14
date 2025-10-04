@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CheckCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -47,31 +48,45 @@ export const AdicionarComissaoModal = ({
   const [observacoes, setObservacoes] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [valorServicos, setValorServicos] = useState<number>(0);
+  const [valorTotalOS, setValorTotalOS] = useState<number>(0);
+  const [baseCalculo, setBaseCalculo] = useState<"servicos" | "total">("servicos");
   const [isLoadingServicos, setIsLoadingServicos] = useState(true);
 
   useEffect(() => {
     if (isOpen && osId) {
-      buscarServicosOS();
+      buscarDadosOS();
     }
   }, [isOpen, osId]);
 
-  const buscarServicosOS = async () => {
+  const buscarDadosOS = async () => {
     setIsLoadingServicos(true);
     try {
-      const { data, error } = await supabase
+      // Buscar serviços
+      const { data: servicosData, error: servicosError } = await supabase
         .from("venda_servicos")
         .select("preco")
         .eq("venda_id", osId);
 
-      if (error) throw error;
+      if (servicosError) throw servicosError;
 
-      const total = (data || []).reduce((acc, item) => acc + Number(item.preco || 0), 0);
-      setValorServicos(total);
+      const totalServicos = (servicosData || []).reduce((acc, item) => acc + Number(item.preco || 0), 0);
+      setValorServicos(totalServicos);
+
+      // Buscar valor total da OS
+      const { data: vendaData, error: vendaError } = await supabase
+        .from("vendas")
+        .select("valor_final")
+        .eq("id", osId)
+        .single();
+
+      if (vendaError) throw vendaError;
+
+      setValorTotalOS(vendaData?.valor_final || 0);
     } catch (error) {
-      console.error("Erro ao buscar serviços:", error);
+      console.error("Erro ao buscar dados:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar os serviços da OS",
+        description: "Não foi possível carregar os dados da OS",
         variant: "destructive",
       });
     } finally {
@@ -80,8 +95,10 @@ export const AdicionarComissaoModal = ({
   };
 
   const getValorFinalComissao = () => {
+    const baseValor = baseCalculo === "servicos" ? valorServicos : valorTotalOS;
+    
     if (tipoCalculo === "percentual") {
-      return (valorServicos * percentual) / 100;
+      return (baseValor * percentual) / 100;
     } else {
       return valorFixo;
     }
@@ -91,17 +108,19 @@ export const AdicionarComissaoModal = ({
     setIsProcessing(true);
 
     try {
+      const valorBase = baseCalculo === "servicos" ? valorServicos : valorTotalOS;
+
       // Validações
-      if (valorServicos <= 0) {
-        throw new Error("A OS não possui serviços para calcular comissão");
+      if (valorBase <= 0) {
+        throw new Error(`A OS não possui ${baseCalculo === "servicos" ? "serviços" : "valor"} para calcular comissão`);
       }
 
       if (tipoCalculo === "percentual" && (percentual <= 0 || percentual > 100)) {
         throw new Error("Percentual deve estar entre 0,01% e 100%");
       }
 
-      if (tipoCalculo === "fixo" && (valorFixo <= 0 || valorFixo > valorServicos)) {
-        throw new Error("Valor fixo deve ser maior que zero e não pode exceder o valor dos serviços");
+      if (tipoCalculo === "fixo" && (valorFixo <= 0 || valorFixo > valorBase)) {
+        throw new Error(`Valor fixo deve ser maior que zero e não pode exceder ${baseCalculo === "servicos" ? "o valor dos serviços" : "o valor total"}`);
       }
 
       const valorFinal = getValorFinalComissao();
@@ -117,6 +136,8 @@ export const AdicionarComissaoModal = ({
         throw new Error("Esta OS já possui uma comissão registrada");
       }
 
+      const valorBaseCalculo = baseCalculo === "servicos" ? valorServicos : valorTotalOS;
+
       // Criar comissão
       await createComissao.mutateAsync({
         venda_id: osId,
@@ -125,7 +146,7 @@ export const AdicionarComissaoModal = ({
         percentual: tipoCalculo === "percentual" ? percentual : null,
         valor_fixo: tipoCalculo === "fixo" ? valorFixo : null,
         valor_final: valorFinal,
-        base_calculo: valorServicos,
+        base_calculo: valorBaseCalculo,
         observacoes: observacoes || null,
       });
 
@@ -189,12 +210,43 @@ export const AdicionarComissaoModal = ({
                     <span className="text-muted-foreground">Valor dos Serviços:</span>
                     <span className="font-medium">R$ {valorServicos.toFixed(2)}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    * Base de cálculo para a comissão
-                  </p>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Valor Total da OS:</span>
+                    <span className="font-medium">R$ {valorTotalOS.toFixed(2)}</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Base de cálculo */}
+            <div className="space-y-2">
+              <Label>Base de Cálculo</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={baseCalculo === "servicos" ? "default" : "outline"}
+                  onClick={() => setBaseCalculo("servicos")}
+                  className="flex-1"
+                >
+                  <CheckCircle className={`h-4 w-4 mr-2 ${baseCalculo === "servicos" ? "opacity-100" : "opacity-0"}`} />
+                  Valor dos Serviços
+                </Button>
+                <Button
+                  type="button"
+                  variant={baseCalculo === "total" ? "default" : "outline"}
+                  onClick={() => setBaseCalculo("total")}
+                  className="flex-1"
+                >
+                  <CheckCircle className={`h-4 w-4 mr-2 ${baseCalculo === "total" ? "opacity-100" : "opacity-0"}`} />
+                  Valor Total da OS
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {baseCalculo === "servicos" 
+                  ? "* Comissão calculada sobre o valor dos serviços apenas"
+                  : "* Comissão calculada sobre o valor total da OS (produtos + serviços)"}
+              </p>
+            </div>
 
             {/* Tipo de cálculo */}
             <div className="space-y-2">
@@ -233,13 +285,13 @@ export const AdicionarComissaoModal = ({
                   type="number"
                   step="0.01"
                   min="0"
-                  max={valorServicos}
+                  max={baseCalculo === "servicos" ? valorServicos : valorTotalOS}
                   value={valorFixo}
                   onChange={(e) => setValorFixo(Number(e.target.value))}
                   placeholder="0.00"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Máximo: R$ {valorServicos.toFixed(2)}
+                  Máximo: R$ {(baseCalculo === "servicos" ? valorServicos : valorTotalOS).toFixed(2)}
                 </p>
               </div>
             )}
@@ -269,7 +321,7 @@ export const AdicionarComissaoModal = ({
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
                   {tipoCalculo === "percentual" 
-                    ? `${percentual}% sobre R$ ${valorServicos.toFixed(2)}`
+                    ? `${percentual}% sobre R$ ${(baseCalculo === "servicos" ? valorServicos : valorTotalOS).toFixed(2)} (${baseCalculo === "servicos" ? "Serviços" : "Total"})`
                     : `Valor fixo`
                   }
                 </p>
@@ -282,7 +334,7 @@ export const AdicionarComissaoModal = ({
           <Button variant="outline" onClick={onClose} disabled={isProcessing || isLoadingServicos}>
             Cancelar
           </Button>
-          <Button onClick={handleSalvar} disabled={isProcessing || isLoadingServicos || valorServicos <= 0}>
+          <Button onClick={handleSalvar} disabled={isProcessing || isLoadingServicos || (baseCalculo === "servicos" ? valorServicos : valorTotalOS) <= 0}>
             {isProcessing ? "Salvando..." : "Adicionar Comissão"}
           </Button>
         </div>

@@ -6,11 +6,12 @@ import { DateRange } from "react-day-picker";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, Printer } from "lucide-react";
 import { useComissoesByMecanico } from "@/hooks/useComissoes";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { VisualizarOSModal } from "@/components/VisualizarOSModal";
+import { PrintModal } from "@/components/print/PrintModal";
 
 interface Mecanico {
   id: string;
@@ -30,6 +31,7 @@ export function MecanicoComissoesModal({ open, onOpenChange, mecanico }: Props) 
   const [appliedRange, setAppliedRange] = useState<DateRange | undefined>();
   const [osModalOpen, setOsModalOpen] = useState(false);
   const [selectedOsId, setSelectedOsId] = useState<string | null>(null);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
 
   const { data } = useComissoesByMecanico({
     mecanicoId: mecanico?.id || null,
@@ -94,6 +96,30 @@ export function MecanicoComissoesModal({ open, onOpenChange, mecanico }: Props) 
     setOsModalOpen(true);
   };
 
+  const formatComissoesForPrint = () => {
+    return {
+      mecanico: {
+        nome: mecanico?.nome || '',
+      },
+      periodo: appliedRange,
+      comissoes: rows.map(r => ({
+        id: r.id,
+        finalizado_em: r.finalizado_em || '',
+        numero_os: (r as any).vendas?.numero_os || '',
+        base_calculo: Number(r.base_calculo || 0),
+        tipo_calculo: r.tipo_calculo,
+        percentual: r.percentual != null ? Number(r.percentual) : undefined,
+        valor_fixo: r.valor_fixo != null ? Number(r.valor_fixo) : undefined,
+        valor_final: Number(r.valor_final || 0),
+      })),
+      total,
+    };
+  };
+
+  const openPrintModal = () => {
+    setPrintModalOpen(true);
+  };
+
   if (!mecanico) return null;
 
   return (
@@ -110,7 +136,17 @@ export function MecanicoComissoesModal({ open, onOpenChange, mecanico }: Props) 
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="secondary" onClick={exportCSV} className="ml-auto">
+                  <Button variant="outline" onClick={openPrintModal} className="ml-auto">
+                    <Printer className="h-4 w-4 mr-2" /> Imprimir / PDF
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Visualizar para impressão ou gerar PDF</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="secondary" onClick={exportCSV}>
                     <Download className="h-4 w-4 mr-2" /> Exportar CSV
                   </Button>
                 </TooltipTrigger>
@@ -175,6 +211,14 @@ export function MecanicoComissoesModal({ open, onOpenChange, mecanico }: Props) 
       </Dialog>
 
       <VisualizarOSModal open={osModalOpen} onOpenChange={setOsModalOpen} osId={selectedOsId} />
+      
+      <PrintModal
+        open={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        type="comissoes"
+        data={formatComissoesForPrint()}
+        title={`Comissões - ${mecanico?.nome || 'Mecânico'}`}
+      />
     </>
   );
 }

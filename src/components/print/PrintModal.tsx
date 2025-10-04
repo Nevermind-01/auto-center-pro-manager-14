@@ -8,11 +8,12 @@ import { useEmpresaData } from '@/hooks/useEmpresaData';
 import { OrcamentoPrint } from './OrcamentoPrint';
 import { OSPrint } from './OSPrint';
 import { OSFinalizadaPrint } from './OSFinalizadaPrint';
+import { ComissoesPrint } from './ComissoesPrint';
 
 interface PrintModalProps {
   open: boolean;
   onClose: () => void;
-  type: 'orcamento' | 'os' | 'os_finalizada';
+  type: 'orcamento' | 'os' | 'os_finalizada' | 'comissoes';
   data: any;
   title: string;
 }
@@ -41,7 +42,14 @@ export function PrintModal({ open, onClose, type, data, title }: PrintModalProps
 
   const handlePDF = async () => {
     if (printRef.current && data) {
-      const filename = `${type}-${data.numero_orcamento || data.numero_os || 'documento'}-${new Date().toISOString().split('T')[0]}.pdf`;
+      let filename = '';
+      if (type === 'comissoes') {
+        const mecanicoNome = data.mecanico?.nome || 'mecanico';
+        const dateStr = new Date().toISOString().split('T')[0];
+        filename = `comissoes-${mecanicoNome}-${dateStr}.pdf`;
+      } else {
+        filename = `${type}-${data.numero_orcamento || data.numero_os || 'documento'}-${new Date().toISOString().split('T')[0]}.pdf`;
+      }
       await generatePDFFromElement(printRef.current, filename);
     }
   };
@@ -62,6 +70,8 @@ export function PrintModal({ open, onClose, type, data, title }: PrintModalProps
         return <OSPrint os={data} empresa={empresa} />;
       case 'os_finalizada':
         return <OSFinalizadaPrint os={data} empresa={empresa} />;
+      case 'comissoes':
+        return <ComissoesPrint {...data} empresa={empresa} />;
       default:
         return null;
     }

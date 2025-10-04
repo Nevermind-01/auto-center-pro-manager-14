@@ -62,12 +62,29 @@ export function MecanicoComissoesModal({ open, onOpenChange, mecanico }: Props) 
       String(r.valor_final ?? 0).replace('.', ','),
     ]);
 
-    const csv = [headers, ...lines].map((arr) => arr.map((s) => `"${String(s).replace(/"/g, '""')}"`).join(';')).join('\n');
+    // Adicionar linha de total
+    const totalLine = [
+      '',
+      '',
+      '',
+      '',
+      '',
+      'TOTAL',
+      String(total).replace('.', ','),
+    ];
+
+    const csv = [headers, ...lines, totalLine].map((arr) => arr.map((s) => `"${String(s).replace(/"/g, '""')}"`).join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `comissoes_${mecanico?.nome || 'mecanico'}.csv`;
+    
+    // Nome do arquivo com período se aplicado
+    const fileName = appliedRange?.from && appliedRange?.to
+      ? `comissoes_${mecanico?.nome || 'mecanico'}_${format(appliedRange.from, 'dd-MM-yyyy')}_a_${format(appliedRange.to, 'dd-MM-yyyy')}.csv`
+      : `comissoes_${mecanico?.nome || 'mecanico'}.csv`;
+    
+    a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
   };

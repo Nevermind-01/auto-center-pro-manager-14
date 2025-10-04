@@ -131,8 +131,28 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
 
       const historico: HistoricoVenda[] = [];
 
+      // Coletar OS que têm pagamentos posteriores no período
+      const osComPagamentoPosterior = new Set<string>();
+      pagamentosResult.data?.forEach((pagamento: any) => {
+        const venda = pagamento.vendas;
+        if (venda && pagamento.valor_pago > 0) {
+          const finalizadoEm = new Date(venda.finalizado_em).getTime();
+          const dataPagamento = new Date(pagamento.data_pagamento).getTime();
+          const diferencaSegundos = Math.abs(dataPagamento - finalizadoEm) / 1000;
+          
+          // Se não é pagamento automático, marcar esta OS
+          if (diferencaSegundos >= 5) {
+            osComPagamentoPosterior.add(venda.numero_os);
+          }
+        }
+      });
+
       // 1. Processar vendas finalizadas no período
       vendasComFormas.forEach((venda: any) => {
+        // Pular esta venda se ela tem pagamento posterior no período
+        if (osComPagamentoPosterior.has(venda.numero_os)) {
+          return; // Não processar, será mostrada apenas via pagamento posterior
+        }
         // Se tem múltiplas formas de pagamento, criar uma entrada para cada
         if (venda.formas_pagamento && venda.formas_pagamento.length > 1) {
           // Calcular desconto proporcional por forma

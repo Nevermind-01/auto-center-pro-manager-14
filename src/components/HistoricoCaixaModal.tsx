@@ -165,7 +165,7 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
                   {formatarMoeda(totalizadores.valorFinalBrutoReal)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Vendas pagas + Pag. posteriores
+                  Vendas pagas + Pag. posteriores + Carteira
                 </p>
               </CardContent>
             </Card>
@@ -213,7 +213,7 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
                   {formatarMoeda(totalizadores.valorFinal)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Bruto + Carteira
+                  Apenas valores efetivamente recebidos
                 </p>
               </CardContent>
             </Card>

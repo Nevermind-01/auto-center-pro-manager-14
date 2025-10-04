@@ -221,7 +221,7 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
     // Valores brutos reais (finalizações não-carteira + pagamentos posteriores)
     valorTotalBrutoReal: vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_total, 0),
     valorDescontoBrutoReal: vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_desconto, 0),
-    valorFinalBrutoReal: vendasBruto.reduce((sum, v) => sum + v.valor_final, 0), // Inclui pagamentos posteriores
+    valorFinalBrutoReal: vendasBruto.reduce((sum, v) => sum + v.valor_final, 0) + vendasCarteira.reduce((sum, v) => sum + v.valor_final, 0), // Inclui pagamentos posteriores + carteira
     valorComissaoBrutoReal: vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_comissao, 0),
     
     // Valores dos pagamentos posteriores/avulsos
@@ -232,7 +232,7 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
                vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_total, 0),
     valorDesconto: vendasCarteira.reduce((sum, v) => sum + v.valor_desconto, 0) + 
                   vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_desconto, 0),
-    valorFinal: historico?.reduce((sum, v) => sum + v.valor_final, 0) || 0,
+    valorFinal: vendasBruto.reduce((sum, v) => sum + v.valor_final, 0), // Apenas valores efetivamente recebidos (sem carteira)
     valorComissao: vendasCarteira.reduce((sum, v) => sum + v.valor_comissao, 0) + 
                   vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_comissao, 0),
   };

@@ -254,34 +254,9 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Nenhuma venda encontrada no período selecionado.</p>
               </div>
-            ) : (() => {
-              // Agrupar vendas pelo número da OS para exibição
-              const vendasAgrupadas = historico.reduce((acc, venda) => {
-                const osNumero = venda.numero_os;
-                if (!acc[osNumero]) {
-                  acc[osNumero] = {
-                    ...venda,
-                    formas_separadas: []
-                  };
-                }
-                
-                // Se é entrada separada por forma, adicionar à lista
-                if (venda.valor_forma_especifica) {
-                  acc[osNumero].formas_separadas.push({
-                    forma: venda.forma_pagamento,
-                    valor: venda.valor_forma_especifica,
-                    tipo: venda.tipo_transacao
-                  });
-                }
-                
-                return acc;
-              }, {} as Record<string, any>);
-
-              const vendasParaExibir = Object.values(vendasAgrupadas);
-
-              return (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {vendasParaExibir.map((venda) => (
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {historico.map((venda) => (
                   <div key={venda.id} className="border rounded-lg p-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="space-y-1">
@@ -291,12 +266,12 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
                             {venda.status}
                           </Badge>
                           {venda.tipo_entrada === 'pagamento_posterior' && (
-                            <Badge variant="default" className="bg-orange-100 text-orange-700">
+                            <Badge variant="default" className="bg-orange-100 text-orange-700 border-orange-200">
                               Pagamento Posterior
                             </Badge>
                           )}
                           {venda.tipo_transacao === 'carteira' && venda.tipo_entrada === 'finalizacao' && (
-                            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200">
                               Carteira Digital
                             </Badge>
                           )}
@@ -312,12 +287,14 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
 
                       <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
                         <div className="text-right space-y-1">
-                          <div className="flex justify-between sm:justify-end gap-2">
-                            <span className="text-sm text-muted-foreground sm:hidden">Total:</span>
-                            <span className="font-medium">
-                              {formatarMoeda(venda.valor_total)}
-                            </span>
-                          </div>
+                          {venda.valor_total > 0 && (
+                            <div className="flex justify-between sm:justify-end gap-2">
+                              <span className="text-sm text-muted-foreground sm:hidden">Total:</span>
+                              <span className="font-medium">
+                                {formatarMoeda(venda.valor_total)}
+                              </span>
+                            </div>
+                          )}
                           {venda.valor_desconto > 0 && (
                             <div className="flex justify-between sm:justify-end gap-2">
                               <span className="text-sm text-muted-foreground sm:hidden">Desconto:</span>
@@ -343,31 +320,21 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
                         </div>
 
                         <div className="text-right">
-                          {venda.formas_separadas && venda.formas_separadas.length > 0 ? (
-                            <div className="flex flex-col gap-1 items-end">
-                              {venda.formas_separadas.map((forma: any, idx: number) => (
-                                <Badge 
-                                  key={idx}
-                                  variant={forma.tipo === 'carteira' ? 'default' : 'secondary'}
-                                  className={`text-xs whitespace-nowrap ${
-                                    forma.tipo === 'carteira' ? 'bg-blue-100 text-blue-700 border-blue-200' : ''
-                                  }`}
-                                >
-                                  {forma.forma}: {formatarMoeda(forma.valor)}
-                                  {forma.tipo === 'carteira' && ' (Pendente)'}
-                                </Badge>
-                              ))}
-                            </div>
-                          ) : venda.formas_pagamento && venda.formas_pagamento.length > 0 ? (
+                          {venda.formas_pagamento && venda.formas_pagamento.length > 0 ? (
                             <div className="flex flex-col gap-1 items-end">
                               {venda.formas_pagamento.map((forma: any, idx: number) => (
                                 <Badge 
                                   key={idx}
-                                  variant="secondary"
-                                  className="text-xs whitespace-nowrap"
+                                  variant={forma.forma_pagamento === 'carteira' ? 'default' : 'secondary'}
+                                  className={`text-xs whitespace-nowrap ${
+                                    forma.forma_pagamento === 'carteira' 
+                                      ? 'bg-blue-100 text-blue-700 border-blue-200' 
+                                      : ''
+                                  }`}
                                 >
                                   {formatarFormaPagamento(forma.forma_pagamento)}: {formatarMoeda(forma.valor)}
                                   {forma.parcelas > 1 && ` (${forma.parcelas}x)`}
+                                  {forma.forma_pagamento === 'carteira' && venda.tipo_entrada === 'finalizacao' && ' (Pendente)'}
                                 </Badge>
                               ))}
                             </div>
@@ -380,10 +347,9 @@ export function HistoricoCaixaModal({ open, onOpenChange }: HistoricoCaixaModalP
                       </div>
                     </div>
                   </div>
-                  ))}
-                </div>
-              );
-            })()}
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </DialogContent>

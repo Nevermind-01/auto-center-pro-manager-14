@@ -83,6 +83,7 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
           forma_pagamento,
           data_pagamento,
           observacoes,
+          tipo_entrada,
           vendas(
             id,
             numero_os,
@@ -132,95 +133,55 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
       const historico: HistoricoVenda[] = [];
 
       // 1. Processar vendas finalizadas no período
+      // CRIAR APENAS UMA ENTRADA POR OS, mesmo com múltiplas formas de pagamento
       vendasComFormas.forEach((venda: any) => {
-        // Se tem múltiplas formas de pagamento, criar uma entrada para cada
-        if (venda.formas_pagamento && venda.formas_pagamento.length > 1) {
-          // Calcular desconto proporcional por forma
-          const totalFormas = venda.formas_pagamento.reduce((sum: number, f: any) => sum + f.valor, 0);
-          
-          venda.formas_pagamento.forEach((forma: any) => {
-            // Calcular valores proporcionais
-            const proporcao = forma.valor / totalFormas;
-            const descontoProporcional = venda.valor_desconto * proporcao;
-            const totalProporcional = (venda.valor_total - venda.valor_desconto) * proporcao;
-            const comissaoProporcional = (comissoesMap.get(venda.id) || 0) * proporcao;
-            
-            historico.push({
-              id: `${venda.id}-${forma.ordem}`,
-              numero_os: venda.numero_os,
-              finalizado_em: venda.finalizado_em,
-              cliente_nome: venda.cliente_nome,
-              valor_total: totalProporcional + descontoProporcional,
-              valor_desconto: descontoProporcional,
-              valor_final: forma.valor,
-              valor_forma_especifica: forma.valor,
-              forma_pagamento: getFormaPagamentoDescription(forma.forma_pagamento as FormaPagamento),
-              status: venda.status,
-              valor_comissao: comissaoProporcional,
-              formas_pagamento: venda.formas_pagamento,
-              tipo_transacao: forma.forma_pagamento === 'carteira' ? 'carteira' : 'bruto',
-              tipo_entrada: 'finalizacao',
-            });
-          });
-        } else {
-          // Forma única (lógica antiga mantida)
-          const isCarteira = venda.formas_pagamento.length > 0
-            ? venda.formas_pagamento[0].forma_pagamento === 'carteira'
-            : venda.forma_pagamento === 'carteira';
-          
-          historico.push({
-            id: venda.id,
-            numero_os: venda.numero_os,
-            finalizado_em: venda.finalizado_em,
-            cliente_nome: venda.cliente_nome,
-            valor_total: venda.valor_total,
-            valor_desconto: venda.valor_desconto || 0,
-            valor_final: venda.valor_final,
-            forma_pagamento: getFormaPagamentoDescription(venda.forma_pagamento as FormaPagamento),
-            status: venda.status,
-            valor_comissao: comissoesMap.get(venda.id) || 0,
-            formas_pagamento: venda.formas_pagamento,
-            tipo_transacao: isCarteira ? 'carteira' : 'bruto',
-            tipo_entrada: 'finalizacao',
-          });
-        }
+        // Determinar se ALGUMA forma é carteira
+        const temCarteira = venda.formas_pagamento.some(
+          (f: any) => f.forma_pagamento === 'carteira'
+        );
+        
+        historico.push({
+          id: venda.id,
+          numero_os: venda.numero_os,
+          finalizado_em: venda.finalizado_em,
+          cliente_nome: venda.cliente_nome,
+          valor_total: venda.valor_total,
+          valor_desconto: venda.valor_desconto || 0,
+          valor_final: venda.valor_final,
+          forma_pagamento: getFormaPagamentoDescription(venda.forma_pagamento as FormaPagamento),
+          status: venda.status,
+          valor_comissao: comissoesMap.get(venda.id) || 0,
+          formas_pagamento: venda.formas_pagamento, // Lista TODAS as formas
+          tipo_transacao: temCarteira ? 'carteira' : 'bruto',
+          tipo_entrada: 'finalizacao',
+        });
       });
 
-      // 2. Processar APENAS pagamentos posteriores REAIS (não automáticos)
+      // 2. Processar APENAS pagamentos posteriores REAIS (não de finalização)
       pagamentosResult.data?.forEach((pagamento: any) => {
         const venda = pagamento.vendas;
         
-        // Filtrar apenas pagamentos válidos
+        // Filtrar apenas pagamentos válidos E que sejam posteriores (não de finalização)
         const isValorValido = pagamento.valor_pago > 0;
+        const isPagamentoPosterior = pagamento.tipo_entrada === 'pagamento_posterior';
         
-        if (venda && isValorValido) {
-          // Verificar se é um pagamento automático (ocorreu no mesmo momento da finalização)
-          const finalizadoEm = new Date(venda.finalizado_em).getTime();
-          const dataPagamento = new Date(pagamento.data_pagamento).getTime();
-          const diferencaSegundos = Math.abs(dataPagamento - finalizadoEm) / 1000;
-          
-          // Se a diferença é menor que 5 segundos, é pagamento automático do sistema
-          const isPagamentoAutomatico = diferencaSegundos < 5;
-          
-          // Incluir APENAS se for pagamento posterior REAL (não automático)
-          if (!isPagamentoAutomatico) {
-            historico.push({
-              id: `pagamento-${pagamento.id}`,
-              numero_os: venda.numero_os,
-              finalizado_em: pagamento.data_pagamento,
-              cliente_nome: venda.cliente_nome,
-              valor_total: 0,
-              valor_desconto: 0,
-              valor_final: pagamento.valor_pago,
-              forma_pagamento: getFormaPagamentoDescription(pagamento.forma_pagamento as FormaPagamento),
-              status: 'Pago',
-              valor_comissao: 0,
-              tipo_transacao: 'bruto',
-              tipo_entrada: 'pagamento_posterior',
-              valor_pago_posterior: pagamento.valor_pago,
-              forma_pagamento_posterior: getFormaPagamentoDescription(pagamento.forma_pagamento as FormaPagamento),
-            });
-          }
+        if (venda && isValorValido && isPagamentoPosterior) {
+          historico.push({
+            id: `pagamento-${pagamento.id}`,
+            numero_os: venda.numero_os,
+            finalizado_em: pagamento.data_pagamento,
+            cliente_nome: venda.cliente_nome,
+            valor_total: 0,
+            valor_desconto: 0,
+            valor_final: pagamento.valor_pago,
+            forma_pagamento: getFormaPagamentoDescription(pagamento.forma_pagamento as FormaPagamento),
+            status: 'Pago',
+            valor_comissao: 0,
+            tipo_transacao: 'bruto',
+            tipo_entrada: 'pagamento_posterior',
+            valor_pago_posterior: pagamento.valor_pago,
+            forma_pagamento_posterior: getFormaPagamentoDescription(pagamento.forma_pagamento as FormaPagamento),
+          });
         }
       });
 

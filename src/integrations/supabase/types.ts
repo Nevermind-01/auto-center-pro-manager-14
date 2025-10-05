@@ -1120,6 +1120,7 @@ export type Database = {
           id: string
           observacoes: string | null
           os_id: string
+          tipo_entrada: string | null
           updated_at: string
           usuario_id: string
           valor_pago: number
@@ -1133,6 +1134,7 @@ export type Database = {
           id?: string
           observacoes?: string | null
           os_id: string
+          tipo_entrada?: string | null
           updated_at?: string
           usuario_id: string
           valor_pago?: number
@@ -1146,6 +1148,7 @@ export type Database = {
           id?: string
           observacoes?: string | null
           os_id?: string
+          tipo_entrada?: string | null
           updated_at?: string
           usuario_id?: string
           valor_pago?: number

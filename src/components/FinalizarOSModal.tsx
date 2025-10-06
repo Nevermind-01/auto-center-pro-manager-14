@@ -375,6 +375,7 @@ const valorFinal = valorTotal - valorDesconto;
                 valor_pago: valorPagoOutrasFormas,
                 forma_pagamento: formasValidas[0].forma_pagamento as any, // Primeira forma não-carteira
                 valor_restante: valorPendenteCarteira,
+                tipo_entrada: 'finalizacao',
                 usuario_id: user?.id,
                 empresa_id: empresaAtual?.data?.empresa_atual_id,
                 observacoes: valorPagoOutrasFormas > 0 

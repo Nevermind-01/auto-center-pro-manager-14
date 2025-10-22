@@ -37,20 +37,33 @@ export type TipoPeriodo = 'hoje' | 'semana' | 'mes' | 'ano' | 'personalizado';
 
 // Função auxiliar para calcular o total líquido real via movimentacoes_caixa
 async function calcularTotalLiquidoReal(empresaId: string, filtros: FiltrosPeriodo): Promise<number> {
-  const { data: movimentacoes, error } = await supabase
+  // 1. Buscar IDs das vendas finalizadas no período
+  const { data: vendas, error: errorVendas } = await supabase
+    .from('vendas')
+    .select('id')
+    .eq('empresa_id', empresaId)
+    .not('finalizado_em', 'is', null)
+    .gte('finalizado_em', filtros.dataInicio.toISOString())
+    .lte('finalizado_em', filtros.dataFim.toISOString());
+
+  if (errorVendas || !vendas || vendas.length === 0) {
+    console.error('Erro ao buscar vendas:', errorVendas);
+    return 0;
+  }
+
+  const vendasIds = vendas.map(v => v.id);
+
+  // 2. Buscar movimentações usando referencia_id
+  const { data: movimentacoes, error: errorMov } = await supabase
     .from('movimentacoes_caixa')
-    .select(`
-      valor_liquido,
-      vendas!inner(finalizado_em, empresa_id)
-    `)
-    .eq('vendas.empresa_id', empresaId)
+    .select('valor_liquido')
+    .eq('empresa_id', empresaId)
     .eq('tipo', 'entrada')
     .eq('tipo_origem', 'OS')
-    .gte('vendas.finalizado_em', filtros.dataInicio.toISOString())
-    .lte('vendas.finalizado_em', filtros.dataFim.toISOString());
+    .in('referencia_id', vendasIds);
 
-  if (error) {
-    console.error('Erro ao buscar movimentações de caixa:', error);
+  if (errorMov) {
+    console.error('Erro ao buscar movimentações de caixa:', errorMov);
     return 0;
   }
 
@@ -59,24 +72,37 @@ async function calcularTotalLiquidoReal(empresaId: string, filtros: FiltrosPerio
 
 // Função auxiliar para calcular o total pendente em carteira via pagamentos_os
 async function calcularTotalCarteiraReal(empresaId: string, filtros: FiltrosPeriodo): Promise<number> {
-  const { data, error } = await supabase
-    .from('pagamentos_os')
-    .select(`
-      valor_restante,
-      vendas!inner(finalizado_em, empresa_id)
-    `)
-    .eq('vendas.empresa_id', empresaId)
-    .eq('tipo_entrada', 'finalizacao')
-    .gt('valor_restante', 0)
-    .gte('vendas.finalizado_em', filtros.dataInicio.toISOString())
-    .lte('vendas.finalizado_em', filtros.dataFim.toISOString());
+  // 1. Buscar IDs das vendas finalizadas no período
+  const { data: vendas, error: errorVendas } = await supabase
+    .from('vendas')
+    .select('id')
+    .eq('empresa_id', empresaId)
+    .not('finalizado_em', 'is', null)
+    .gte('finalizado_em', filtros.dataInicio.toISOString())
+    .lte('finalizado_em', filtros.dataFim.toISOString());
 
-  if (error) {
-    console.error('Erro ao calcular total carteira:', error);
+  if (errorVendas || !vendas || vendas.length === 0) {
+    console.error('Erro ao buscar vendas:', errorVendas);
     return 0;
   }
 
-  return data?.reduce((sum, p) => sum + Number(p.valor_restante), 0) || 0;
+  const vendasIds = vendas.map(v => v.id);
+
+  // 2. Buscar pagamentos usando os_id
+  const { data: pagamentos, error: errorPag } = await supabase
+    .from('pagamentos_os')
+    .select('valor_restante')
+    .eq('empresa_id', empresaId)
+    .eq('tipo_entrada', 'finalizacao')
+    .gt('valor_restante', 0)
+    .in('os_id', vendasIds);
+
+  if (errorPag) {
+    console.error('Erro ao calcular total carteira:', errorPag);
+    return 0;
+  }
+
+  return pagamentos?.reduce((sum, p) => sum + Number(p.valor_restante), 0) || 0;
 }
 
 export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {

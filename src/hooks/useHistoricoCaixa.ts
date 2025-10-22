@@ -39,12 +39,15 @@ export type TipoPeriodo = 'hoje' | 'semana' | 'mes' | 'ano' | 'personalizado';
 async function calcularTotalLiquidoReal(empresaId: string, filtros: FiltrosPeriodo): Promise<number> {
   const { data: movimentacoes, error } = await supabase
     .from('movimentacoes_caixa')
-    .select('valor_liquido')
-    .eq('empresa_id', empresaId)
+    .select(`
+      valor_liquido,
+      vendas!inner(finalizado_em, empresa_id)
+    `)
+    .eq('vendas.empresa_id', empresaId)
     .eq('tipo', 'entrada')
     .eq('tipo_origem', 'OS')
-    .gte('data_hora', filtros.dataInicio.toISOString())
-    .lte('data_hora', filtros.dataFim.toISOString());
+    .gte('vendas.finalizado_em', filtros.dataInicio.toISOString())
+    .lte('vendas.finalizado_em', filtros.dataFim.toISOString());
 
   if (error) {
     console.error('Erro ao buscar movimentações de caixa:', error);
@@ -52,6 +55,28 @@ async function calcularTotalLiquidoReal(empresaId: string, filtros: FiltrosPerio
   }
 
   return movimentacoes?.reduce((sum, mov) => sum + (mov.valor_liquido || 0), 0) || 0;
+}
+
+// Função auxiliar para calcular o total pendente em carteira via pagamentos_os
+async function calcularTotalCarteiraReal(empresaId: string, filtros: FiltrosPeriodo): Promise<number> {
+  const { data, error } = await supabase
+    .from('pagamentos_os')
+    .select(`
+      valor_restante,
+      vendas!inner(finalizado_em, empresa_id)
+    `)
+    .eq('vendas.empresa_id', empresaId)
+    .eq('tipo_entrada', 'finalizacao')
+    .gt('valor_restante', 0)
+    .gte('vendas.finalizado_em', filtros.dataInicio.toISOString())
+    .lte('vendas.finalizado_em', filtros.dataFim.toISOString());
+
+  if (error) {
+    console.error('Erro ao calcular total carteira:', error);
+    return 0;
+  }
+
+  return data?.reduce((sum, p) => sum + Number(p.valor_restante), 0) || 0;
 }
 
 export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
@@ -222,6 +247,16 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
     enabled: !!empresaId,
   });
 
+  // Query para buscar total pendente em carteira
+  const { data: totalCarteiraReal } = useQuery({
+    queryKey: ['carteira-total', empresaId, filtros.dataInicio, filtros.dataFim],
+    queryFn: async () => {
+      if (!empresaId) return 0;
+      return await calcularTotalCarteiraReal(empresaId, filtros);
+    },
+    enabled: !!empresaId,
+  });
+
   // Calcular totalizadores separados
   const vendasCarteira = historico?.filter(v => v.tipo_transacao === 'carteira' && v.tipo_entrada === 'finalizacao') || [];
   const vendasBruto = historico?.filter(v => v.tipo_transacao === 'bruto') || [];
@@ -239,25 +274,37 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
     // Contadores ajustados
     totalVendas: (historico?.filter(v => v.tipo_entrada === 'finalizacao').length || 0),
     totalVendasBruto: vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').length + vendasMistas.length, // Inclui mistas
-    totalVendasCarteira: vendasCarteira.length - vendasMistas.length, // Exclui mistas (só 100% carteira)
+    
+    // Contar TODAS as OSs com carteira (mistas + 100%)
+    totalVendasCarteira: historico?.filter(v => 
+      v.tipo_entrada === 'finalizacao' && 
+      v.formas_pagamento && 
+      v.formas_pagamento.some(f => f.forma_pagamento === 'carteira')
+    ).length || 0,
+    
     totalPagamentosPosteriores: pagamentosPosteriores.length,
     
-    // Valores carteira (apenas finalizações 100% em carteira)
+    // Valores carteira (apenas finalizações 100% em carteira - para compatibilidade)
     valorTotalCarteira: vendasCarteira.filter(v => !vendasMistas.includes(v)).reduce((sum, v) => sum + v.valor_total, 0),
     valorDescontoCarteira: vendasCarteira.filter(v => !vendasMistas.includes(v)).reduce((sum, v) => sum + v.valor_desconto, 0),
-    valorFinalCarteira: vendasCarteira.filter(v => !vendasMistas.includes(v)).reduce((sum, v) => sum + v.valor_final, 0),
+    
+    // Total pendente em carteira de TODAS as OSs (mistas + 100%)
+    valorFinalCarteira: totalCarteiraReal || 0,
+    
     valorComissaoCarteira: vendasCarteira.filter(v => !vendasMistas.includes(v)).reduce((sum, v) => sum + v.valor_comissao, 0),
     
-    // Valores brutos reais (finalizações não-carteira + mistas)
-    valorTotalBrutoReal: vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_total, 0) +
-                         vendasMistas.reduce((sum, v) => sum + v.valor_total, 0),
-    valorDescontoBrutoReal: vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_desconto, 0) +
-                            vendasMistas.reduce((sum, v) => sum + v.valor_desconto, 0),
-    valorFinalBrutoReal: vendasBruto.reduce((sum, v) => sum + v.valor_final, 0) + 
-                         vendasCarteira.filter(v => !vendasMistas.includes(v)).reduce((sum, v) => sum + v.valor_final, 0) +
-                         vendasMistas.reduce((sum, v) => sum + v.valor_final, 0),
-    valorComissaoBrutoReal: vendasBruto.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_comissao, 0) +
-                            vendasMistas.reduce((sum, v) => sum + v.valor_comissao, 0),
+    // Valores brutos reais (todas as finalizações)
+    valorTotalBrutoReal: historico?.filter(v => v.tipo_entrada === 'finalizacao')
+      .reduce((sum, v) => sum + v.valor_total, 0) || 0,
+      
+    valorDescontoBrutoReal: historico?.filter(v => v.tipo_entrada === 'finalizacao')
+      .reduce((sum, v) => sum + v.valor_desconto, 0) || 0,
+    
+    // Total Bruto = Líquido recebido + Carteira pendente
+    valorFinalBrutoReal: (movimentacoesCaixa || 0) + (totalCarteiraReal || 0),
+    
+    valorComissaoBrutoReal: historico?.filter(v => v.tipo_entrada === 'finalizacao')
+      .reduce((sum, v) => sum + v.valor_comissao, 0) || 0,
     
     // Valores dos pagamentos posteriores/avulsos
     valorPagamentosPosteriores: pagamentosPosteriores.reduce((sum, v) => sum + v.valor_final, 0),
@@ -266,7 +313,7 @@ export function useHistoricoCaixa(filtros: FiltrosPeriodo, numeroOS?: string) {
     valorTotal: (historico?.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_total, 0) || 0),
     valorDesconto: (historico?.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_desconto, 0) || 0),
     
-    // TOTAL LÍQUIDO REAL - Baseado em movimentacoes_caixa (CORRIGIDO)
+    // TOTAL LÍQUIDO REAL - Baseado em movimentacoes_caixa (valores efetivamente recebidos)
     valorFinal: movimentacoesCaixa || 0,
     
     valorComissao: (historico?.filter(v => v.tipo_entrada === 'finalizacao').reduce((sum, v) => sum + v.valor_comissao, 0) || 0),

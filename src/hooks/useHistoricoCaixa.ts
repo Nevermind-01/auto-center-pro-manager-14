@@ -53,13 +53,13 @@ async function calcularTotalLiquidoReal(empresaId: string, filtros: FiltrosPerio
 
   const vendasIds = vendas.map(v => v.id);
 
-  // 2. Buscar movimentações usando referencia_id
+  // 2. Buscar movimentações usando referencia_id (inclui finalizações e pagamentos posteriores)
   const { data: movimentacoes, error: errorMov } = await supabase
     .from('movimentacoes_caixa')
     .select('valor_liquido')
     .eq('empresa_id', empresaId)
     .eq('tipo', 'entrada')
-    .eq('tipo_origem', 'OS')
+    .in('tipo_origem', ['OS', 'MANUAL'])
     .in('referencia_id', vendasIds);
 
   if (errorMov) {

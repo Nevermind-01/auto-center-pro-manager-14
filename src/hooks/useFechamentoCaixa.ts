@@ -275,5 +275,6 @@ export function useFechamentoCaixa() {
     calcularValoresEsperados,
     isSuccess: processarFechamento.isSuccess,
     ultimoFechamento: processarFechamento.data,
+    resetFechamento: processarFechamento.reset,
   };
 }

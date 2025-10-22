@@ -23,7 +23,7 @@ interface FechamentoCaixaModalProps {
 export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModalProps) {
   const { caixaAtual } = useCaixa();
   const { empresaId } = useEmpresaContext();
-  const { processarFechamento, isProcessandoFechamento, calcularValoresEsperados, isSuccess, ultimoFechamento } = useFechamentoCaixa();
+  const { processarFechamento, isProcessandoFechamento, calcularValoresEsperados, isSuccess, ultimoFechamento, resetFechamento } = useFechamentoCaixa();
   
   const [contagemDinheiro, setContagemDinheiro] = useState('');
   const [contagemPix, setContagemPix] = useState('');
@@ -112,6 +112,7 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
   };
   
   const handleConfirmedFechamento = () => {
+    console.log('✅ Processando fechamento confirmado');
     if (pendingFechamento) {
       processarFechamento(pendingFechamento);
       setPendingFechamento(null);
@@ -127,8 +128,10 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
       setContagemCredito('');
       setContagemOutros({});
       setValoresEsperados(null);
+      setShowPrintPreview(false);
+      if (resetFechamento) resetFechamento();
     }
-  }, [open]);
+  }, [open, resetFechamento]);
 
   // Buscar dados da empresa
   useEffect(() => {
@@ -143,14 +146,15 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
 
   // Abrir preview de impressão após fechamento bem-sucedido
   useEffect(() => {
-    if (isSuccess && ultimoFechamento) {
+    if (ultimoFechamento && !showPrintPreview && caixaAtual) {
+      console.log('📄 Abrindo preview de impressão, ID:', ultimoFechamento.id);
       setTimeout(() => {
         if (printRef.current) {
           setShowPrintPreview(true);
         }
-      }, 500);
+      }, 800);
     }
-  }, [isSuccess, ultimoFechamento]);
+  }, [ultimoFechamento, showPrintPreview, caixaAtual]);
 
   const handlePrint = useCallback(() => {
     if (printRef.current) {

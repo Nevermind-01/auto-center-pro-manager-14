@@ -255,6 +255,8 @@ export function useFechamentoCaixa() {
       queryClient.invalidateQueries({ queryKey: ['caixa-atual'] });
       queryClient.invalidateQueries({ queryKey: ['historico-caixas'] });
       queryClient.invalidateQueries({ queryKey: ['movimentacoes-caixa'] });
+      
+      return fechamento;
     },
     onError: (error: any) => {
       toast({
@@ -272,5 +274,6 @@ export function useFechamentoCaixa() {
     isProcessandoFechamento: processarFechamento.isPending,
     calcularValoresEsperados,
     isSuccess: processarFechamento.isSuccess,
+    ultimoFechamento: processarFechamento.data,
   };
 }

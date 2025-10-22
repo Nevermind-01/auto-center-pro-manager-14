@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,11 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useFechamentoCaixa } from '@/hooks/useFechamentoCaixa';
 import { useCaixa } from '@/hooks/useCaixa';
+import { useEmpresaContext } from '@/hooks/useEmpresaContext';
+import { ConfirmOwnerPasswordModal } from './ConfirmOwnerPasswordModal';
+import { FechamentoCaixaPrint } from './print/FechamentoCaixaPrint';
+import { usePrintGenerator } from '@/hooks/usePrintGenerator';
+import { format } from 'date-fns';
 import { Calculator, DollarSign, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 
 interface FechamentoCaixaModalProps {
@@ -17,7 +22,8 @@ interface FechamentoCaixaModalProps {
 
 export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModalProps) {
   const { caixaAtual } = useCaixa();
-  const { processarFechamento, isProcessandoFechamento, calcularValoresEsperados, isSuccess } = useFechamentoCaixa();
+  const { empresaId } = useEmpresaContext();
+  const { processarFechamento, isProcessandoFechamento, calcularValoresEsperados, isSuccess, ultimoFechamento } = useFechamentoCaixa();
   
   const [contagemDinheiro, setContagemDinheiro] = useState('');
   const [contagemPix, setContagemPix] = useState('');
@@ -26,6 +32,13 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
   const [contagemOutros, setContagemOutros] = useState<Record<string, string>>({});
   const [valoresEsperados, setValoresEsperados] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [showOwnerPasswordModal, setShowOwnerPasswordModal] = useState(false);
+  const [pendingFechamento, setPendingFechamento] = useState<any>(null);
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [empresaData, setEmpresaData] = useState<any>(null);
+  
+  const printRef = useRef<HTMLDivElement>(null);
+  const { printElement, generatePDFFromElement, fetchEmpresaData } = usePrintGenerator();
 
   useEffect(() => {
     if (open && caixaAtual?.id) {
@@ -82,14 +95,27 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
       contagemOutrosFormatados[forma] = parseFloat(valor) || 0;
     });
     
-    processarFechamento({
+    const dadosFechamento = {
       contagem_dinheiro: parseFloat(contagemDinheiro) || 0,
       contagem_pix: parseFloat(contagemPix) || 0,
       contagem_debito: parseFloat(contagemDebito) || 0,
       contagem_credito: parseFloat(contagemCredito) || 0,
       contagem_outros: contagemOutrosFormatados,
       caixa_id: caixaAtual.id,
-    });
+    };
+
+    // Salvar dados para processamento após validação
+    setPendingFechamento(dadosFechamento);
+    
+    // Abrir modal de senha do owner
+    setShowOwnerPasswordModal(true);
+  };
+  
+  const handleConfirmedFechamento = () => {
+    if (pendingFechamento) {
+      processarFechamento(pendingFechamento);
+      setPendingFechamento(null);
+    }
   };
 
   // Reset form when modal closes and close modal on success
@@ -104,12 +130,40 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
     }
   }, [open]);
 
-  // Close modal after successful processing
+  // Buscar dados da empresa
   useEffect(() => {
-    if (isSuccess) {
-      onOpenChange(false);
+    const loadEmpresaData = async () => {
+      if (open && empresaId) {
+        const data = await fetchEmpresaData();
+        setEmpresaData(data);
+      }
+    };
+    loadEmpresaData();
+  }, [open, empresaId, fetchEmpresaData]);
+
+  // Abrir preview de impressão após fechamento bem-sucedido
+  useEffect(() => {
+    if (isSuccess && ultimoFechamento) {
+      setTimeout(() => {
+        if (printRef.current) {
+          setShowPrintPreview(true);
+        }
+      }, 500);
     }
-  }, [isSuccess, onOpenChange]);
+  }, [isSuccess, ultimoFechamento]);
+
+  const handlePrint = useCallback(() => {
+    if (printRef.current) {
+      printElement(printRef.current);
+    }
+  }, [printElement]);
+
+  const handleGeneratePDF = useCallback(() => {
+    if (printRef.current && ultimoFechamento) {
+      const filename = `fechamento-caixa-${format(new Date(ultimoFechamento.gerado_em), 'yyyyMMdd-HHmmss')}.pdf`;
+      generatePDFFromElement(printRef.current, filename);
+    }
+  }, [generatePDFFromElement, ultimoFechamento]);
 
   if (!caixaAtual) {
     return (
@@ -388,6 +442,66 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
           </div>
         )}
       </DialogContent>
+
+      {/* Modal de confirmação de senha do owner */}
+      {empresaId && (
+        <ConfirmOwnerPasswordModal
+          open={showOwnerPasswordModal}
+          onOpenChange={setShowOwnerPasswordModal}
+          onConfirm={handleConfirmedFechamento}
+          empresaId={empresaId}
+        />
+      )}
+
+      {/* Componente oculto para impressão */}
+      {ultimoFechamento && caixaAtual && (
+        <>
+          <div style={{ position: 'absolute', left: '-9999px' }}>
+            <div ref={printRef}>
+              <FechamentoCaixaPrint
+                fechamento={ultimoFechamento as any}
+                caixa={caixaAtual}
+                empresaData={empresaData}
+              />
+            </div>
+          </div>
+
+          {/* Dialog de preview de impressão */}
+          <Dialog open={showPrintPreview} onOpenChange={(open) => {
+            setShowPrintPreview(open);
+            if (!open) onOpenChange(false);
+          }}>
+            <DialogContent className="max-w-4xl max-h-[90vh]">
+              <DialogHeader>
+                <DialogTitle>Relatório de Fechamento</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex gap-2 justify-center">
+                  <Button onClick={handlePrint} variant="default">
+                    🖨️ Imprimir
+                  </Button>
+                  <Button onClick={handleGeneratePDF} variant="outline">
+                    📄 Gerar PDF
+                  </Button>
+                  <Button onClick={() => {
+                    setShowPrintPreview(false);
+                    onOpenChange(false);
+                  }} variant="secondary">
+                    Fechar
+                  </Button>
+                </div>
+                <div className="border rounded-lg p-4 overflow-auto max-h-[60vh]">
+                  <FechamentoCaixaPrint
+                    fechamento={ultimoFechamento as any}
+                    caixa={caixaAtual}
+                    empresaData={empresaData}
+                  />
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
     </Dialog>
   );
 }

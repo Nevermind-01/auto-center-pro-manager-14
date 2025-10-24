@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +14,7 @@ import { ConfirmOwnerPasswordModal } from './ConfirmOwnerPasswordModal';
 import { FechamentoCaixaPrint } from './print/FechamentoCaixaPrint';
 import { usePrintGenerator } from '@/hooks/usePrintGenerator';
 import { format } from 'date-fns';
-import { Calculator, DollarSign, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, TrendingDown, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface FechamentoCaixaModalProps {
   open: boolean;
@@ -35,6 +36,7 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
   const [showOwnerPasswordModal, setShowOwnerPasswordModal] = useState(false);
   const [pendingFechamento, setPendingFechamento] = useState<any>(null);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [showPrintConfirmDialog, setShowPrintConfirmDialog] = useState(false);
   const [empresaData, setEmpresaData] = useState<any>(null);
   const [caixaFechado, setCaixaFechado] = useState<any>(null);
   
@@ -114,26 +116,19 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
   
   const handleConfirmedFechamento = () => {
     console.log('✅ Processando fechamento confirmado');
-    console.log('📦 Estado antes:', { 
-      pendingFechamento: !!pendingFechamento, 
-      caixaAtual: !!caixaAtual,
-      showPrintPreview,
-      ultimoFechamento: !!ultimoFechamento,
-      printRefExists: !!printRef.current
-    });
     
     if (pendingFechamento && caixaAtual) {
       setCaixaFechado(caixaAtual);
       console.log('💾 Dados do caixa salvos para impressão');
       processarFechamento(pendingFechamento);
       setPendingFechamento(null);
+      onOpenChange(false); // Fechar modal principal imediatamente
     }
   };
 
-  // Reset form when modal closes and close modal on success
+  // Reset form when modal closes
   useEffect(() => {
-    // Só resetar se modal estiver fechado E preview também estiver fechado E não houver fechamento recente
-    if (!open && !showPrintPreview && !ultimoFechamento) {
+    if (!open && !showPrintPreview && !showPrintConfirmDialog) {
       console.log('🧹 Resetando estados do fechamento');
       setContagemDinheiro('');
       setContagemPix('');
@@ -144,7 +139,7 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
       setCaixaFechado(null);
       if (resetFechamento) resetFechamento();
     }
-  }, [open, showPrintPreview, ultimoFechamento, resetFechamento]);
+  }, [open, showPrintPreview, showPrintConfirmDialog, resetFechamento]);
 
   // Buscar dados da empresa
   useEffect(() => {
@@ -157,44 +152,26 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
     loadEmpresaData();
   }, [open, empresaId, fetchEmpresaData]);
 
-  // Abrir preview de impressão após fechamento bem-sucedido
+  // Quando fechamento completar, perguntar se quer imprimir
   useEffect(() => {
-    if (ultimoFechamento && !showPrintPreview) {
-      console.log('📄 Abrindo preview de impressão, ID:', ultimoFechamento.id);
-      // Verificar se printRef existe antes de abrir
-      if (printRef.current) {
-        setTimeout(() => {
-          console.log('🚀 Executando setShowPrintPreview(true)');
-          setShowPrintPreview(true);
-        }, 800); // Aumentar para 800ms
-      } else {
-        console.warn('⚠️ printRef.current não existe ainda');
-      }
+    if (ultimoFechamento && !showPrintConfirmDialog && !showPrintPreview) {
+      console.log('✅ Fechamento concluído, abrindo confirmação de impressão');
+      setShowPrintConfirmDialog(true);
     }
-  }, [ultimoFechamento, showPrintPreview]);
+  }, [ultimoFechamento, showPrintConfirmDialog, showPrintPreview]);
 
-  // Fechar modal principal quando preview abrir
+  // Resetar quando preview de impressão fechar
   useEffect(() => {
-    if (showPrintPreview && open) {
-      console.log('🚪 Fechando modal principal pois preview abriu');
-      onOpenChange(false);
-    }
-  }, [showPrintPreview, open, onOpenChange]);
-
-  // Resetar quando usuário fechar o preview (não automaticamente)
-  useEffect(() => {
-    // Só resetar quando preview fechar E modal principal já estiver fechado
-    if (!showPrintPreview && !open && ultimoFechamento) {
-      console.log('🔄 Preview foi fechado pelo usuário, resetando após delay');
+    if (!showPrintPreview && ultimoFechamento && !showPrintConfirmDialog) {
+      console.log('🔄 Preview fechou, resetando após delay');
       const timer = setTimeout(() => {
-        console.log('🧹 Executando reset final');
         if (resetFechamento) resetFechamento();
         setCaixaFechado(null);
-      }, 1000); // Delay maior para garantir
+      }, 500);
       
       return () => clearTimeout(timer);
     }
-  }, [showPrintPreview, open, ultimoFechamento, resetFechamento]);
+  }, [showPrintPreview, ultimoFechamento, showPrintConfirmDialog, resetFechamento]);
 
   const handlePrint = useCallback(() => {
     if (printRef.current) {
@@ -500,18 +477,53 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
 
     </Dialog>
 
-    {/* Componente oculto para impressão - FORA do Dialog principal */}
-    {ultimoFechamento && (caixaFechado || caixaAtual) && (
-      <div style={{ position: 'absolute', left: '-9999px' }}>
-        <div ref={printRef}>
+    {/* Componente oculto para impressão - SEMPRE renderizado */}
+    <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+      <div ref={printRef}>
+        {ultimoFechamento && (caixaFechado || caixaAtual) && (
           <FechamentoCaixaPrint
             fechamento={ultimoFechamento as any}
             caixa={caixaFechado || caixaAtual}
             empresaData={empresaData}
           />
-        </div>
+        )}
       </div>
-    )}
+    </div>
+
+    {/* Alert Dialog de confirmação de impressão */}
+    <AlertDialog open={showPrintConfirmDialog} onOpenChange={setShowPrintConfirmDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <CheckCircle className="h-6 w-6 text-green-600" />
+            Fechamento Concluído
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            O caixa foi fechado com sucesso! Deseja imprimir ou gerar o relatório de fechamento agora?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => {
+            console.log('❌ Usuário optou por não imprimir');
+            setShowPrintConfirmDialog(false);
+            // Resetar após fechar
+            setTimeout(() => {
+              if (resetFechamento) resetFechamento();
+              setCaixaFechado(null);
+            }, 300);
+          }}>
+            Não, obrigado
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={() => {
+            console.log('✅ Usuário optou por imprimir');
+            setShowPrintConfirmDialog(false);
+            setShowPrintPreview(true);
+          }}>
+            Sim, imprimir
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
     {/* Dialog de preview de impressão - FORA do Dialog principal */}
     {ultimoFechamento && (caixaFechado || caixaAtual) && (

@@ -114,18 +114,26 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
   
   const handleConfirmedFechamento = () => {
     console.log('✅ Processando fechamento confirmado');
+    console.log('📦 Estado antes:', { 
+      pendingFechamento: !!pendingFechamento, 
+      caixaAtual: !!caixaAtual,
+      showPrintPreview,
+      ultimoFechamento: !!ultimoFechamento,
+      printRefExists: !!printRef.current
+    });
+    
     if (pendingFechamento && caixaAtual) {
-      setCaixaFechado(caixaAtual); // Guardar dados do caixa antes de fechar
+      setCaixaFechado(caixaAtual);
+      console.log('💾 Dados do caixa salvos para impressão');
       processarFechamento(pendingFechamento);
       setPendingFechamento(null);
-      // Modal só fechará quando o preview abrir
     }
   };
 
   // Reset form when modal closes and close modal on success
   useEffect(() => {
-    // Só resetar se modal estiver fechado E preview também estiver fechado
-    if (!open && !showPrintPreview) {
+    // Só resetar se modal estiver fechado E preview também estiver fechado E não houver fechamento recente
+    if (!open && !showPrintPreview && !ultimoFechamento) {
       console.log('🧹 Resetando estados do fechamento');
       setContagemDinheiro('');
       setContagemPix('');
@@ -136,7 +144,7 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
       setCaixaFechado(null);
       if (resetFechamento) resetFechamento();
     }
-  }, [open, showPrintPreview, resetFechamento]);
+  }, [open, showPrintPreview, ultimoFechamento, resetFechamento]);
 
   // Buscar dados da empresa
   useEffect(() => {
@@ -153,9 +161,15 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
   useEffect(() => {
     if (ultimoFechamento && !showPrintPreview) {
       console.log('📄 Abrindo preview de impressão, ID:', ultimoFechamento.id);
-      setTimeout(() => {
-        setShowPrintPreview(true);
-      }, 500);
+      // Verificar se printRef existe antes de abrir
+      if (printRef.current) {
+        setTimeout(() => {
+          console.log('🚀 Executando setShowPrintPreview(true)');
+          setShowPrintPreview(true);
+        }, 800); // Aumentar para 800ms
+      } else {
+        console.warn('⚠️ printRef.current não existe ainda');
+      }
     }
   }, [ultimoFechamento, showPrintPreview]);
 
@@ -167,16 +181,20 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
     }
   }, [showPrintPreview, open, onOpenChange]);
 
-  // Quando preview fechar, resetar tudo
+  // Resetar quando usuário fechar o preview (não automaticamente)
   useEffect(() => {
-    if (!showPrintPreview && ultimoFechamento) {
-      console.log('🔄 Preview fechou, resetando tudo');
-      setTimeout(() => {
+    // Só resetar quando preview fechar E modal principal já estiver fechado
+    if (!showPrintPreview && !open && ultimoFechamento) {
+      console.log('🔄 Preview foi fechado pelo usuário, resetando após delay');
+      const timer = setTimeout(() => {
+        console.log('🧹 Executando reset final');
         if (resetFechamento) resetFechamento();
         setCaixaFechado(null);
-      }, 300);
+      }, 1000); // Delay maior para garantir
+      
+      return () => clearTimeout(timer);
     }
-  }, [showPrintPreview, ultimoFechamento, resetFechamento]);
+  }, [showPrintPreview, open, ultimoFechamento, resetFechamento]);
 
   const handlePrint = useCallback(() => {
     if (printRef.current) {

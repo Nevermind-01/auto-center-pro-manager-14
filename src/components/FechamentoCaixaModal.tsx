@@ -114,15 +114,31 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
     setShowOwnerPasswordModal(true);
   };
   
-  const handleConfirmedFechamento = () => {
+  const handleConfirmedFechamento = async () => {
     console.log('✅ Processando fechamento confirmado');
     
     if (pendingFechamento && caixaAtual) {
-      setCaixaFechado(caixaAtual);
-      console.log('💾 Dados do caixa salvos para impressão');
-      processarFechamento(pendingFechamento);
-      setPendingFechamento(null);
-      onOpenChange(false); // Fechar modal principal imediatamente
+      try {
+        setCaixaFechado(caixaAtual);
+        console.log('💾 Dados do caixa salvos para impressão');
+        
+        // AGUARDAR mutation completar
+        await processarFechamento(pendingFechamento);
+        console.log('✅ Fechamento concluído no banco');
+        
+        setPendingFechamento(null);
+        onOpenChange(false); // Fechar modal principal
+        
+        // Aguardar modal fechar e abrir alert de confirmação
+        setTimeout(() => {
+          console.log('📄 Abrindo alert de confirmação de impressão');
+          setShowPrintConfirmDialog(true);
+        }, 200);
+        
+      } catch (error) {
+        console.error('❌ Erro ao processar fechamento:', error);
+        // Não fechar modal se der erro
+      }
     }
   };
 
@@ -152,13 +168,6 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
     loadEmpresaData();
   }, [open, empresaId, fetchEmpresaData]);
 
-  // Quando fechamento completar, perguntar se quer imprimir
-  useEffect(() => {
-    if (ultimoFechamento && !showPrintConfirmDialog && !showPrintPreview) {
-      console.log('✅ Fechamento concluído, abrindo confirmação de impressão');
-      setShowPrintConfirmDialog(true);
-    }
-  }, [ultimoFechamento, showPrintConfirmDialog, showPrintPreview]);
 
   // Resetar quando preview de impressão fechar
   useEffect(() => {

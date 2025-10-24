@@ -270,7 +270,7 @@ export function useFechamentoCaixa() {
   return {
     fechamentosAnteriores,
     isLoading,
-    processarFechamento: processarFechamento.mutate,
+    processarFechamento: processarFechamento.mutateAsync,
     isProcessandoFechamento: processarFechamento.isPending,
     calcularValoresEsperados,
     isSuccess: processarFechamento.isSuccess,

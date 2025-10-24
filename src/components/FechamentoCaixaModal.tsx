@@ -36,6 +36,7 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
   const [pendingFechamento, setPendingFechamento] = useState<any>(null);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [empresaData, setEmpresaData] = useState<any>(null);
+  const [caixaFechado, setCaixaFechado] = useState<any>(null);
   
   const printRef = useRef<HTMLDivElement>(null);
   const { printElement, generatePDFFromElement, fetchEmpresaData } = usePrintGenerator();
@@ -113,9 +114,11 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
   
   const handleConfirmedFechamento = () => {
     console.log('✅ Processando fechamento confirmado');
-    if (pendingFechamento) {
+    if (pendingFechamento && caixaAtual) {
+      setCaixaFechado(caixaAtual); // Guardar dados do caixa antes de fechar
       processarFechamento(pendingFechamento);
       setPendingFechamento(null);
+      onOpenChange(false); // Fechar modal principal
     }
   };
 
@@ -146,15 +149,13 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
 
   // Abrir preview de impressão após fechamento bem-sucedido
   useEffect(() => {
-    if (ultimoFechamento && !showPrintPreview && caixaAtual) {
+    if (ultimoFechamento && !showPrintPreview) {
       console.log('📄 Abrindo preview de impressão, ID:', ultimoFechamento.id);
       setTimeout(() => {
-        if (printRef.current) {
-          setShowPrintPreview(true);
-        }
-      }, 800);
+        setShowPrintPreview(true);
+      }, 500);
     }
-  }, [ultimoFechamento, showPrintPreview, caixaAtual]);
+  }, [ultimoFechamento, showPrintPreview]);
 
   const handlePrint = useCallback(() => {
     if (printRef.current) {
@@ -185,6 +186,7 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -457,55 +459,51 @@ export function FechamentoCaixaModal({ open, onOpenChange }: FechamentoCaixaModa
         />
       )}
 
-      {/* Componente oculto para impressão */}
-      {ultimoFechamento && caixaAtual && (
-        <>
-          <div style={{ position: 'absolute', left: '-9999px' }}>
-            <div ref={printRef}>
+    </Dialog>
+
+    {/* Componente oculto para impressão - FORA do Dialog principal */}
+    {ultimoFechamento && (caixaFechado || caixaAtual) && (
+      <div style={{ position: 'absolute', left: '-9999px' }}>
+        <div ref={printRef}>
+          <FechamentoCaixaPrint
+            fechamento={ultimoFechamento as any}
+            caixa={caixaFechado || caixaAtual}
+            empresaData={empresaData}
+          />
+        </div>
+      </div>
+    )}
+
+    {/* Dialog de preview de impressão - FORA do Dialog principal */}
+    {ultimoFechamento && (caixaFechado || caixaAtual) && (
+      <Dialog open={showPrintPreview} onOpenChange={setShowPrintPreview}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Relatório de Fechamento</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex gap-2 justify-center">
+              <Button onClick={handlePrint} variant="default">
+                🖨️ Imprimir
+              </Button>
+              <Button onClick={handleGeneratePDF} variant="outline">
+                📄 Gerar PDF
+              </Button>
+              <Button onClick={() => setShowPrintPreview(false)} variant="secondary">
+                Fechar
+              </Button>
+            </div>
+            <div className="border rounded-lg p-4 overflow-auto max-h-[60vh]">
               <FechamentoCaixaPrint
                 fechamento={ultimoFechamento as any}
-                caixa={caixaAtual}
+                caixa={caixaFechado || caixaAtual}
                 empresaData={empresaData}
               />
             </div>
           </div>
-
-          {/* Dialog de preview de impressão */}
-          <Dialog open={showPrintPreview} onOpenChange={(open) => {
-            setShowPrintPreview(open);
-            if (!open) onOpenChange(false);
-          }}>
-            <DialogContent className="max-w-4xl max-h-[90vh]">
-              <DialogHeader>
-                <DialogTitle>Relatório de Fechamento</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="flex gap-2 justify-center">
-                  <Button onClick={handlePrint} variant="default">
-                    🖨️ Imprimir
-                  </Button>
-                  <Button onClick={handleGeneratePDF} variant="outline">
-                    📄 Gerar PDF
-                  </Button>
-                  <Button onClick={() => {
-                    setShowPrintPreview(false);
-                    onOpenChange(false);
-                  }} variant="secondary">
-                    Fechar
-                  </Button>
-                </div>
-                <div className="border rounded-lg p-4 overflow-auto max-h-[60vh]">
-                  <FechamentoCaixaPrint
-                    fechamento={ultimoFechamento as any}
-                    caixa={caixaAtual}
-                    empresaData={empresaData}
-                  />
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </>
-      )}
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    )}
+  </>
   );
 }
